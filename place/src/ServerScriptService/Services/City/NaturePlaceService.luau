@@ -826,7 +826,7 @@ end
 local function edited()
 	local fn = _onEdited
 	if fn then
-		local ok, err = pcall(fn)
+		local ok, err = pcall(fn :: () -> ...any)
 		if not ok then warn("[NaturePlaceService] edit listener failed: " .. tostring(err)) end
 	end
 end
