@@ -685,7 +685,9 @@ return function()
 		end
 
 
-		fixture("departing traffic has priority over arrivals in an aisle standoff",function(h)
+		-- The car coming in off the road goes first (2026-10-05): it is the one holding up the
+		-- street, and the departure it would wait for is itself waiting for a gap in that street.
+		fixture("an arrival off the road has priority over a departure in an aisle standoff",function(h)
 			local entry=h.car:Clone();entry.Parent=folder;table.insert(fixtures,entry)
 			entry:PivotTo(CFrame.new(20,0,0))
 			h.PathFollower.getMotionLimits=function(model,_,_,yielding,ignore)
@@ -696,8 +698,8 @@ return function()
 			h.api.lineFollow(h.car,{Vector3.zero,Vector3.new(40,0,0)},12,h.done,0,nil,false)
 			h.api.lineFollow(entry,{Vector3.new(20,0,0),Vector3.new(-20,0,0)},12,h.done,0,nil,true)
 			h.api.stepTrips(.1)
-			expect(h._trips[h.car].dist>0).to.equal(true)
-			expect(h._trips[entry].dist).to.equal(0)
+			expect(h._trips[entry].dist>0).to.equal(true)
+			expect(h._trips[h.car].dist).to.equal(0)
 		end)
 		fixture("a queued exit at its road gate cannot permanently block arriving lot traffic",function(h)
 			local exit=h.car:Clone();exit.Parent=folder;table.insert(fixtures,exit)

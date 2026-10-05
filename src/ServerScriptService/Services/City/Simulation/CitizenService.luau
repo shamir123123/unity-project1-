@@ -404,23 +404,7 @@ local Cars: any = {
 	LOT_STANDOFF_CLEARANCE = 0.05,
 	ACCESS_CLEAR_RADIUS = 12,
 	GAP_SECONDS = 3,    -- s of clear road a driver wants before pulling out or turning in
-	JOIN_RETRY = 0.25,  -- s between tries of a car at the end of its pull-out to join the traffic
-	JOIN_TRIES = 60,    -- ...before it gives up and is put away (only a real overlap keeps refusing it)
 }
--- A lot leg standing at its gate, waiting to pull out: still off the road, and yielding.
-function Cars.waitingToPullOut(trip: any): boolean
-	return trip.leavesRoad == false and trip.gate ~= nil and trip.dist >= (trip.gateDist or 0) - 1e-3
-end
--- A car turning in off the road has the driveway first, as the rules of the road give it: one
--- pulling out waits for it. The turning car used to wait instead -- in the lane, for the car
--- pulling out, which was waiting for a gap in that same lane -- and both stood there for good
--- while the street queued behind them (lab, 2026-10-05: one car park froze a whole avenue).
-function Cars.turnInNear(pos: Vector3, car: Model): boolean
-	return PathFollower.anyVehicleWithin(pos, Cars.ACCESS_CLEAR_RADIUS, function(other: Model): boolean
-		local trip = _trips[other]
-		return other ~= car and trip ~= nil and trip.leavesRoad == true
-	end)
-end
 function Cars.releaseRoadSlot(car: Model, token: number?): ()
 	local owner = Cars.roadTokens[car]
 	if not owner or (token and owner ~= token) then return end
@@ -520,6 +504,30 @@ local function lineFollow(car: Model, waypoints: { Vector3 }, speed: number, onD
 		PathFollower.place(_trips[car], waypoints[1], pose.LookVector, 0)
 	end
 end
+-- (Kept beside the trip legs: the contract specs load this stretch of the file on its own.)
+Cars.JOIN_RETRY = 0.25  -- s between tries of a car at the end of its pull-out to join the traffic
+Cars.JOIN_TRIES = 60    -- ...before it gives up and is put away (only a real overlap keeps refusing it)
+-- A lot leg standing at its gate, waiting to pull out: still off the road, and yielding.
+function Cars.waitingToPullOut(trip: any): boolean
+	return trip.leavesRoad == false and trip.gate ~= nil and trip.dist >= (trip.gateDist or 0) - 1e-3
+end
+-- A car turning in off the road has the driveway first, as the rules of the road give it: one
+-- pulling out waits for it. The turning car used to wait instead -- in the lane, for the car
+-- pulling out, which was waiting for a gap in that same lane -- and both stood there for good
+-- while the street queued behind them (lab, 2026-10-05: one car park froze a whole avenue).
+function Cars.turnInNear(pos: Vector3, car: Model): boolean
+	local r2 = Cars.ACCESS_CLEAR_RADIUS * Cars.ACCESS_CLEAR_RADIUS
+	for other, trip in _trips do
+		if other ~= car and trip.leavesRoad == true then
+			local cf = trip.smoothCFrame
+			local p = if cf then cf.Position else other:GetPivot().Position
+			local dx, dz = p.X - pos.X, p.Z - pos.Z
+			if dx * dx + dz * dz <= r2 then return true end
+		end
+	end
+	return false
+end
+
 
 -- Drive an existing car from its current spot to parkCF along the road graph; it
 -- PARKS at parkCF on arrival (not destroyed) and is reused next trip. Unavailable
@@ -1846,8 +1854,11 @@ end
 -- Studs from the nearest place this adult's car could be left to `toDoor`, as they would
 -- judge it before setting off; nil when there is nowhere at all. Home with a driveway or a
 -- garage is at the door; a destination with a free lot stall is too.
-function Cars.parkWalk(h: Household, a: Adult, destId: string?, toDoor: Vector3): number?
+function Cars.parkWalk(h: Household, a: Adult, destId: string?, toDoor: Vector3): (number?, number)
 	local best = _parkingService.distanceToFree(toDoor,ROADSIDE_RADIUS)
+	-- A street bay or a car park is metered by how full the street is (ParkingService.priceAt);
+	-- the driveway, the block's garage and the destination's own lot are free.
+	local ownLot = false
 	local function consider(cf: CFrame?)
 		if not cf then return end
 		local distance=flatDist(cf.Position,toDoor)
@@ -1861,7 +1872,7 @@ function Cars.parkWalk(h: Household, a: Adult, destId: string?, toDoor: Vector3)
 		local spots=_buildingService.getParkSpots(destId)
 		if spots then
 			for i,stall in spots.stalls do
-				if not _stallTaken[destId.."#"..tostring(i)] then consider(stall.cf) end
+				if not _stallTaken[destId.."#"..tostring(i)] then consider(stall.cf); ownLot = true end
 			end
 		end
 	end
@@ -1872,7 +1883,77 @@ function Cars.parkWalk(h: Household, a: Adult, destId: string?, toDoor: Vector3)
 		local pocket = if kerb then Cars.roadStop(kerb) else nil
 		if pocket then best = flatDist(pocket.cf.Position, toDoor) end
 	end
-	return best
+	-- pickBuildingPark takes a free stall in the destination's own lot first, and that is free.
+	local metered = best ~= nil and not ownLot and destId ~= h.homeId
+	return best, if metered then Cars.parkingFee(toDoor) else 0
+end
+
+-- The weather people dress for (WeatherService publishes it on workspace).
+function Cars.weather(): string
+	local w = workspace:GetAttribute("Weather")
+	return if typeof(w) == "string" then w else "Clear"
+end
+
+-- How the city travels: the modes chosen over roughly the last game day, for the stats panel
+-- and the debug readout (GetTravelModeShare). The window halves every MODE_WINDOW choices, so
+-- it follows the city as it changes without keeping a log.
+Cars.modeCounts = { walk = 0, drive = 0, transit = 0, schoolRun = 0 }
+Cars.MODE_WINDOW = 4000
+function Cars.countMode(mode: string)
+	local c = Cars.modeCounts
+	c[mode] = (c[mode] or 0) + 1
+	if c.walk + c.drive + c.transit + c.schoolRun > Cars.MODE_WINDOW then
+		for k, v in c do c[k] = v * 0.5 end
+	end
+end
+
+-- Game time in days (the unit dwellUntil and the activity clock use).
+function Cars.gameNow(): number
+	return if _timeService then _timeService.getDay() + _timeService.getDayFraction() else 0
+end
+
+-- The school run: a parent at home with their car drives a child whose walk (or bus) to
+-- school is worse than the drive (TravelModeChoice.escorts) -- a far school, rain, the dark.
+-- A brother or sister for the same school climbs into a run that has not left yet. Returns
+-- the driving parent (nil: the child goes alone) and whether the child joined a run already
+-- set up. US children: about one in ten walks to school, half are driven (NHTS 2017).
+function Cars.schoolRunBy(h: Household, k: any, fromDoor: Vector3, schoolPos: Vector3, schoolId: number): (Adult?, boolean)
+	for _, a in h.adults do
+		local run = a.schoolRun
+		if run and run.outbound and run.schoolId == schoolId and a.stage == "transit" then
+			table.insert(run.kids, k)
+			return a, true
+		end
+	end
+	local driver: Adult? = nil
+	for _, a in h.adults do
+		if a.stage == "atHome" and a.car ~= nil and not a.usingCar and a.dwellUntil == nil and a.age >= AGE_ADULT then
+			driver = a
+			break
+		end
+	end
+	if not driver then return nil, false end
+	local parkWalk = Cars.parkWalk(h, driver, nil, schoolPos)
+	local estimate = if _transitService then _transitService.estimateTrip(fromDoor, schoolPos) else nil
+	local trip: TravelModeChoice.Trip = {
+		pid = k.pid, age = k.age, purpose = "school",
+		distance = flatDist(fromDoor, schoolPos),
+		canDrive = false, parkWalk = parkWalk, parkPrice = 0, -- a drop at the gate, not a stay
+		transit = if estimate and estimate.usable then estimate else nil,
+		weather = Cars.weather(),
+		dark = _timeService ~= nil and _timeService.isDaylight ~= nil and not _timeService.isDaylight(),
+	}
+	if not TravelModeChoice.escorts(trip, driver.age) then return nil, false end
+	driver.schoolRun = { schoolId = schoolId, kids = { k }, outbound = true }
+	return driver, false
+end
+
+-- City money to leave a car near `pos` right now (0 without metering in this build).
+function Cars.parkingFee(pos: Vector3): number
+	local priceAt = _parkingService and _parkingService.priceAt
+	if not priceAt then return 0 end
+	local ok, price = pcall(priceAt, pos)
+	return if ok and typeof(price) == "number" then price else 0
 end
 
 -- How much slower than free-flow the roads between two points are right now: the BPR
@@ -1989,6 +2070,7 @@ local function chooseTravelMode(
 	-- A citizen who drove out must bring that same car back. Allowing a fresh choice here
 	-- stranded cars at workplaces and stations.
 	if a.usingCar and canDrive then
+		Cars.countMode("drive")
 		_travelDebugByPid[a.pid] = {
 			chosen = "drive",
 			reason = "Drove here, so this trip must bring the car home.",
@@ -2001,18 +2083,25 @@ local function chooseTravelMode(
 	local destId = if a.tripTargetHome then h.homeId else a.tripTargetId
 	local g = nav()
 	local transitEstimate = if _transitService then _transitService.estimateTrip(fromDoor, toDoor) else nil
+	local parkWalk, parkPrice = nil, 0
+	if canDrive then parkWalk, parkPrice = Cars.parkWalk(h, a, destId, toDoor) end
 	local trip: TravelModeChoice.Trip = {
 		pid = a.pid,
 		age = a.age,
 		purpose = if a.tripTargetHome then "home" else a.outKind or (if a.age < AGE_ADULT then "school" else "leisure"),
 		distance = flatDist(fromDoor, toDoor),
 		canDrive = canDrive,
-		parkWalk = if canDrive then Cars.parkWalk(h, a, destId, toDoor) else nil,
+		parkWalk = parkWalk,
+		parkPrice = parkPrice,
 		congestion = if canDrive and g then Cars.congestion(g, fromDoor, toDoor) else 1,
 		transit = if transitEstimate and transitEstimate.usable then transitEstimate else nil,
+		weather = Cars.weather(),
+		dark = _timeService ~= nil and _timeService.isDaylight ~= nil and not _timeService.isDaylight(),
+		carrying = a.tripTargetHome and a.outKind == "shop",
 	}
 	if canDrive and not trip.parkWalk then Cars.notePocket(h.id) end
 	local chosen, costs = TravelModeChoice.choose(trip)
+	Cars.countMode(chosen)
 	_travelDebugByPid[a.pid] = {
 		chosen = chosen,
 		reason = if chosen == "transit" then "Public transport fits this resident’s travel time, fare and preferences."
@@ -2025,10 +2114,21 @@ local function chooseTravelMode(
 		transitTime = if transitEstimate then transitEstimate.timeSeconds else nil,
 		transitFare = if transitEstimate then transitEstimate.fare else nil,
 		parkWalk = trip.parkWalk,
+		parkPrice = trip.parkPrice,
+		weather = trip.weather,
 		congestion = trip.congestion,
 		canDrive = canDrive,
 	}
 	return chosen, if chosen == "transit" then transitEstimate else nil
+end
+
+-- How the city travels lately: shares (0..1) of the trips walked, driven, ridden and of the
+-- children driven to school, over roughly the last game day (Cars.countMode).
+function CitizenService.GetTravelModeShare(): { [string]: number }
+	local c = Cars.modeCounts
+	local total = math.max(1, c.walk + c.drive + c.transit + c.schoolRun)
+	return { walk = c.walk / total, drive = c.drive / total, transit = c.transit / total,
+		schoolRun = c.schoolRun / total, trips = total }
 end
 
 function CitizenService.AdminAddPopulation(requested: number): { [string]: any }
@@ -2272,6 +2372,8 @@ end
 function Trips.walk(h: Household, a: Adult): boolean
 	local hour = _timeService.getDayFraction() * 24
 	if hour < Trips.WALK_FROM_HOUR or hour >= Trips.WALK_TO_HOUR then return false end
+	local weather = Cars.weather()
+	if weather == "Rain" or weather == "Snow" then return false end -- nobody strolls in the rain
 	local home = door(h.homeId)
 	if not home then return false end
 	local angle = _rng:NextNumber() * math.pi * 2
@@ -2398,6 +2500,11 @@ local function doActivities(views: { any }, byId: { [string]: any })
 		end
 
 		for _, k in h.kids do
+			-- A school run that lost its driver (a household change mid-run) frees the child.
+			if k.escortRun and k.stage == "transit" and gameNow > (k.escortUntil or 0) then
+				k.escortRun, k.escortUntil = nil, nil
+				k.stage = "atHome"
+			end
 			if not isSchoolAge(k) or k.stage == "transit" then continue end
 			local hasSchool = k.schoolId ~= nil and _educationService and _educationService.hasSchool and _educationService.hasSchool(k.schoolId, k.age)
 			if hasSchool and _educationService.getSchoolTier then k.bestTier = math.max(k.bestTier, _educationService.getSchoolTier(k.schoolId)) end

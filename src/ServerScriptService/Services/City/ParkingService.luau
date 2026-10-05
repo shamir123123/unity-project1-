@@ -589,6 +589,42 @@ function ParkingService.distanceToFree(pos: Vector3, maxRadius: number?): number
 	return Vector3.new(best.pos.X - pos.X, 0, best.pos.Z - pos.Z).Magnitude
 end
 
+-- What leaving a car near `pos` costs, in city money: free while the street has room, rising
+-- to PRICE_MAX as the bays within PRICE_RADIUS fill past PRICE_FREE_UNTIL -- SFpark's rule of
+-- pricing the kerb so about one bay in five stays free (Shoup 2006). A street with only a
+-- handful of bays is never metered. CitizenService weighs it before taking the car and the
+-- city collects it when the car parks: a packed downtown pushes riders onto the buses and
+-- pays for them, a suburb with spare kerb stays free.
+local PRICE_RADIUS = 120
+local PRICE_FREE_UNTIL = 0.65
+local PRICE_FULL_AT = 0.95
+local PRICE_MAX = 6
+local PRICE_MIN_BAYS = 6
+function ParkingService.priceAt(pos: Vector3): number
+	if typeof(pos) ~= "Vector3" then return 0 end
+	local r2 = PRICE_RADIUS * PRICE_RADIUS
+	local reach = math.ceil(PRICE_RADIUS / CELL)
+	local cx, cz = math.floor(pos.X / CELL), math.floor(pos.Z / CELL)
+	local total, occupied = 0, 0
+	for dx = -reach, reach do
+		for dz = -reach, reach do
+			for _, id in _cells[cellKey(cx + dx, cz + dz)] or {} do
+				local spot = _spots[id]
+				if spot and not spot.blocked then
+					local ox, oz = spot.pos.X - pos.X, spot.pos.Z - pos.Z
+					if ox * ox + oz * oz <= r2 then
+						total += 1
+						if spot.occupied then occupied += 1 end
+					end
+				end
+			end
+		end
+	end
+	if total < PRICE_MIN_BAYS then return 0 end
+	local t = math.clamp((occupied / total - PRICE_FREE_UNTIL) / (PRICE_FULL_AT - PRICE_FREE_UNTIL), 0, 1)
+	return math.floor(PRICE_MAX * t + 0.5)
+end
+
 function ParkingService.release(id: string?)
 	if not id then return end
 	local spot = _spots[id]

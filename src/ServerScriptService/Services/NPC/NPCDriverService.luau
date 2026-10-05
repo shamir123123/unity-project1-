@@ -271,7 +271,8 @@ type DriverState = PathFollower.FollowerState & {
 	laneMoveKinds: { [string]: number }?, -- debug: discipline moves by kind (yield / pass / back)
 	exitWait: number?,          -- s at the line with a full exit (drives Gridlock.detour)
 	nextDetourAt: number?,      -- _simClock of this car's next detour look
-	launchAt: number?,          -- _simClock before which a car just allowed to move off is still reacting
+	launchReact: number?,       -- s this car takes to react once it may move off from a stop
+	launchWaited: number?,      -- s of that reaction already spent
 	wander: boolean?,           -- an ambient car on a trip it picked itself (Gridlock.wanderOn); no owner to hand back to
 	ringLaps: number?,          -- extra laps taken round the current roundabout because its exit was full
 	holding: boolean?,          -- a bus standing at its kerb stop: still in the lane, until its next leg or release
@@ -1307,8 +1308,8 @@ function RingRules.passes(g: any, other: DriverState, laneId: string, nodeId: nu
 	return true
 end
 
-local function roundaboutClear(g: any, state: DriverState, nodeId: number, _nodePos: Vector3): boolean
-	local nextId = state.pendingNextEdgeId
+local function roundaboutClear(g: any, state: DriverState, nodeId: number, _nodePos: Vector3, entryId: string?): boolean
+	local nextId = entryId or state.pendingNextEdgeId
 	local approach = g:GetEdge(state.edgeId)
 	local landing = if nextId then g:GetEdge(nextId) else nil
 	if not nextId or not approach or not landing then return true end
@@ -1363,7 +1364,20 @@ local function roundaboutClear(g: any, state: DriverState, nodeId: number, _node
 			local o = g:GetEdge(outId)
 			if o and o.isRoundabout then eNext = outId; break end
 		end
-		if not eNext then continue end
+		if not eNext then
+			-- A ring lane with no ring lane on from here (a spiral lane, or a ring the player is
+			-- still building): a car on it that reaches the node inside our window is treated as
+			-- circulating past us. Unsure is give way.
+			for _, other in _edgeDriverIndex[e.id] or EMPTY do
+				if not other.connector and other.edgeId == e.id and other ~= state and other.model.Parent then
+					local room = e.length - other.edgeDist - (other.halfLength or STOP_LINE_CAR_BUFFER)
+					if room <= 0 or RingRules.timeToCover(room, other.currentSpeed or 0, driverSpeed(e, other)) < window then
+						return false
+					end
+				end
+			end
+			continue
+		end
 		if eNext ~= nextId and not movementPathsConflict(g, approach, nextId, e, eNext) then continue end
 		local through, eFrom, eLand = g:GetConnectionPoints(e.id, eNext)
 		local throughLen = 0
@@ -1591,7 +1605,7 @@ local function canEnterIntersection(g: any, state: DriverState, edge: any, nextE
 				return false
 			end
 			local nodePos = if edge.points and #edge.points > 0 then edge.points[#edge.points] else getStatePosition(state)
-			return roundaboutClear(g, state, nodeId, nodePos)
+			return roundaboutClear(g, state, nodeId, nodePos, nextEdgeId)
 		end
 	end
 
@@ -2820,10 +2834,16 @@ local function tryStartLaneChange(g: any, state: DriverState, edge: any, targetI
 	-- The first half of the move still runs forward in THIS lane. Started with a car stopped
 	-- close in front, it stalled half across -- blocking both lanes until that queue moved.
 	-- Queued like that it is simply in traffic, not waiting to merge: no courtesy request yet.
+	-- A leader that is moving moves on too while we drift over: only the room it will NOT
+	-- have made counts (following at a time gap on a fast road is not "close in front").
 	local lead, leadGap = getNearestQueueLeader(state)
-	if lead and leadGap and leadGap < followGap(state, lead) + (d1 - d0) * 0.5 then
-		state.laneChangeWait = 0
-		return false, nil, false
+	if lead and leadGap then
+		local half = (d1 - d0) * 0.5
+		local leadAway = math.max(0, lead.currentSpeed or 0) * half / math.max(speed, 1)
+		if leadGap + leadAway < followGap(state, lead) + half then
+			state.laneChangeWait = 0
+			return false, nil, false
+		end
 	end
 	local pts = g:GetLaneChangeRibbon(edge.id, targetId, d0, d1)
 	local cap = connectorSpeedCap(pts)
@@ -3596,19 +3616,23 @@ local function updateDriver(state: DriverState, dt: number)
 
 	-- A car standing still that may go now moves off after a moment's reaction, not on the
 	-- same tick: a queue starts as a wave.
+	-- Counted in the car's own step time, so a far car stepped at a low rate reacts just as fast.
 	if currentSpeed < 0.3 then
 		if targetSpeed > 1 then
-			local at = state.launchAt
-			if not at then
-				at = _simClock + Tuning.LAUNCH_REACTION * (0.6 + math.random() * 0.8)
-				state.launchAt = at
+			local need = state.launchReact
+			if not need then
+				need = Tuning.LAUNCH_REACTION * (0.6 + math.random() * 0.8)
+				state.launchReact = need
+				state.launchWaited = 0
 			end
-			if _simClock < at then targetSpeed = 0 end
+			local waited = (state.launchWaited or 0) + dt
+			state.launchWaited = waited
+			if waited < need then targetSpeed = 0 end
 		else
-			state.launchAt = nil
+			state.launchReact = nil
 		end
 	else
-		state.launchAt = nil
+		state.launchReact = nil
 	end
 
 	-- Pull away hard from a standstill and ease off nearing cruise; brake as hard as the target
@@ -4088,6 +4112,7 @@ end
 -- car joins unless it actually overlaps another; the empty-seat test a fresh spawn needs (no
 -- car anywhere near) refused it whenever traffic had closed up behind, and its owner then hid
 -- it out of the world to try again later -- the "car comes out of the lot and vanishes".
+local SEAT_SLIVER = 0.15 -- studs of overlap with the car ahead a new driver's seat may start with
 function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos: Vector3, route: { string }, onArrive: (() -> ())?, onAbort: (() -> ())?, exactStartDist: number?, joining: boolean?): boolean
 	local g = nav()
 	if not g or not g:HasEdges() or typeof(route) ~= "table" or #route == 0 then return false end
@@ -4129,9 +4154,10 @@ function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos
 		if PathFollower.anyVehicleWithin(seat, FOLLOW_BUMPER, function(other: Model): boolean
 			return other ~= model
 		end) then return false end
+		-- A sliver of the car ahead's tail (it is pulling away) is not a body in the seat.
 		local ahead = PathFollower.getClearAhead(model, seat, direction)
 		local behind = PathFollower.getClearAhead(model, seat, -direction)
-		if ahead < 0 or behind < 0 then return false end
+		if ahead < -SEAT_SLIVER or behind < 0 then return false end
 	end
 	local finalDist = distAlongEdgeNearest(lastEdge, goalPos)
 	if #route == 1 and finalDist < startDist then finalDist = startDist end

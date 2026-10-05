@@ -28,12 +28,20 @@ export type Adult = {
 	-- Inside a shop / restaurant (stage stays "transit": out on the errand) until this game
 	-- day; doActivities then sends them home. Not saved: a reload re-runs the errand.
 	dwellUntil: number?,
+	-- Driving the children to school this morning (CitizenJourneys.schoolRun). Not saved.
+	schoolRun: SchoolRun?,
 }
+-- One parent's drive to a school with the children in the car: siblings for the same school
+-- climb in while it is still outbound.
+export type SchoolRun = { schoolId: number, kids: { Kid }, outbound: boolean }
 export type Kid = {
 	name: string, gender: string, age: number, pid: number,
 	-- School-run FSM (walking or public transport): atHome / transit / atSchool.
 	stage: string, tripId: number, walkerId: number?, riderId: number?, waitPos: Vector3?, schoolPos: Vector3?, schoolId: number?,
 	commutedSchoolDay: number, commutedHomeDay: number, bestTier: number, tripTargetHome: boolean?,
+	-- Riding in a parent's car to school, and the game day by which that run must have got
+	-- them there (a run lost to a household change frees the child). Not saved.
+	escortRun: SchoolRun?, escortUntil: number?,
 }
 export type Household = {
 	id: number, homeId: string, adults: { Adult }, kids: { Kid }, foundedDay: number, arriving: boolean,

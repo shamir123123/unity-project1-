@@ -86,5 +86,46 @@ return function()
 				expect((TravelModeChoice.choose(trip))).to.equal(first)
 			end
 		end)
+
+		it("rain puts more people in their cars", function()
+			local trip = { age = 40, distance = 250, canDrive = true, parkWalk = 60, purpose = "leisure" }
+			local dry = share(trip, "drive")
+			trip.weather = "Rain"
+			expect(share(trip, "drive") > dry + 0.05).to.equal(true)
+		end)
+
+		it("walking after dark is less popular than by day", function()
+			local trip = { age = 40, distance = 250, canDrive = true, parkWalk = 60, purpose = "leisure" }
+			local day = share(trip, "walk")
+			trip.dark = true
+			expect(share(trip, "walk") < day).to.equal(true)
+		end)
+
+		it("shoppers drive sooner than people out for the evening", function()
+			local trip = { age = 40, distance = 220, canDrive = true, parkWalk = 60, purpose = "leisure" }
+			local evening = share(trip, "drive")
+			trip.purpose = "shop"
+			expect(share(trip, "drive") > evening).to.equal(true)
+		end)
+
+		it("full, metered parking sends some drivers to the bus or on foot", function()
+			local trip = { age = 40, distance = 1500, canDrive = true, parkWalk = 60, purpose = "work", transit = goodBus }
+			local free = share(trip, "drive")
+			trip.parkPrice = 6
+			expect(share(trip, "drive") < free).to.equal(true)
+		end)
+
+		it("a far school is mostly driven to and a near one mostly walked", function()
+			local function driven(distance: number): number
+				local hits = 0
+				for pid = 1, 400 do
+					local trip = { pid = pid, age = 9, purpose = "school", distance = distance, canDrive = false, parkWalk = 40 }
+					if TravelModeChoice.escorts(trip, 38) then hits += 1 end
+				end
+				return hits / 400
+			end
+			expect(driven(150) < 0.2).to.equal(true)
+			expect(driven(1500) > 0.8).to.equal(true)
+		end)
 	end)
 end

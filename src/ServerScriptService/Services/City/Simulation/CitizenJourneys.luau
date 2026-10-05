@@ -118,6 +118,7 @@ local function journey(h: Household, a: Adult, trip: number, fromDoor: Vector3?,
 		elseif a.outKind == "shop" then "Shopping errand"
 		elseif a.outKind == "leisure" then "Evening out"
 		elseif a.outKind == "apply" then "Travelling to a job application"
+		elseif a.outKind == "schoolrun" then "Driving the children to school"
 		else "Citizen trip")
 	-- Which group's mind prices the roads (DriverProfile): shopping and evenings out are not
 	-- in a hurry and take the nicer street; work, school and job hunting go the quick way.
@@ -177,6 +178,13 @@ local function journey(h: Household, a: Adult, trip: number, fromDoor: Vector3?,
 			-- Remember how to leave THIS spot on the next trip.
 			a.parkEgress = choice.egress
 			a.parkGraphPoint = choice.lotExit or choice.lotEntry
+			-- A metered street bay or car park away from home: the city collects the fee
+			-- (ParkingService.priceAt -- free while the street has room). A school drop is not a stay.
+			if choice.spotId and not a.tripTargetHome and a.outKind ~= "schoolrun" then
+				local fee = context.cars.parkingFee(choice.cf.Position)
+				local economy = context.getEconomyService()
+				if fee > 0 and economy and economy.credit then economy.credit(fee) end
+			end
 			-- Into the block's own garage: the car is gone and its driver is already indoors.
 			if choice.garage then
 				Garage.stow(car)
@@ -307,6 +315,59 @@ local function startErrand(h: Household, a: Adult, kind: string, destId: string,
 	end)
 end
 
+-- A child at the school gate goes in (or, if the school closed meanwhile, back to being home).
+local function enterSchool(k: Kid, schoolId: number)
+	k.walkerId = nil
+	k.escortRun, k.escortUntil = nil, nil
+	local edu = context.getEducationService()
+	if edu and edu.hasSchool and not edu.hasSchool(schoolId, k.age) then
+		k.stage = "atHome"
+		k.schoolId = nil
+		k.schoolPos = nil
+		return
+	end
+	if edu and edu.enterSchool then edu.enterSchool(schoolId) end
+	k.stage = "atSchool"
+end
+
+-- The school run: the parent drives the children in `run` to the school gate, sees them in,
+-- and drives home again. The children ride along -- no walker of their own -- and go in when
+-- the car gets there. A run that cannot find a bay near the school becomes a walk (journey's
+-- own fallback) and the children walk in with the parent.
+local SCHOOL_RUN_DEADLINE_DAYS = 3 / 24 -- game days a run may take before its children are freed
+local function schoolRun(h: Household, p: Adult, run: any, fromDoor: Vector3, schoolPos: Vector3)
+	p.tripId += 1
+	p.dwellUntil = nil
+	local trip = p.tripId
+	if p.walkerId then context.getWalkingService().despawnCommuter(p.walkerId); p.walkerId = nil end
+	if p.riderId then context.getTransitService().cancelRider(p.riderId); p.riderId = nil; p.waitPos = nil end
+	p.stage = "transit"
+	p.outKind = "schoolrun"
+	p.outDestId = nil
+	p.tripTargetId = nil
+	p.tripTargetHome = false
+	p.usingCar = true -- the children are in the car: this leg is driven (chooseTravelMode)
+	journey(h, p, trip, fromDoor, schoolPos, true, function() return context.cars.parkNear(schoolPos) end, function()
+		run.outbound = false
+		for _, kid in run.kids do
+			if kid.escortRun == run and kid.stage == "transit" then enterSchool(kid, run.schoolId) end
+		end
+		if context.getHouseholds()[h.id] ~= h or p.tripId ~= trip then return end
+		p.tripId += 1
+		local back = p.tripId
+		p.tripTargetId = h.homeId
+		p.tripTargetHome = true
+		journey(h, p, back, schoolPos, context.door(h.homeId), p.usingCar, function() return context.pickHomePark(h, p) end, function()
+			p.stage = "atHome"
+			p.outKind = nil
+			p.tripTargetId = nil
+			p.tripTargetHome = false
+			p.usingCar = false
+			p.schoolRun = nil
+		end)
+	end)
+end
+
 local function startSchool(h: Household, k: Kid): boolean
 	if not context.getEducationService() or not context.getEducationService().getNearestSchool or not context.isSchoolAge(k) then return false end
 	local fromDoor = context.door(h.homeId)
@@ -328,17 +389,21 @@ local function startSchool(h: Household, k: Kid): boolean
 	local function stale(): boolean
 		return context.getHouseholds()[h.id] == nil or k.tripId ~= trip
 	end
+	-- Driven by a parent, or riding along with a brother or sister already going.
+	local runBy = context.cars and context.cars.schoolRunBy
+	local parent, joined = nil, false
+	if runBy then parent, joined = runBy(h, k, fromDoor, schoolPos, schoolId) end
+	if parent and parent.schoolRun then
+		local run = parent.schoolRun
+		k.escortRun = run
+		k.escortUntil = context.cars.gameNow() + SCHOOL_RUN_DEADLINE_DAYS
+		context.cars.countMode("schoolRun")
+		if not joined then schoolRun(h, parent, run, fromDoor, schoolPos) end
+		return true
+	end
 	journey(h, k :: any, trip, fromDoor, schoolPos, false, nil, function()
 		if stale() then return end
-		k.walkerId = nil
-		if context.getEducationService().hasSchool and not context.getEducationService().hasSchool(schoolId, k.age) then
-			k.stage = "atHome"
-			k.schoolId = nil
-			k.schoolPos = nil
-			return
-		end
-		if context.getEducationService().enterSchool then context.getEducationService().enterSchool(schoolId) end
-		k.stage = "atSchool"
+		enterSchool(k, schoolId)
 	end)
 	return true
 end

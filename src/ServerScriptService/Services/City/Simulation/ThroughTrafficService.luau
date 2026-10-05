@@ -108,6 +108,7 @@ local _pendingRestores: {[Model]: () -> boolean} = {}
 local _restoreQueue: {Model} = {}
 local _restoreCursor = 1
 local _restoreGarage: Folder? = nil
+local RESTORE_GAP_SECONDS = 3
 local _rng = Random.new()
 local _running = false
 
@@ -420,15 +421,22 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 		end
 		car.Parent = garage
 		local route = edgeIds
-		-- Back on the exact lane seat it was saved on. A saved queue is a set of cars that did not
-		-- overlap, so each one only has to find its own seat free -- the 3 s empty-road gap a
-		-- fresh entrant waits for kept every car whose neighbour was already back waiting in the
-		-- garage for good: invisible, yet counted as live, so no new through traffic came either
-		-- (the "through traffic does not load" after a save).
+		-- Back on the exact lane seat it was saved on, once the lane is clear around it the way a
+		-- new entrant needs. A saved queue sits closer than that gap, though: a car whose saved
+		-- neighbours were already back could be refused for good -- invisible in the garage yet
+		-- counted as live, so no new through traffic came either (the "through traffic does not
+		-- load" after a save). Still refused after RESTORE_SEAT_AFTER, it only needs its own seat
+		-- free of other bodies (DriveDirected's overlap checks).
+		local since = os.clock()
+		local RESTORE_SEAT_AFTER = 20 -- s (real) refused for the gap before the seat alone will do
 		_pendingRestores[car] = function(): boolean
 			if not _cars[car] or not car.Parent then _pendingRestores[car] = nil; return false end
+			local patient = os.clock() - since >= RESTORE_SEAT_AFTER
+			if not patient then
+				if not NPCDriverService.RoadGapClear(src, RESTORE_GAP_SECONDS, car) then return false end
+			end
 			car.Parent = carFolder()
-			if not NPCDriverService.DriveDirected(car, src, dst, route, despawn, despawn, startDist, true) then
+			if not NPCDriverService.DriveDirected(car, src, dst, route, despawn, despawn, startDist, patient) then
 				car.Parent = garage
 				return false
 			end
