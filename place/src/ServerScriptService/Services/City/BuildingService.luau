@@ -99,6 +99,13 @@ local _restoreState: { [string]: SavedState } = {}
 -- growing corner plots can't both claim the spot; freed on demolish / cancel.
 type PlotBox = { p: Vector3, a1: Vector3, a2: Vector3, hw: number, hd: number, seg: number }
 local _plotFootprints: { [string]: PlotBox } = {}
+-- The same footprints in a 64-stud grid, so an overlap test reads its neighbourhood instead of
+-- every lot in the city. A restore tests each building against all the ones before it, and a
+-- full scan made that O(n^2): ~12M box tests for 5,000 buildings, ~200M for 20,000 -- the load
+-- hung there. Kept in step through setFootprint/clearFootprint, never written directly.
+local FOOTPRINT_CELL = 64
+local _fpCells: { [number]: { [string]: PlotBox } } = {}
+local _fpCellKeys: { [string]: { number } } = {}
 
 local MAX_LEVEL         = 3
 
@@ -485,6 +492,49 @@ local function makeFootprint(pivot: CFrame, wStuds: number, dStuds: number, segI
 	return { p = pivot.Position, a1 = a1, a2 = a2, hw = wStuds * 0.5, hd = dStuds * 0.5, seg = segId or -1 }
 end
 
+-- Every grid cell a footprint's bounding square touches. A box is never wider than its
+-- half-diagonal from its centre, so two boxes that overlap at all share at least one cell.
+local function footprintCells(box: PlotBox): { number }
+	local r = math.sqrt(box.hw * box.hw + box.hd * box.hd)
+	local p = box.p
+	local out = {}
+	for cz = math.floor((p.Z - r) / FOOTPRINT_CELL), math.floor((p.Z + r) / FOOTPRINT_CELL) do
+		for cx = math.floor((p.X - r) / FOOTPRINT_CELL), math.floor((p.X + r) / FOOTPRINT_CELL) do
+			table.insert(out, cz * 65536 + cx)
+		end
+	end
+	return out
+end
+
+local function clearFootprint(bpId: string)
+	_plotFootprints[bpId] = nil
+	local keys = _fpCellKeys[bpId]
+	if not keys then return end
+	_fpCellKeys[bpId] = nil
+	for _, k in keys do
+		local cell = _fpCells[k]
+		if cell then
+			cell[bpId] = nil
+			if next(cell) == nil then _fpCells[k] = nil end
+		end
+	end
+end
+
+local function setFootprint(bpId: string, box: PlotBox)
+	clearFootprint(bpId)
+	_plotFootprints[bpId] = box
+	local keys = footprintCells(box)
+	_fpCellKeys[bpId] = keys
+	for _, k in keys do
+		local cell = _fpCells[k]
+		if not cell then
+			cell = {}
+			_fpCells[k] = cell
+		end
+		cell[bpId] = box
+	end
+end
+
 local function placeBuilding(
 	blueprintId : string,
 	template    : Model,
@@ -608,7 +658,7 @@ local function placeBuilding(
 	-- developPlot registers the footprint before the crane starts; a rebuild (upgrade,
 	-- reseat) re-registers it here.
 	if not _plotFootprints[blueprintId] then
-		_plotFootprints[blueprintId] = makeFootprint(pivot, width * LOT_SIZE, depth * LOT_SIZE, segId)
+		setFootprint(blueprintId, makeFootprint(pivot, width * LOT_SIZE, depth * LOT_SIZE, segId))
 	end
 
 	return model
@@ -773,7 +823,7 @@ local function cancelConstruction(bpId: string)
 	_activeConstruction[bpId] = nil
 	removeSiteMarker(bpId)
 	finishConstructionVisual(active.siteId)
-	_plotFootprints[bpId] = nil
+	clearFootprint(bpId)
 	unpadGround(bpId)
 	fireBuildingRemoving(bpId)
 end
@@ -826,7 +876,7 @@ local function destroyBuilding(blueprintId: string)
 	end
 
 	_buildings[blueprintId] = nil
-	_plotFootprints[blueprintId] = nil
+	clearFootprint(blueprintId)
 	unpadGround(blueprintId)
 	fireBuildingRemoving(blueprintId)
 end
@@ -858,9 +908,16 @@ local FOOTPRINT_TOL = 0.3 -- studs: rounding in saved pivots, not overlap
 local RESTORE_OVERLAP_TOL = 1
 local function plotFootprintBlocked(pivot: CFrame, wStuds: number, dStuds: number, segId: number, tol: number): boolean
 	local box = makeFootprint(pivot, wStuds, dStuds, segId)
-	for _, other in _plotFootprints do
-		if boxPenetration(box, other) > tol then
-			return true
+	local seen: { [string]: boolean } = {}
+	for _, k in footprintCells(box) do
+		local cell = _fpCells[k]
+		if not cell then continue end
+		for bpId, other in cell do
+			if seen[bpId] then continue end
+			seen[bpId] = true
+			if boxPenetration(box, other) > tol then
+				return true
+			end
 		end
 	end
 	return false
@@ -920,7 +977,7 @@ function BuildingService.developPlot(pivot: CFrame, zone: string, w: number, d: 
 
 	local bpId = newBlueprintId()
 	_activeConstruction[bpId] = { siteId = bpId, cancelled = false, zone = zone }
-	_plotFootprints[bpId] = makeFootprint(pivot, w * LOT_SIZE, d * LOT_SIZE, segId)
+	setFootprint(bpId, makeFootprint(pivot, w * LOT_SIZE, d * LOT_SIZE, segId))
 
 	-- The plot (frontage x yard depth) the pad and the dressing measure.
 	local padW = math.max(padWidthStuds or 0, w * LOT_SIZE)
@@ -1866,7 +1923,7 @@ function BuildingService.relocate(bpId: string, plotPivot: CFrame): boolean
 	-- The save key is position-derived, so it has to move with the building: leave it and the
 	-- next load would hand this family's level, occupancy and residents to nobody.
 	rec.saveKey = saveKeyForPivot(rec.zone, rec.width, rec.depth, pivot)
-	_plotFootprints[bpId] = makeFootprint(pivot, rec.width * LOT_SIZE, rec.depth * LOT_SIZE, rec.segmentId)
+	setFootprint(bpId, makeFootprint(pivot, rec.width * LOT_SIZE, rec.depth * LOT_SIZE, rec.segmentId))
 	refreshIndustrialSource(bpId)
 	return true
 end

@@ -81,32 +81,21 @@ local function getTemplates(): { Model }
 	return list
 end
 
--- name: the model's Name. variant: optional 1-based index selecting a template
--- deterministically (wraps); nil picks at random. templateName: optional exact
--- template name (e.g. "LowPolyVan" for delivery trucks); used when present, else
--- falls back to variant/random.
-function VehicleFactory.build(name: string, variant: number?, templateName: string?): Model
-	local template: Model? = nil
-	if templateName then
-		-- The catalog fleet is authored into one folder per CLASS (Commercial / Service /
-		-- Emergency / Transportation.Buses.Default) while the five hand-made templates sit in
-		-- CivilianVehicles. One recursive lookup covers every folder, so a caller names the
-		-- vehicle it wants and never has to know which class folder authored it.
-		local found = _templates:FindFirstChild(templateName, true)
-		if found and found:IsA("Model") then template = found :: Model end
-	end
-	if not template then
-		local templates = getTemplates()
-		assert(#templates > 0, "ServerStorage.Vehicles has no Model templates")
-		local idx = variant or math.random(1, #templates)
-		template = templates[((idx - 1) % #templates) + 1]
-	end
-	-- Read off the TEMPLATE: the clone is renamed to the caller's name below, which would
-	-- break the FOOTPRINT_M lookup.
+-- THE RIGGED TEMPLATE. Everything build() did to a fresh clone that does not depend on the spawn
+-- -- the scale fit, the root, the hitbox, the welds, the class tag, the attributes -- done ONCE per
+-- template and kept here; build() then clones this. Clone carries welds, PrimaryPart, WorldPivot,
+-- tags and attributes across, so the car that comes out is the one build() always made. A city
+-- load gives every car-owning household its car, up to TRAFFIC_SAFETY_MAX_CARS (12,000) of them,
+-- and ScaleTo + three descendant passes + a weld per part per car was the bulk of that.
+local _rigged: { [Model]: Model } = {}
+
+local function rig(template: Model): Model
+	local cached = _rigged[template]
+	if cached then return cached end
+	-- Read off the TEMPLATE: the clone is renamed by build(), which would break the FOOTPRINT_M lookup.
 	local scale = spawnScale(template :: Model, (template :: Model).Parent == BUS_FOLDER)
 
 	local model = (template :: Model):Clone()
-	model.Name = name
 
 	-- Half-size world + real-world footprint fit. Scale BEFORE the bbox/root math below so
 	-- the bottom-centre root + hitbox fit the vehicle.
@@ -220,15 +209,7 @@ function VehicleFactory.build(name: string, variant: number?, templateName: stri
 		CollectionService:AddTag(model, VehicleTypes.tagFor(entry.class))
 	end
 
-	-- Mesh-kit vehicles (blender/vehicle_kit.py) carry one TintMask texture set: the spawn
-	-- colour is the SurfaceAppearance tint, so one mesh drives in every catalog colour.
 	if model:GetAttribute("MeshKit") then
-		local paint = if entry then VehicleCatalog.paintFor(entry, math.random()) else Color3.new(1, 1, 1)
-		for _, d in model:GetDescendants() do
-			if d:IsA("SurfaceAppearance") then
-				d.Color = paint
-			end
-		end
 		-- the client picks full mesh vs LOD by screen-space error; hand it the error at spawn scale
 		model:SetAttribute("LodError", (model:GetAttribute("LodError") or 0) * scale)
 		-- stream the car as one unit: a body that arrives before its wheels is a visible glitch
@@ -236,6 +217,45 @@ function VehicleFactory.build(name: string, variant: number?, templateName: stri
 	end
 
 	model:SetAttribute("NPCHeightOffset", VehicleFactory.RIDE_CLEARANCE)
+	_rigged[template] = model
+	return model
+end
+
+-- name: the model's Name. variant: optional 1-based index selecting a template
+-- deterministically (wraps); nil picks at random. templateName: optional exact
+-- template name (e.g. "LowPolyVan" for delivery trucks); used when present, else
+-- falls back to variant/random.
+function VehicleFactory.build(name: string, variant: number?, templateName: string?): Model
+	local template: Model? = nil
+	if templateName then
+		-- The catalog fleet is authored into one folder per CLASS (Commercial / Service /
+		-- Emergency / Transportation.Buses.Default) while the five hand-made templates sit in
+		-- CivilianVehicles. One recursive lookup covers every folder, so a caller names the
+		-- vehicle it wants and never has to know which class folder authored it.
+		local found = _templates:FindFirstChild(templateName, true)
+		if found and found:IsA("Model") then template = found :: Model end
+	end
+	if not template then
+		local templates = getTemplates()
+		assert(#templates > 0, "ServerStorage.Vehicles has no Model templates")
+		local idx = variant or math.random(1, #templates)
+		template = templates[((idx - 1) % #templates) + 1]
+	end
+
+	local model = rig(template :: Model):Clone()
+	model.Name = name
+
+	-- Mesh-kit vehicles (blender/vehicle_kit.py) carry one TintMask texture set: the spawn
+	-- colour is the SurfaceAppearance tint, so one mesh drives in every catalog colour.
+	if model:GetAttribute("MeshKit") then
+		local entry = VehicleCatalog.get((template :: Model).Name)
+		local paint = if entry then VehicleCatalog.paintFor(entry, math.random()) else Color3.new(1, 1, 1)
+		for _, d in model:GetDescendants() do
+			if d:IsA("SurfaceAppearance") then
+				d.Color = paint
+			end
+		end
+	end
 	return model
 end
 

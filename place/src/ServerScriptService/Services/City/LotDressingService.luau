@@ -269,6 +269,13 @@ end
 type PieceEdges = { value: string, edges: { LotGroundMesh.Edge }, x0: number, x1: number, z0: number, z1: number }
 local _pieceEdges: { [StringValue]: PieceEdges } = {}
 local _blobs: { [StringValue]: boolean } = {}
+-- The same road pieces in a 64-stud grid by their edges' bounding box, so a lot's paving reads the
+-- pieces near it instead of every piece in the city. A load rebuilds every lot's mesh, and the
+-- full scan made that lots x pieces: ~75M box tests for a 15,000-lot city. Pieces are baked once
+-- and replaced, never edited in place, so indexing on arrival is exact.
+local BLOB_CELL = 64
+local _blobCells: { [number]: { [StringValue]: boolean } } = {}
+local _blobCellKeys: { [StringValue]: { number } } = {}
 local _roads: Instance? = nil
 local _roadConns: { RBXScriptConnection } = {}
 type Box = { x0: number, x1: number, z0: number, z1: number }
@@ -322,6 +329,39 @@ end
 
 local function isBlob(d: Instance): boolean
 	return d.Name == "RoadMeshSpecs" and d:IsA("StringValue")
+end
+
+local function unindexBlob(sv: StringValue)
+	local keys = _blobCellKeys[sv]
+	if not keys then return end
+	_blobCellKeys[sv] = nil
+	for _, k in keys do
+		local cell = _blobCells[k]
+		if cell then
+			cell[sv] = nil
+			if next(cell) == nil then _blobCells[k] = nil end
+		end
+	end
+end
+
+local function indexBlob(sv: StringValue)
+	unindexBlob(sv)
+	local c = edgesOf(sv)
+	if c.x0 > c.x1 or c.z0 > c.z1 then return end -- no edges: it can never meet a lot
+	local keys = {}
+	for cz = math.floor(c.z0 / BLOB_CELL), math.floor(c.z1 / BLOB_CELL) do
+		for cx = math.floor(c.x0 / BLOB_CELL), math.floor(c.x1 / BLOB_CELL) do
+			local k = cz * 65536 + cx
+			table.insert(keys, k)
+			local cell = _blobCells[k]
+			if not cell then
+				cell = {}
+				_blobCells[k] = cell
+			end
+			cell[sv] = true
+		end
+	end
+	_blobCellKeys[sv] = keys
 end
 
 -- ---- the lots standing, for the gap fill ----
@@ -509,10 +549,19 @@ local function rebuildLotMesh(m: Model)
 	end
 	local x0, x1, z0, z1 = LotGroundMesh.bounds(p)
 	local edges: { LotGroundMesh.Edge } = {}
-	for blobSv in _blobs do
-		local c = edgesOf(blobSv)
-		if c.x1 >= x0 and c.x0 <= x1 and c.z1 >= z0 and c.z0 <= z1 then
-			table.move(c.edges, 1, #c.edges, #edges + 1, edges)
+	local seen: { [StringValue]: boolean } = {}
+	for cz = math.floor(z0 / BLOB_CELL), math.floor(z1 / BLOB_CELL) do
+		for cx = math.floor(x0 / BLOB_CELL), math.floor(x1 / BLOB_CELL) do
+			local cell = _blobCells[cz * 65536 + cx]
+			if not cell then continue end
+			for blobSv in cell do
+				if seen[blobSv] or not _blobs[blobSv] then continue end
+				seen[blobSv] = true
+				local c = edgesOf(blobSv)
+				if c.x1 >= x0 and c.x0 <= x1 and c.z1 >= z0 and c.z0 <= z1 then
+					table.move(c.edges, 1, #c.edges, #edges + 1, edges)
+				end
+			end
 		end
 	end
 	local b = LotGroundMesh.build(p, edges, groundSampler(p.frame.Position.Y))
@@ -625,21 +674,28 @@ local function watchRoads()
 	table.clear(_roadConns)
 	table.clear(_blobs)
 	table.clear(_pieceEdges)
+	table.clear(_blobCells)
+	table.clear(_blobCellKeys)
 	local city = workspace:FindFirstChild("_City")
 	local roads = city and city:FindFirstChild("Roads")
 	_roads = roads
 	if not roads then return end
 	for _, d in roads:GetDescendants() do
-		if isBlob(d) then _blobs[d :: StringValue] = true end
+		if isBlob(d) then
+			_blobs[d :: StringValue] = true
+			indexBlob(d :: StringValue)
+		end
 	end
 	table.insert(_roadConns, roads.DescendantAdded:Connect(function(d)
 		if not isBlob(d) then return end
 		_blobs[d :: StringValue] = true
+		indexBlob(d :: StringValue)
 		markDirty(edgesOf(d :: StringValue))
 	end))
 	table.insert(_roadConns, roads.DescendantRemoving:Connect(function(d)
 		if not _blobs[d :: any] then return end
 		_blobs[d :: any] = nil
+		unindexBlob(d :: any)
 		local c = _pieceEdges[d :: any]
 		_pieceEdges[d :: any] = nil
 		if c then markDirty(c) end
