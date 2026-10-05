@@ -736,6 +736,11 @@ local function safeEndTrim(nodeId: Types.NodeId, segId: Types.SegmentId): number
 	return if ok and typeof(v) == "number" then v else 0
 end
 
+-- Deferred render passes queued by applyChanges that have not finished (see the pass itself).
+local _renderPasses = 0
+local RENDER_SLICE_MIN_ITEMS = 64
+local RENDER_SLICE_SECONDS = 0.05
+
 local function applyChanges()
 	-- An edit that added or removed a roundabout entry leaves the ring sliced around the
 	-- old node set -- stub arcs the junction mouth swallows whole. Re-lay it before
@@ -853,12 +858,27 @@ local function applyChanges()
 	RoadReplicationService.queueSegDelta(segDeltaChanged, segDeltaRemoved)
 
 	if #segsToRender > 0 or #nodesToRefresh > 0 then
+		_renderPasses += 1
 		task.defer(function()
 			-- Lane arrows and stop spans are painted from the nav graph, so the graph
 			-- must absorb this topology change BEFORE the segments render. The nav
 			-- defer is queued after this one, which painted markings one placement
 			-- behind -- flush it now instead.
-			flushNavRebuild()
+			local okNav, navErr = pcall(flushNavRebuild)
+			if not okNav then warn(`[RoadService] nav rebuild before render failed: {navErr}`) end
+			-- A LOAD renders the whole network in this one pass: ~5 ms a segment and ~8 a
+			-- junction, so a few thousand roads ran far past the ~10 s a live server lets a thread
+			-- go without yielding -- the thread was killed and the rest of the roads never drew.
+			-- A pass that big now yields between items; an ordinary edit (a handful of pieces)
+			-- still lands in one go, exactly as before. CitySerializer waits for it (waitForRender).
+			local sliced = #segsToRender + #nodesToRefresh > RENDER_SLICE_MIN_ITEMS
+			local t0 = os.clock()
+			local function breathe()
+				if sliced and os.clock() - t0 >= RENDER_SLICE_SECONDS then
+					task.wait()
+					t0 = os.clock()
+				end
+			end
 			-- Per-item fault isolation: one segment/node that errors while rendering must not
 			-- abort the rest of the pass. Without this, a single bad node on a city load left
 			-- every node AFTER it in the loop unbuilt -- a swath of junction fills silently
@@ -870,6 +890,7 @@ local function applyChanges()
 						warn(`[RoadService] renderSegment failed for seg {s.id}: {err}`)
 					end
 				end
+				breathe()
 			end
 			for _, nid in nodesToRefresh do
 				if _network:getNodes()[nid] then
@@ -878,7 +899,9 @@ local function applyChanges()
 						warn(`[RoadService] refreshNode failed for node {nid}: {err}`)
 					end
 				end
+				breathe()
 			end
+			_renderPasses -= 1
 		end)
 	end
 
@@ -1030,6 +1053,9 @@ local function applySnapshot(snapshot: { any })
 	-- city. Restore with direct adds and a tiny weld so the saved topology comes back
 	-- exactly; RoadService.verifyIntegrity repairs genuinely broken legacy data instead.
 	local RESTORE_WELD = 0.25
+	-- The weld lookups below read a node grid instead of scanning every node (see
+	-- RoadNetwork.beginBulkWeld); these loops only ever ADD segments, which is all it allows.
+	_network:beginBulkWeld()
 	-- Roundabout rings go first so subsequently restored arms weld to the ring nodes.
 	for _, s in missing do
 		if s.isRoundabout then
@@ -1066,6 +1092,7 @@ local function applySnapshot(snapshot: { any })
 			end)
 		end
 	end
+	_network:endBulkWeld()
 
 	local change = applyChanges()
 	for _, id in change.segmentIds do
@@ -1106,6 +1133,18 @@ end
 -- After restoreRoads: the rules anchor to junctions by position.
 function RoadService.restoreLaneConnections(entries: any)
 	RoadTurnPermissionStore.restore(entries)
+end
+
+-- Yield until every queued road render pass has drawn (a city load's whole network), or the
+-- timeout. A restore calls this before anything that stands on the roads is placed, so lots
+-- meet a finished road edge instead of re-meeting each piece as it arrives.
+function RoadService.waitForRender(timeout: number): boolean
+	local deadline = os.clock() + timeout
+	task.wait() -- the pass is deferred: let it start
+	while _renderPasses > 0 and os.clock() < deadline do
+		task.wait()
+	end
+	return _renderPasses == 0
 end
 
 function RoadService.restoreRoads(entries: { any })

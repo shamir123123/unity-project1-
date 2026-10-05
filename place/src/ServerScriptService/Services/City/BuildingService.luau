@@ -104,6 +104,7 @@ local _plotFootprints: { [string]: PlotBox } = {}
 -- full scan made that O(n^2): ~12M box tests for 5,000 buildings, ~200M for 20,000 -- the load
 -- hung there. Kept in step through setFootprint/clearFootprint, never written directly.
 local FOOTPRINT_CELL = 64
+local RESTORE_TEARDOWN_SLICE = 0.1 -- seconds of building teardown per frame on a city switch
 local _fpCells: { [number]: { [string]: PlotBox } } = {}
 local _fpCellKeys: { [string]: { number } } = {}
 
@@ -1395,7 +1396,16 @@ function BuildingService.restoreBuildings(entries: { any }): number
 	-- A teardown is not a demolition: PlotService.restore replaces the groups wholesale
 	-- straight after, and letting these fire would unzone the outgoing city plot by plot.
 	_suppressRemoving = true
-	for _, bpId in existing do destroyBuilding(bpId) end
+	-- Sliced: a city switch tears down every building of the outgoing city here, and tens of
+	-- thousands of Destroys in one unyielding run can outlast a live server's script budget.
+	local slice = os.clock()
+	for _, bpId in existing do
+		destroyBuilding(bpId)
+		if os.clock() - slice > RESTORE_TEARDOWN_SLICE then
+			task.wait()
+			slice = os.clock()
+		end
+	end
 	for _, bpId in active do cancelConstruction(bpId) end
 	_suppressRemoving = false
 

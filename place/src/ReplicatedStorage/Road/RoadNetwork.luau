@@ -192,12 +192,47 @@ function RoadNetwork.findNodeNear(self: RoadNetwork, pos: Vector3): Node?
 	return best
 end
 
+-- BULK WELD INDEX. getOrCreateNodeWithin scans every node, so a city restore -- thousands of
+-- _directAddSegment calls, two lookups each -- was O(n^2): measured 0.3 s at 840 segments,
+-- 5.9 s at 3,280 and 38 s at 7,320 (Lune), all inside one unyielding restore step. Between
+-- beginBulkWeld and endBulkWeld the nodes are also kept in an XZ grid and the lookup reads only
+-- the cells its radius reaches. Only for a run of direct adds, which create nodes but never move
+-- one; every other edit runs with the index off, exactly as before.
+local WELD_CELL = 8
+local function weldCellKey(x: number, z: number): number
+	return math.floor(z / WELD_CELL) * 65536 + math.floor(x / WELD_CELL)
+end
+
+local function weldIndexAdd(grid: { [number]: { Node } }, node: Node)
+	local k = weldCellKey(node.position.X, node.position.Z)
+	local list = grid[k]
+	if not list then
+		list = {}
+		grid[k] = list
+	end
+	table.insert(list, node)
+end
+
+function RoadNetwork.beginBulkWeld(self: RoadNetwork)
+	local grid: { [number]: { Node } } = {}
+	for _, node in self._nodes do
+		weldIndexAdd(grid, node)
+	end
+	(self :: any)._weldGrid = grid
+end
+
+function RoadNetwork.endBulkWeld(self: RoadNetwork)
+	(self :: any)._weldGrid = nil
+end
+
 function RoadNetwork._createNode(self: RoadNetwork, pos: Vector3): Node
 	local id = self._nextNodeId
 	self._nextNodeId += 1
 	local node: Node = { id = id, position = pos, segments = {} }
 	self._nodes[id] = node
 	self._dirtyNode[id] = true
+	local grid = (self :: any)._weldGrid
+	if grid then weldIndexAdd(grid, node) end
 	return node
 end
 
@@ -968,6 +1003,24 @@ end
 function RoadNetwork.getOrCreateNodeWithin(self: RoadNetwork, pos: Vector3, radius: number): Node
 	local best: Node? = nil
 	local bestDist = radius
+	local grid = (self :: any)._weldGrid
+	if grid then
+		for cz = math.floor((pos.Z - radius) / WELD_CELL), math.floor((pos.Z + radius) / WELD_CELL) do
+			for cx = math.floor((pos.X - radius) / WELD_CELL), math.floor((pos.X + radius) / WELD_CELL) do
+				local list = grid[cz * 65536 + cx]
+				if not list then continue end
+				for _, node in list do
+					if self._nodes[node.id] ~= node then continue end -- removed since it was indexed
+					local d = (node.position - pos).Magnitude
+					if d <= bestDist then
+						best = node
+						bestDist = d
+					end
+				end
+			end
+		end
+		return best or self:_createNode(pos)
+	end
 	for _, node in self._nodes do
 		local d = (node.position - pos).Magnitude
 		if d <= bestDist then
@@ -2551,24 +2604,58 @@ function RoadNetwork.audit(self: RoadNetwork, fix: boolean): AuditReport
 	end
 	local seeds: { SegmentId } = {}
 	local seeded: { [SegmentId]: boolean } = {}
+	-- Every pair used to be tried (n^2/2: ~27M pairs for a 7,000-road city, unyielded on load).
+	-- Pairs whose bounding circles do not touch fail boundsNear anyway, so the segments are put
+	-- in a grid by their circle's square and A only meets the B's that share a cell with it --
+	-- still only those LATER in `ids` (j > i), so the seeds come out exactly as before.
+	local cell = 64
+	local grid: { [number]: { number } } = {}
+	local cellsOfSeg: { [SegmentId]: { number } } = {}
+	for i, id in ids do
+		local b = segBounds[id]
+		local keys = {}
+		for cz = math.floor((b.cz - b.r) / cell), math.floor((b.cz + b.r) / cell) do
+			for cx = math.floor((b.cx - b.r) / cell), math.floor((b.cx + b.r) / cell) do
+				local k = cz * 65536 + cx
+				table.insert(keys, k)
+				local list = grid[k]
+				if not list then
+					list = {}
+					grid[k] = list
+				end
+				table.insert(list, i)
+			end
+		end
+		cellsOfSeg[id] = keys
+	end
 	for i = 1, #ids do
 		local A = self._segments[ids[i]]
 		if not A or A.isArc then continue end
-		for j = i + 1, #ids do
-			local B = self._segments[ids[j]]
-			if not B or B.isArc then continue end
-			if A.isRoundabout and B.isRoundabout then continue end
-			if A.startNode == B.startNode or A.startNode == B.endNode
-				or A.endNode == B.startNode or A.endNode == B.endNode then continue end
-			if not boundsNear(segBounds[ids[i]], segBounds[ids[j]], 0) then continue end
-			local ha, hb = segHit(A, B)
-			if ha and hb then
-				rep.crossingsResolved += 1
-				if not seeded[ids[i]] then
-					seeded[ids[i]] = true
-					seeds[#seeds + 1] = ids[i]
+		local tried: { [number]: boolean } = {}
+		local hit = false
+		for _, k in cellsOfSeg[ids[i]] do
+			for _, j in grid[k] do
+				if j <= i or tried[j] then continue end
+				tried[j] = true
+				local B = self._segments[ids[j]]
+				if not B or B.isArc then continue end
+				if A.isRoundabout and B.isRoundabout then continue end
+				if A.startNode == B.startNode or A.startNode == B.endNode
+					or A.endNode == B.startNode or A.endNode == B.endNode then continue end
+				if not boundsNear(segBounds[ids[i]], segBounds[ids[j]], 0) then continue end
+				local ha, hb = segHit(A, B)
+				if ha and hb then
+					hit = true
+					break
 				end
-				break
+			end
+			if hit then break end
+		end
+		if hit then
+			rep.crossingsResolved += 1
+			if not seeded[ids[i]] then
+				seeded[ids[i]] = true
+				seeds[#seeds + 1] = ids[i]
 			end
 		end
 	end

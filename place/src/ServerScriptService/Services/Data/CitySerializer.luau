@@ -219,6 +219,12 @@ function CitySerializer.restore(blob: { [string]: any }, fallbackRelief: number?
 	if not okLanes then
 		warn("[CitySerializer] lane connection restore failed: " .. tostring(laneErr))
 	end
+	-- The road pieces draw in a deferred pass that now yields on a big network. Everything
+	-- below stands on them (lot paving meets the road's drawn edge), so let it finish first --
+	-- the same order the unyielded pass used to guarantee.
+	if _roadService.waitForRender then
+		_roadService.waitForRender(120)
+	end
 
 	lap("roads")
 	-- Land BEFORE anything that sits on it: every placement service asks the territory
