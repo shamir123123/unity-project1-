@@ -128,6 +128,7 @@ Tuning.TURN_WAIT_MINOR = 3
 -- full streets (each head waiting on the next) always has a car that can turn away.
 Tuning.EXIT_DETOUR_TIME = 12
 Tuning.EXIT_DETOUR_RETRY = 10
+Tuning.STALLED_IN_BOX_SPEED = 2 -- studs/s: a car in the box slower than this is standing there
 Tuning.EXIT_DETOUR_ALLOWANCE = 40 -- s a way round may cost over the blocked way (the wait it saves)
 -- A car waiting to pull out of (or turn into) a driveway asks the lanes it crosses to leave
 -- it a gap; the request lapses unless its gate keeps asking (see RequestRoadGap).
@@ -1043,6 +1044,24 @@ end
 -- (its tail beyond it) it has cleared us. A moving car used to hold the line until it left
 -- the whole box, so every crossing car cost the side road its full trip through it.
 -- Cached per graph version like movementPathsConflict.
+-- Whether `other`'s body is still in front of this car, across its lane: a slow turner swinging
+-- off our path takes a car length or two to clear it, and a straight car released as soon as the
+-- paths parted ran into its rear corner (lab, 2026-10-05: most junction collisions).
+Gridlock.CLEAR_LATERAL = 4.5 -- studs between centrelines at which two car bodies side by side clear
+function Gridlock.stillAhead(state: DriverState, other: DriverState): boolean
+	local cf, ocf = state.smoothCFrame, other.smoothCFrame
+	if not cf or not ocf then return false end
+	-- Its centre or its tail: a turner's tail swings across our lane after its nose has left it.
+	local tail = ocf.Position - ocf.LookVector * (other.halfLength or STOP_LINE_CAR_BUFFER)
+	for _, p in { ocf.Position, tail } do
+		local rel = p - cf.Position
+		if rel:Dot(cf.LookVector) > 0 and math.abs(rel:Dot(cf.RightVector)) < Gridlock.CLEAR_LATERAL then
+			return true
+		end
+	end
+	return false
+end
+
 function Gridlock.conflictEnd(g: any, edge: any, nextId: string, other: DriverState): number
 	local meta = getNodeMeta(g, edge.toNode)
 	if meta.conflictEndVersion ~= g:Version() then
@@ -1092,14 +1111,18 @@ local function signalizedClear(g: any, state: DriverState, edge: any, nodeId: nu
 		if not otherEdge or not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,other.nextEdgeId) then continue end
 		if Gridlock.hasCleared(g, edge, state.pendingNextEdgeId, other) then continue end
 		if isOpposite(myDir, otherEdge.toDir) then
-			-- Oncoming: only our crossing turn conflicts with their straight/nearside.
+			-- Oncoming: a crossing turn conflicts with a straight/nearside move, whichever of
+			-- the pair is ours. The turner should have waited, but once it is in the box the
+			-- straight car does not drive into it -- right of way is not a licence to hit.
 			local otherMove = otherEdge.outMovement and otherEdge.outMovement[other.nextEdgeId] or "straight"
-			if myMove == crossingTurn() and otherMove ~= crossingTurn() and blocksMyPath(g, other, edge, state.pendingNextEdgeId) then
+			if (myMove == crossingTurn()) ~= (otherMove == crossingTurn()) and blocksMyPath(g, other, edge, state.pendingNextEdgeId) then
 				return false
 			end
-		elseif (getStatePosition(other) - myPos).Magnitude < CROSS_CLEAR_RADIUS and blocksMyPath(g, other, edge, state.pendingNextEdgeId) then
+		elseif ((getStatePosition(other) - myPos).Magnitude < CROSS_CLEAR_RADIUS or (other.currentSpeed or 0) < Tuning.STALLED_IN_BOX_SPEED)
+			and blocksMyPath(g, other, edge, state.pendingNextEdgeId) then
 			-- Perpendicular cross traffic clearing right in front of us: yield. A car
-			-- exiting the far side of a big box does not hold our green.
+			-- exiting the far side of a big box does not hold our green -- unless it is standing
+			-- in the box on our path (its exit backed up), wherever in the box that is.
 			return false
 		end
 	end
@@ -1131,8 +1154,13 @@ local function signalizedClear(g: any, state: DriverState, edge: any, nodeId: nu
 				local cum = PathFollower.getCum(otherEdge)
 				local total = cum and cum[#cum] or 0
 				local distToStop = total - getStopLineGap(g, nodeId, otherEdge) - other.edgeDist
-				if distToStop > 0 and distToStop < 40 then
-					return false
+				if distToStop > 0 then
+					-- Close, or fast enough to be here before we are across (Gridlock.crossTime):
+					-- a fixed 40 studs let a turn start in front of a car doing 20+.
+					local v = other.currentSpeed or 0
+					if distToStop < 40 or (v > 1 and distToStop / v < Gridlock.crossTime(g, state, edge, state.pendingNextEdgeId)) then
+						return false
+					end
 				end
 			end
 		end
@@ -1143,6 +1171,7 @@ end
 -- Gap acceptance at a give-way junction: yield only to cross traffic that will
 -- actually REACH the line within this many seconds.
 local CROSS_GAP_TIME = 2.5
+local CROSS_GAP_MARGIN = 0.8 -- s the crossing car must be clear before the other arrives
 
 -- Seconds until `other` reaches this node's stop line; math.huge when it is not
 -- moving. A stationary car is queued or yielding to us, never a conflict -- waiting
@@ -1154,6 +1183,24 @@ local CROSS_GAP_TIME = 2.5
 -- this adds the difference for anything longer than that (the truck-overruns-line fix).
 local function noseSetback(state: DriverState): number
 	return math.max(0, (state.halfLength or STOP_LINE_CAR_BUFFER) - STOP_LINE_CAR_BUFFER) + 1
+end
+
+-- How long this car needs to be through the box and clear of a crossing path: the connector
+-- plus its own length, from the speed it has now, pulling away at ACCEL_RATE. A gap shorter
+-- than that is not a gap -- with cars that accelerate like cars, a standing start across a
+-- wide box takes ~3 s, and accepting the old fixed 2.5 s put two cars in the box at once.
+function Gridlock.crossTime(g: any, state: DriverState, edge: any, nextId: string?): number
+	if not nextId then return CROSS_GAP_TIME end
+	local pts = g:GetConnectionPoints(edge.id, nextId)
+	local len = 2 * (state.halfLength or STOP_LINE_CAR_BUFFER)
+	for i = 2, #pts do len += (pts[i] - pts[i - 1]).Magnitude end
+	local v = math.max(0, state.currentSpeed or 0)
+	local a = Tuning.ACCEL_RATE
+	local move = edge.outMovement and edge.outMovement[nextId]
+	local vmax = math.max(v, (if move then Tuning.TURN_ENTRY_SPEED[move] else nil) or state.speed or Tuning.MIN_TURN_SPEED, 1)
+	local dAccel = (vmax * vmax - v * v) / (2 * a)
+	local t = if len <= dAccel then (math.sqrt(v * v + 2 * a * len) - v) / a else (vmax - v) / a + (len - dAccel) / vmax
+	return t + CROSS_GAP_MARGIN
 end
 
 local function etaToStopLine(g: any, other: DriverState, otherEdge: any, nodeId: number): number
@@ -1198,12 +1245,13 @@ local function unsignalizedClear(g: any, state: DriverState, edge: any, nodeId: 
 	local myPriority = getArmPriority(g, nodeId, edge.id)
 	local farSide = getNodeMeta(g, nodeId).farSide
 	local myFar = farSide[edge.id] == true
+	local gap = math.max(CROSS_GAP_TIME, Gridlock.crossTime(g, state, edge, state.pendingNextEdgeId))
 
 	for _, otherEdge in g._edgesByToNode[nodeId] or EMPTY do
 		if otherEdge.segmentId == edge.segmentId or (farSide[otherEdge.id] == true) ~= myFar then continue end
 		for _, other in _edgeDriverIndex[otherEdge.id] or EMPTY do
 			if other == state or other.connector or other.edgeId ~= otherEdge.id or not other.model.Parent then continue end
-			if etaToStopLine(g, other, otherEdge, nodeId) >= CROSS_GAP_TIME then continue end
+			if etaToStopLine(g, other, otherEdge, nodeId) >= gap then continue end
 			local otherNext = other.pendingNextEdgeId
 			local otherMove = otherNext and otherEdge.outMovement and otherEdge.outMovement[otherNext] or "straight"
 			if not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,otherNext)
@@ -1628,8 +1676,14 @@ local function canEnterIntersection(g: any, state: DriverState, edge: any, nextE
 		return false
 	end
 
+	-- Letting a waiting car in is a courtesy, not an emergency stop: a car already too close to
+	-- its line to stop comfortably carries on (the waiting car still gives way to it) and the
+	-- one behind lets it in. Main roads used to slam to a halt for every claimant.
 	if not signalized and owesCourtesy(g, state, edge, nodeId, myDir, myMove) then
-		return false
+		local v = state.currentSpeed or 0
+		if distToStopLine(g, state, edge, nodeId) >= v * v / (2 * Tuning.COMFORT_DECEL) then
+			return false
+		end
 	end
 
 	if signalized then
@@ -2388,7 +2442,8 @@ function findQueueLeader(state: DriverState): (DriverState?, number?)
 		for _, other in _connectorByFromEdgeIndex[state.edgeId] or {} do
 			if other == state or not other.model.Parent then continue end
 			if other.nextEdgeId ~= state.nextEdgeId
-				and other.connDist - state.connDist > (other.halfLength or STOP_LINE_CAR_BUFFER) + 1 then
+				and other.connDist - state.connDist > (other.halfLength or STOP_LINE_CAR_BUFFER) + 1
+				and not Gridlock.stillAhead(state, other) then
 				continue
 			end
 			local gap = other.connDist - state.connDist
@@ -2803,8 +2858,15 @@ local function laneChangeGapClear(state: DriverState, targetId: string, d0: numb
 		end
 	end
 	for _, other in _connectorByNextEdgeIndex[targetId] or {} do
-		if other ~= state and other.model.Parent
-			and math.abs(other.nextEdgeDist - d1) < (d1 - d0) + followGap(state, other) then
+		if other == state or not other.model.Parent then continue end
+		if (other.currentSpeed or 0) < 0.5 then
+			-- A car standing still part-way over is a body where it stands, not where it meant
+			-- to land: we may pull in ahead of it. Holding for its landing point locked two
+			-- mergers and the queue between them for good (lab, 2026-10-05).
+			local p = lanePos(other, targetId)
+			local body = (other.halfLength or 0) + (state.halfLength or 0) + FOLLOW_BUMPER
+			if p > d0 - body and p < d1 + followGap(state, other) then return false, nil end
+		elseif math.abs(other.nextEdgeDist - d1) < (d1 - d0) + followGap(state, other) then
 			return false, nil
 		end
 	end
@@ -3413,7 +3475,14 @@ local function updateDriver(state: DriverState, dt: number)
 		-- A red is cheap to read and a driver sees it from far off: from a comfortable stop away
 		-- it plans the stop, rather than braking hard once inside the full right-of-way horizon.
 		local comfortStop = currentSpeed * currentSpeed / (2 * Tuning.COMFORT_DECEL) + currentSpeed * 0.5
-		if nextId and not committed and signalized and distToStop > askAt and distToStop <= comfortStop
+		if nextId and isYellow and committed and distToStop > 0 and signalized
+			and (edge.outMovement[nextId] or "straight") ~= crossingTurn()
+			and not signalizedClear(g, state, edge, edge.toNode, edge.toDir, edge.outMovement[nextId] or "straight") then
+			-- Going on through the yellow, but a turner is still clearing the box across our
+			-- path: brake hard rather than hit it, as a driver would.
+			mustStop = true
+			interReason = "yield"
+		elseif nextId and not committed and signalized and distToStop > askAt and distToStop <= comfortStop
 			and not TrafficSignalService.CanGo(edge.id, nextId) then
 			mustStop = true
 			interReason = "redLight"

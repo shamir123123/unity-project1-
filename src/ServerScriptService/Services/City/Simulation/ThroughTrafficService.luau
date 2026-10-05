@@ -28,7 +28,7 @@ local ThroughTrafficService = {}
 -- Intercity traffic is NOT the citizens' own cars: it is named apart so it can be told
 -- from a household car at a glance, in the explorer, in a click-inspect and in a log line.
 local CAR_NAME       = "IntercityCar"
-local STEP           = 2.0  -- seconds between spawn attempts (GameSpeed-scaled)
+local STEP           = 1.0  -- seconds between spawn attempts (GameSpeed-scaled)
 local CAR_HEIGHT     = 0.6
 local EDGE_OFFSET    = 24   -- keep clear of the map-edge tip node shared by both lanes
 local CLEAR_RADIUS   = 16   -- no spawn within this range of another vehicle
@@ -83,6 +83,7 @@ local PM_PEAK_CENTER = 0.740
 -- server with a hundred A* searches in one frame.
 local RAMP_FRACTION      = 0.12
 local MAX_SPAWNS_PER_STEP = 4
+local RESTORE_TRIES_PER_STEP = 16
 -- Studs between two cars entering at the same connection in one step. Must clear
 -- CLEAR_RADIUS or the second car is refused as "too close to the first".
 local SPAWN_STAGGER      = 24
@@ -183,10 +184,16 @@ local function inboundPoint(g: any, conn: any, minDist: number?): Vector3?
 	if not (edge and edge.points and #edge.points >= 2) then return nil end
 	local want = minDist or EDGE_OFFSET
 	local pts = edge.points
+	-- The exact point `want` studs in, not the next polyline vertex past it: vertices can be
+	-- further apart than SPAWN_STAGGER, and every staggered car then landed on the same vertex
+	-- and was refused as too close -- an entrance admitted one car a step, whatever its lanes.
 	local acc = 0
 	for i = math.clamp(startIndex, 1, #pts - 1) + 1, #pts do
-		acc += (pts[i] - pts[i - 1]).Magnitude
-		if acc >= want then return pts[i] end
+		local piece = (pts[i] - pts[i - 1]).Magnitude
+		if acc + piece >= want then
+			return pts[i - 1]:Lerp(pts[i], if piece > 1e-6 then (want - acc) / piece else 1)
+		end
+		acc += piece
 	end
 	-- Asked for more lane than this entrance road has: nil rather than piling every
 	-- surplus car onto the far end of it.
@@ -432,10 +439,13 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 		-- load" after a save). Still refused after RESTORE_SEAT_AFTER, it only needs its own seat
 		-- free of other bodies (DriveDirected's overlap checks).
 		local since = os.clock()
-		local RESTORE_SEAT_AFTER = 20 -- s (real) refused for the gap before the seat alone will do
+		local RESTORE_SEAT_AFTER = 8 -- s (real) refused for the gap before the seat alone will do
+		local RESTORE_GIVE_UP = 45   -- s (real): a seat still taken by then is gone; so is the car
 		_pendingRestores[car] = function(): boolean
 			if not _cars[car] or not car.Parent then _pendingRestores[car] = nil; return false end
-			local patient = os.clock() - since >= RESTORE_SEAT_AFTER
+			local waited = os.clock() - since
+			if waited >= RESTORE_GIVE_UP then despawn(); return false end
+			local patient = waited >= RESTORE_SEAT_AFTER
 			if not patient then
 				if not NPCDriverService.RoadGapClear(src, RESTORE_GAP_SECONDS, car) then return false end
 			end
@@ -472,7 +482,8 @@ local function step()
 		table.clear(_restoreQueue)
 		_restoreCursor = 1
 	else
-		for _ = 1, math.min(MAX_SPAWNS_PER_STEP, #_restoreQueue) do
+		-- A waiting restore already has its route: a try is a seat check, not an A* search.
+		for _ = 1, math.min(RESTORE_TRIES_PER_STEP, #_restoreQueue) do
 			local car = _restoreQueue[_restoreCursor]
 			_restoreCursor = _restoreCursor % #_restoreQueue + 1
 			local retry = _pendingRestores[car]
