@@ -16,6 +16,7 @@ local Heightmap = require(ReplicatedStorage.Terrain.Heightmap)
 local TerrainGenerator = require(ReplicatedStorage.Terrain.TerrainGenerator)
 local TerrainBrush = require(ReplicatedStorage.Terrain.TerrainBrush)
 local WaterField = require(ReplicatedStorage.Terrain.WaterField)
+local TerrainStreamCodec = require(ReplicatedStorage.Terrain.TerrainStreamCodec)
 local WaterImage = require(ReplicatedStorage.City.WaterImage)
 
 local WaterView = {}
@@ -303,6 +304,18 @@ function WaterView.Start()
 						if buffer.len(item.h) == buffer.len(chunk.heights) then
 							buffer.copy(chunk.heights, 0, item.h)
 						end
+					end
+				end
+			end
+		elseif msg.kind == "packed" then
+			-- The same edited chunks through TerrainStreamCodec; only the heights matter here.
+			local items = TerrainStreamCodec.unpack(msg.data)
+			if items and _hm then
+				for _, item in items do
+					local cx, cz = Heightmap.decodeKey(item.key)
+					local chunk = _hm:ensureChunk(cx, cz)
+					if buffer.len(item.h) == buffer.len(chunk.heights) then
+						buffer.copy(chunk.heights, 0, item.h)
 					end
 				end
 			end

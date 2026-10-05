@@ -22,6 +22,7 @@ local TerrainGenerator = require(ReplicatedStorage.Terrain.TerrainGenerator)
 local TerrainPainter = require(ReplicatedStorage.Terrain.TerrainPainter)
 local TerrainMeshView = require(ReplicatedStorage.Terrain.TerrainMeshView)
 local WaterField = require(ReplicatedStorage.Terrain.WaterField)
+local TerrainStreamCodec = require(ReplicatedStorage.Terrain.TerrainStreamCodec)
 
 local TerrainBuildController = {}
 
@@ -171,6 +172,17 @@ function TerrainBuildController.build(net: any, onProgress: ((number) -> ())?, b
 					end
 				end
 			end
+		elseif msg.kind == "packed" then
+			-- The same chunks through TerrainStreamCodec (asked for below). A batch that will not
+			-- decode is dropped like a malformed raw one: those chunks fall back to the seed.
+			local items = TerrainStreamCodec.unpack(msg.data)
+			if items then
+				for _, item in items do
+					edited[item.key] = { h = item.h, m = item.m, f = item.f }
+				end
+			else
+				warn("[TerrainBuildController] a packed terrain batch did not decode")
+			end
 		elseif msg.kind == "dry" then
 			if type(msg.keys) == "table" then WaterField.setDryKeys(msg.keys) end
 		elseif msg.kind == "done" then
@@ -182,7 +194,8 @@ function TerrainBuildController.build(net: any, onProgress: ((number) -> ())?, b
 	end)
 
 	local tStart = os.clock()
-	net.RequestTerrainBuild:FireServer()
+	-- Ask for the packed stream when this client can unpack it (a fraction of the bytes).
+	net.RequestTerrainBuild:FireServer({ packed = TerrainStreamCodec.supported() })
 
 	local deadline = os.clock() + STREAM_TIMEOUT
 	while not done and os.clock() < deadline do

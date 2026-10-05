@@ -13,6 +13,7 @@ local TerrainGenerator = require(ReplicatedStorage.Terrain.TerrainGenerator)
 local TerrainPersistence = require(script.Parent.TerrainPersistence)
 local TerrainOverlayLedger = require(script.Parent.TerrainOverlayLedger)
 local WaterField = require(ReplicatedStorage.Terrain.WaterField)
+local TerrainStreamCodec = require(ReplicatedStorage.Terrain.TerrainStreamCodec)
 
 local Players = game:GetService("Players")
 
@@ -47,6 +48,9 @@ local _hasCity = false
 local _lastBuildReq: { [Player]: number } = {}
 local Net: any = nil -- set in Bind; kept off module load so requiring this never pulls Networker
 local STREAM_BATCH = 12 -- edited chunks per TerrainBuildData message
+-- ...per message on the PACKED stream (TerrainStreamCodec). A packed chunk is a small fraction
+-- of a raw one, so the messages can carry more and there are fewer frames between them.
+local PACKED_BATCH = 32
 -- A city load is under way and has NOT reached its terrain step yet.
 --
 -- The client now fires RequestTerrainBuild as soon as it asks for the city, so that it
@@ -84,7 +88,7 @@ end
 -- Stream what a client needs to build the current map locally: seed/relief to regenerate
 -- the base, then the edited chunks' heights+materials in batches. Yields between batches
 -- so the send never stalls a frame.
-local function streamTerrainTo(player: Player)
+local function streamTerrainTo(player: Player, packed: boolean)
 	if not _hasCity or not _hm then
 		Net.TerrainBuildData:FireClient(player, { kind = "none" })
 		return
@@ -103,6 +107,33 @@ local function streamTerrainTo(player: Player)
 		algo = _params.algo,
 		total = #keys,
 	})
+	if packed then
+		-- Packing copies the buffers into its own, so the live chunks go in as they are.
+		local items = {}
+		local function send()
+			if #items == 0 or not player.Parent then return end
+			Net.TerrainBuildData:FireClient(player, { kind = "packed", data = TerrainStreamCodec.pack(items), n = #items })
+			items = {}
+			task.wait()
+		end
+		for _, key in keys do
+			local cx, cz = Heightmap.decodeKey(key)
+			local chunk = _hm:getChunk(cx, cz)
+			if chunk then
+				items[#items + 1] = { key = key, h = chunk.heights, m = chunk.materials, f = chunk.flags }
+				if #items >= PACKED_BATCH then send() end
+			end
+			if not player.Parent then return end
+		end
+		send()
+		if player.Parent then
+			Net.TerrainBuildData:FireClient(player, { kind = "dry", keys = WaterField.getDryKeys() })
+		end
+		if player.Parent then
+			Net.TerrainBuildData:FireClient(player, { kind = "done" })
+		end
+		return
+	end
 	local batch = {}
 	for _, key in keys do
 		local cx, cz = Heightmap.decodeKey(key)
@@ -152,10 +183,12 @@ end
 
 function TerrainDataService.Bind()
 	Net = require(ReplicatedStorage:WaitForChild("Networker"))
-	Net.RequestTerrainBuild.OnServerEvent:Connect(function(player: Player)
+	Net.RequestTerrainBuild.OnServerEvent:Connect(function(player: Player, opts: any)
 		local now = os.clock()
 		if now - (_lastBuildReq[player] or 0) < 1 then return end
 		_lastBuildReq[player] = now
+		-- The client says whether it can unpack TerrainStreamCodec; anything else gets raw chunks.
+		local packed = typeof(opts) == "table" and opts.packed == true
 		task.spawn(function()
 			local deadline = os.clock() + LOAD_WAIT_TIMEOUT
 			while _terrainLoadPending and os.clock() < deadline and player.Parent do
@@ -165,7 +198,7 @@ function TerrainDataService.Bind()
 			if _terrainLoadPending then
 				warn("[TerrainDataService] streaming terrain before the city load reached it -- the map may be the outgoing city's")
 			end
-			streamTerrainTo(player)
+			streamTerrainTo(player, packed)
 		end)
 	end)
 	Players.PlayerRemoving:Connect(function(player: Player)
