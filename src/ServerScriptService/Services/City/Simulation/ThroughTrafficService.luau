@@ -32,6 +32,7 @@ local STEP           = 2.0  -- seconds between spawn attempts (GameSpeed-scaled)
 local CAR_HEIGHT     = 0.6
 local EDGE_OFFSET    = 24   -- keep clear of the map-edge tip node shared by both lanes
 local CLEAR_RADIUS   = 16   -- no spawn within this range of another vehicle
+local ENTRY_SPEED    = 20   -- studs/s (~36 km/h at 2 studs/m) a car crosses the map edge at
 
 -- == How much through traffic there is ========================================
 -- Not a balance number: it FOLLOWS from the roads the player dragged to the map edge,
@@ -394,6 +395,9 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 	car:SetAttribute("Through", true) -- observable marker: through-cars vs household cars
 	car:SetAttribute("DriverSeed", seed)
 	car:SetAttribute("RouteStyle", "visitor") -- the mind this route was planned with
+	-- It drove in from beyond the map edge: it enters moving, at a town speed, not from a
+	-- standstill that held the entrance shut for seconds per car. A restored car does not.
+	car:SetAttribute("NPCEntrySpeed", if anchor then nil else ENTRY_SPEED)
 	car:PivotTo(atCF)
 	car.Parent = carFolder()
 	_cars[car] = { seed = seed, variant = variant, exitId = exitConn.id,

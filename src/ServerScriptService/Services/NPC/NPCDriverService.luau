@@ -4214,7 +4214,10 @@ function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos
 		atDeadEnd      = false,
 		deadEndTimer   = 0,
 		speed          = edgeSpeed(firstEdge) * (if profile then profile.speedFactor else 1),
-		currentSpeed   = 0,
+		-- A car coming in off the map edge is already on its way (NPCEntrySpeed); everyone
+		-- else starts from a standstill -- but ready to go, with no reaction to wait out.
+		currentSpeed   = math.clamp(tonumber(model:GetAttribute("NPCEntrySpeed")) or 0, 0, edgeSpeed(firstEdge)),
+		launchReact    = 0,
 		blockedTime    = 0,
 		stuckTime      = 0,
 		connBlockedTime = 0,

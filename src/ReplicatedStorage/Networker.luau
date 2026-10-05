@@ -263,6 +263,9 @@ local Networker = {
 
 	DebugSnapshot                = RE("DebugSnapshot"),
 	ToggleDebugMode              = RE("ToggleDebugMode"),
+	-- Client -> server, once a second while a TrafficBenchmark runs (workspace attribute
+	-- TrafficBenchActive): this device's frame rate. Validated + rate-limited server-side.
+	ReportBenchFrameStats        = URE("ReportBenchFrameStats"),
 
 	-- Staff launcher pill (the "STAFF F4" button shown when the admin/dev panels are
 	-- closed) remembers where each staff member dragged it to. Save is fire-and-forget

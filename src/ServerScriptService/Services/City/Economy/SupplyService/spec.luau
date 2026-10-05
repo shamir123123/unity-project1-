@@ -35,7 +35,7 @@ return function()
   end
   local const=fresh(subject.Parent.Parent.CitySimConstants)
   local modules={GameSpeed={get=function()return 1 end,steps=function()return 1 end},PathFollower=follower,VehicleFactory=factory,CitySimConstants=const,
-   NPCDriverService=driver,VehicleTypes={Truck="Truck"},
+   NPCDriverService=driver,VehicleTypes={Truck="Truck"},DriverProfile={FREIGHT={label="freight"}},
    VehicleCatalog={forClass=function()return {}end,roll=function()return .5 end}}
   local body=subject.Source:gsub("return SupplyService%s*$",[[return {
    api=SupplyService,dispatch=dispatch,import=dispatchImport,export=dispatchExport,step=stepTrucks,produce=produceAndDispatch,

@@ -32,6 +32,8 @@ local Const          = require(ServerScriptService.Services.City.CitySimConstant
 local NPCDriverService = require(ServerScriptService.Services.NPC.NPCDriverService)
 local VehicleCatalog = require(game:GetService("ReplicatedStorage").Road.VehicleCatalog)
 local VehicleTypes   = require(game:GetService("ReplicatedStorage").Road.VehicleTypes)
+-- Freight plans its routes like a truck driver: big roads, few turns, off housing streets.
+local FREIGHT        = require(game:GetService("ReplicatedStorage").Road.DriverProfile).FREIGHT
 
 local SupplyService = {}
 
@@ -278,6 +280,19 @@ local function depotLoadCap(fromId: string): number
 	return TIER_CAPACITY[tierForFootprint(_footprint[fromId])] or TRUCK_CAPACITY
 end
 
+-- Shops take their deliveries in the working day, as real retail does: trucks restock from
+-- dawn and through the day -- the morning delivery round -- not at three in the morning.
+-- Orders placed overnight wait for the morning (the reorder point holds days of stock, so no
+-- shelf runs dry for it). Trade to and from the outside world runs round the clock. Only
+-- while the city clock runs (TimeService stamps CityDay): a test or a stopped clock delivers.
+local DELIVERY_FROM_HOUR = 5
+local DELIVERY_TO_HOUR   = 19
+local function shopsReceiving(): boolean
+	if Workspace:GetAttribute("CityDay") == nil then return true end
+	local hour = game:GetService("Lighting").ClockTime
+	return typeof(hour) ~= "number" or (hour >= DELIVERY_FROM_HOUR and hour < DELIVERY_TO_HOUR)
+end
+
 local function unloadSeconds(load: number): number
 	return UNLOAD_BASE + UNLOAD_PER_UNIT * math.max(0, load)
 end
@@ -410,7 +425,7 @@ local function driveTruck(t: Truck, src: Vector3, dst: Vector3, arrived: () -> (
   local g = nav()
   local ok, path, ids = pcall(function()
    if not g then return nil end
-   return g:FindPath(src, dst, true, VehicleTypes.Truck, nil, NPCDriverService.GetLaneAnchor(truck))
+   return g:FindPath(src, dst, true, VehicleTypes.Truck, FREIGHT, NPCDriverService.GetLaneAnchor(truck))
   end)
   if ok and typeof(path) == "table" and #path > 0 and typeof(ids) == "table" and #ids > 0 then
    route = ids
@@ -440,7 +455,7 @@ local function startReturn(t: Truck)
 	-- The outbound trip has finished, so clear its driver state before booking the next one.
 	NPCDriverService.ReleaseDirected(truck)
 	local here = truck:GetPivot().Position
-	local ok, path, edgeIds = pcall(function() return g:FindPath(here, home, true, VehicleTypes.Truck) end)
+	local ok, path, edgeIds = pcall(function() return g:FindPath(here, home, true, VehicleTypes.Truck, FREIGHT) end)
 	if not ok or typeof(path) ~= "table" or #path == 0
 		or typeof(edgeIds) ~= "table" or #(edgeIds :: any) == 0 then
 		destroyTruck(truck)
@@ -463,7 +478,7 @@ local function dispatch(fromId: string, toId: string, load: number): boolean
 	-- Routed AS A TRUCK, matching the tag VehicleFactory puts on it: a lane a truck may not
 	-- use (a busway) must be excluded when the route is planned, not discovered by the driver.
 	if not spendRoute() then return false end
-	local ok, path, edgeIds = pcall(function() return g:FindPath(fromKerb, toKerb, true, VehicleTypes.Truck) end)
+	local ok, path, edgeIds = pcall(function() return g:FindPath(fromKerb, toKerb, true, VehicleTypes.Truck, FREIGHT) end)
 	if not ok or not path or #path == 0 then return false end
 
 	local truck = VehicleFactory.build("DeliveryTruck", nil, truckKeyFor(fromId, load))
@@ -664,7 +679,7 @@ local function nearestConnection(pos: Vector3, inbound: boolean): (any?, Vector3
 		if not point then continue end
 		local src, dst = if inbound then point else pos, if inbound then pos else point
 		if not spendRoute() then return nil, nil, nil end
-		local ok, path, ids = pcall(function() return g:FindPath(src, dst, true, VehicleTypes.Truck) end)
+		local ok, path, ids = pcall(function() return g:FindPath(src, dst, true, VehicleTypes.Truck, FREIGHT) end)
 		if ok and typeof(path) == "table" and #path > 0 and typeof(ids) == "table" and #ids > 0 then
 			return c, point, ids
 		end
@@ -679,7 +694,7 @@ local function launchTrade(t: Truck, src: Vector3, dst: Vector3, arrived: () -> 
 	if not NPCDriverService.RoadGapClear(src, 4) then return false end
 	local edgeIds = plannedEdges
 	if not edgeIds then
-		local ok, path, ids = pcall(function() return g:FindPath(src, dst, true, VehicleTypes.Truck) end)
+		local ok, path, ids = pcall(function() return g:FindPath(src, dst, true, VehicleTypes.Truck, FREIGHT) end)
 		if not ok or typeof(path) ~= "table" or #path == 0 or typeof(ids) ~= "table" or #(ids :: any) == 0 then return false end
 		edgeIds = ids :: {string}
 	end
@@ -884,7 +899,7 @@ local function resumeTruck(fromId: string, toId: string, load: number, at: CFram
 	local anchorEdge = if anchor then g:GetEdge(anchor.edgeId) else nil
 
 	local function routeFrom(p: Vector3)
-		local ok, path, edgeIds = pcall(function() return g:FindPath(p, toKerb, nil, VehicleTypes.Truck) end)
+		local ok, path, edgeIds = pcall(function() return g:FindPath(p, toKerb, nil, VehicleTypes.Truck, FREIGHT) end)
 		if not ok or typeof(path) ~= "table" or #path == 0 then return nil end
 		if typeof(edgeIds) ~= "table" or #(edgeIds :: any) == 0 then return nil end
 		return edgeIds :: { string }
@@ -1227,6 +1242,7 @@ local function produceAndDispatch(dt: number)
 	local fleetCap = math.clamp(#orders, MAX_TRUCKS, MAX_TRUCKS_CEILING)
 	_routeBudget = math.floor(ROUTE_BUDGET / 2)
 	local shopStart = _shopCursor
+	if not shopsReceiving() then table.clear(orders) end
 	for offset = 0, #orders - 1 do
 		if _busyTrucks >= fleetCap or _truckCount >= MAX_TRUCKS_CEILING or (_routeBudget :: number) <= 0 then break end
 		local index = (shopStart + offset - 1) % #orders + 1
