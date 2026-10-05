@@ -241,3 +241,14 @@ overlapped in the box: 40 collisions in the heavy grid against 10 now.
 
 `tools/traffic-lab/` is the headless runner I used. It loads your real modules on a fake engine
 under [lune](https://github.com/lune-org/lune). See its README.
+
+## 9. Reviewing the changes
+
+Each script was first committed unmodified, then changed in later commits. One commit labelled
+as a baseline (`77e9b13`) also carries the first routing changes. To see one file's whole
+change, diff it against the commit that first added it:
+
+```
+f=src/ServerScriptService/Services/NPC/NPCDriverService.luau
+git diff $(git log --diff-filter=A --format=%h -- "$f" | tail -1) HEAD -- "$f"
+```
