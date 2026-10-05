@@ -64,8 +64,6 @@ function LoadStressTest.run(opts: Options?): { [string]: any }
 	local origin = o.origin or Vector3.zero
 	local reloads = math.max(1, math.floor(o.reloads or 2))
 
-	local RoadService = svc("Road.RoadService")
-	local PlotService = svc("City.PlotService")
 	local BuildingService = svc("City.BuildingService")
 	local CitizenService = svc("City.Simulation.CitizenService")
 	local CitySerializer = svc("Data.CitySerializer")

@@ -63,6 +63,14 @@ local _notify: ((dirty: { [string]: boolean }) -> ())? = nil
 local STOP_LENGTH = 12 -- a kerbside stop with no bay: its shelter's stretch of kerb
 local STOP_REACH = 12  -- how far beyond the roadway a stop may stand and still be on this road
 local _stops: { [Instance]: { pos: Vector3, half: number, bay: number? } } = {}
+-- The same stops in a 128-stud grid, so a road only measures the stops near it (stopsOn ran
+-- every stop against every road: segments x stops on a city load).
+local STOP_CELL = 128
+local _stopCells: { [number]: { [Instance]: boolean } } = {}
+-- A stop changes only the road it stands beside: within the roadway + footway + STOP_REACH of
+-- its curve, and the curve never leaves its control points' box. No road is wider than this,
+-- so a road whose control box is further than this from the stop cannot change.
+local STOP_SCAN_MARGIN = 100
 
 local function cellOf(p: Vector3): string
 	return math.floor(p.X / CELL) .. "," .. math.floor(p.Z / CELL)
@@ -236,7 +244,8 @@ local function chunkCaps(key: number): { [number]: number }?
 		caps = capsFor(key)
 		_capOf[key] = caps
 	end
-	return if caps then caps else nil
+	if caps then return caps :: { [number]: number } end
+	return nil
 end
 
 local function flushGround()
@@ -456,12 +465,54 @@ local function oldPathNode(nodeId: number): boolean
 	return _plans[nodeId] == nil and DataCache.GetNodeById(nodeId) ~= nil and #(_ends[nodeId] or {}) >= 3
 end
 
+local function stopCellKey(p: Vector3): number
+	return math.floor(p.Z / STOP_CELL) * 65536 + math.floor(p.X / STOP_CELL)
+end
+
+local function indexStop(inst: Instance, pos: Vector3)
+	local k = stopCellKey(pos)
+	local cell = _stopCells[k]
+	if not cell then
+		cell = {}
+		_stopCells[k] = cell
+	end
+	cell[inst] = true
+end
+
+local function unindexStop(inst: Instance, pos: Vector3)
+	local k = stopCellKey(pos)
+	local cell = _stopCells[k]
+	if not cell then return end
+	cell[inst] = nil
+	if next(cell) == nil then _stopCells[k] = nil end
+end
+
 -- Bus stops beside this road, along its curve (RoadGeometry.Stop).
 local function stopsOn(seg: any, armS: any): { any }?
 	if next(_stops) == nil then return nil end
 	local reach = math.max(armS.sec.roadR, -armS.sec.roadL) + math.max(armS.sec.walkL, armS.sec.walkR) + STOP_REACH
+	-- Only stops whose cell the arm's box (grown by the reach) touches can be within reach of it.
+	local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
+	for _, q in armS.pts do
+		if q.X < x0 then x0 = q.X end
+		if q.X > x1 then x1 = q.X end
+		if q.Z < z0 then z0 = q.Z end
+		if q.Z > z1 then z1 = q.Z end
+	end
+	local near: { any } = {}
+	for cz = math.floor((z0 - reach) / STOP_CELL), math.floor((z1 + reach) / STOP_CELL) do
+		for cx = math.floor((x0 - reach) / STOP_CELL), math.floor((x1 + reach) / STOP_CELL) do
+			local cell = _stopCells[cz * 65536 + cx]
+			if not cell then continue end
+			for inst in cell do
+				local st = _stops[inst]
+				if st then table.insert(near, st) end
+			end
+		end
+	end
+	if #near == 0 then return nil end
 	local out = {}
-	for _, st in _stops do
+	for _, st in near do
 		local best, bestD, bestLat = math.huge, 0, 0
 		for i = 1, #armS.pts - 1 do
 			local a, c = armS.pts[i], armS.pts[i + 1]
@@ -542,7 +593,14 @@ local function buildNode(nodeId: number, dirty: { [string]: boolean })
 end
 
 -- == Topology changes =============================================================
-local function onSegments(list: { any })
+-- A pass this big is a city LOAD (the whole network arrives as one delta): it yields every
+-- REBUILD_SLICE seconds instead of solving and building thousands of pieces in one frame --
+-- several seconds of frozen client on a big city, and past the script budget a thread that is
+-- killed with half the roads unbuilt. A normal edit stays well under it and lands at once.
+local REBUILD_SLICE_MIN_ITEMS = 64
+local REBUILD_SLICE = 0.03
+
+local function rebuildFrom(list: { any })
 	local now: { [number]: any } = {}
 	for _, s in list do now[s.id] = s end
 	local dirtyNodes: { [number]: boolean } = {}
@@ -584,9 +642,20 @@ local function onSegments(list: { any })
 
 	local dirty: { [string]: boolean } = {}
 	local dirtySegs: { [number]: any } = {}
+	local count = 0
+	for _ in dirtyNodes do count += 1 end
+	local sliced = count > REBUILD_SLICE_MIN_ITEMS
+	local t0 = os.clock()
+	local function breathe()
+		if sliced and os.clock() - t0 >= REBUILD_SLICE then
+			task.wait()
+			t0 = os.clock()
+		end
+	end
 	for nodeId in dirtyNodes do
 		_plans[nodeId] = solveNode(nodeId)
 		for _, e in (_ends[nodeId] or {}) do dirtySegs[e.seg.id] = e.seg end
+		breathe()
 	end
 	-- Shifted roads (a highway running straight on past an exit): carry the forks' shifts along
 	-- the network; every node at either end of a road whose shift changed solves again, until it
@@ -628,6 +697,7 @@ local function onSegments(list: { any })
 			if _plans[nodeId] == nil and not dirtyNodes[nodeId] then _plans[nodeId] = solveNode(nodeId) end
 		end
 		buildSegment(seg, dirty)
+		breathe()
 	end
 	-- a dead end follows its road onto (or off) the old path, wherever that was decided
 	for _, seg in dirtySegs do
@@ -636,9 +706,36 @@ local function onSegments(list: { any })
 			if plan and plan.kind == "end" then dirtyNodes[nodeId] = true end
 		end
 	end
-	for nodeId in dirtyNodes do buildNode(nodeId, dirty) end
+	for nodeId in dirtyNodes do
+		buildNode(nodeId, dirty)
+		breathe()
+	end
 	if _notify and next(dirty) then (_notify :: any)(dirty) end
 	flushGround()
+end
+
+-- One pass at a time. A sliced pass that is still running takes the newest list when it is
+-- done (each pass diffs against what the last one drew, so nothing is lost by skipping the
+-- lists in between). task.spawn runs straight through a pass that never yields, so an ordinary
+-- edit is still drawn before this returns, exactly as before.
+local _rebuildBusy = false
+local _rebuildNext: { any }? = nil
+local function onSegments(list: { any })
+	if _rebuildBusy then
+		_rebuildNext = list
+		return
+	end
+	_rebuildBusy = true
+	task.spawn(function()
+		local cur: { any }? = list
+		while cur do
+			local ok, err = pcall(rebuildFrom, cur)
+			if not ok then warn("[RoadPieces] rebuild failed: " .. tostring(err)) end
+			cur = _rebuildNext
+			_rebuildNext = nil
+		end
+		_rebuildBusy = false
+	end)
 end
 
 -- == Public =======================================================================
@@ -711,11 +808,14 @@ function RoadPieces.start(notify: (dirty: { [string]: boolean }) -> ())
 	local function stopsChanged(at: Vector3)
 		local dirty: { [string]: boolean } = {}
 		for _, seg in _seen do
-			local near = false
-			for _, q in { seg.p0, seg.p1, seg.p2, seg.p3 } do
-				if (Vector3.new(q.X - at.X, 0, q.Z - at.Z)).Magnitude < 400 then near = true break end
-			end
-			if near then buildSegment(seg, dirty) end
+			-- Rebuild only a road the stop can actually stand beside (see STOP_SCAN_MARGIN). The
+			-- old test rebuilt every road with a control point within 400 studs -- ~100 roads per
+			-- stop on a city grid, for every stop that replicated in during a load.
+			local x0 = math.min(seg.p0.X, seg.p1.X, seg.p2.X, seg.p3.X) - STOP_SCAN_MARGIN
+			local x1 = math.max(seg.p0.X, seg.p1.X, seg.p2.X, seg.p3.X) + STOP_SCAN_MARGIN
+			local z0 = math.min(seg.p0.Z, seg.p1.Z, seg.p2.Z, seg.p3.Z) - STOP_SCAN_MARGIN
+			local z1 = math.max(seg.p0.Z, seg.p1.Z, seg.p2.Z, seg.p3.Z) + STOP_SCAN_MARGIN
+			if at.X >= x0 and at.X <= x1 and at.Z >= z0 and at.Z <= z1 then buildSegment(seg, dirty) end
 		end
 		if _notify and next(dirty) then (_notify :: any)(dirty) end
 		flushGround()
@@ -725,8 +825,11 @@ function RoadPieces.start(notify: (dirty: { [string]: boolean }) -> ())
 		local cf = inst:GetPivot()
 		local bay = inst:GetAttribute("BusBayLength")
 		local depth = inst:GetAttribute("BusBayDepth")
+		local old = _stops[inst]
+		if old then unindexStop(inst, old.pos) end
 		_stops[inst] = { pos = cf.Position, half = (if typeof(bay) == "number" then bay else STOP_LENGTH) * 0.5,
 			bay = if typeof(depth) == "number" then depth else nil }
+		indexStop(inst, cf.Position)
 		stopsChanged(cf.Position)
 	end
 	CollectionService:GetInstanceAddedSignal("BusStop"):Connect(addStop)
@@ -734,14 +837,17 @@ function RoadPieces.start(notify: (dirty: { [string]: boolean }) -> ())
 		local st = _stops[inst]
 		if not st then return end
 		_stops[inst] = nil
+		unindexStop(inst, st.pos)
 		stopsChanged(st.pos)
 	end)
 	for _, inst in CollectionService:GetTagged("BusStop") do
 		if inst:IsA("Model") then
 			local bay = inst:GetAttribute("BusBayLength")
 			local depth = inst:GetAttribute("BusBayDepth")
-			_stops[inst] = { pos = inst:GetPivot().Position, half = (if typeof(bay) == "number" then bay else STOP_LENGTH) * 0.5,
+			local pos = inst:GetPivot().Position
+			_stops[inst] = { pos = pos, half = (if typeof(bay) == "number" then bay else STOP_LENGTH) * 0.5,
 				bay = if typeof(depth) == "number" then depth else nil }
+			indexStop(inst, pos)
 		end
 	end
 	DataCache.On("segments", onSegments)
