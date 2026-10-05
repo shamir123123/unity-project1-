@@ -37,6 +37,8 @@ local DEFAULT_CITY_NAME = "New City"
 local AUTOSAVE_INTERVAL = 300 -- s; at most five minutes of play can be lost to a crash
 local MAX_RETRIES       = 3
 local RETRY_DELAY       = 2
+-- Backstop on the parallel chunk reads of one save generation: past every retry readKey makes.
+local CHUNK_READ_DEADLINE = 30
 -- Lock refreshes on every autosave (180s), so TTL is two intervals + slack.
 -- Published servers keep the lock to prevent two live servers writing the same
 -- slot. Studio Play sessions restart with a new server id constantly, and Stop
@@ -414,14 +416,32 @@ local function readGeneration(userId: number, slotId: number, gen: number): (any
 	local headLen = buffer.len(head) - GEN_HEAD_BYTES
 	parts[1] = buffer.create(headLen)
 	buffer.copy(parts[1], 0, head, GEN_HEAD_BYTES, headLen)
+	-- The other chunks are independent keys: read them all at once rather than one round trip
+	-- after another (a big city is 4 keys, ~0.1-0.5 s each). Each read retries on its own and is
+	-- bounded by MAX_RETRIES, so the deadline below is only a backstop.
+	local readFailed, missing = false, 0
+	local pending = count - 1
 	for i = 2, count do
-		local part, okPart = readKey(genChunkKey(userId, slotId, gen, i), label)
-		if not okPart then return nil, false, seq end
-		if typeof(part) ~= "buffer" then
-			warn(string.format("[CitySlotService] slot %d gen %d for %d is missing chunk %d of %d", slotId, gen, userId, i, count))
-			return nil, true, seq
-		end
-		parts[i] = part
+		task.spawn(function()
+			local ok, part, okPart = pcall(readKey, genChunkKey(userId, slotId, gen, i), label)
+			if not ok or not okPart then
+				readFailed = true
+			elseif typeof(part) ~= "buffer" then
+				if missing == 0 then missing = i end
+			else
+				parts[i] = part
+			end
+			pending -= 1
+		end)
+	end
+	local deadline = os.clock() + CHUNK_READ_DEADLINE
+	while pending > 0 and os.clock() < deadline do
+		task.wait()
+	end
+	if readFailed or pending > 0 then return nil, false, seq end
+	if missing > 0 then
+		warn(string.format("[CitySlotService] slot %d gen %d for %d is missing chunk %d of %d", slotId, gen, userId, missing, count))
+		return nil, true, seq
 	end
 	local okUnpack, blob = pcall(BlobCodec.unpack, joinParts(parts))
 	return if okUnpack then blob else nil, true, seq

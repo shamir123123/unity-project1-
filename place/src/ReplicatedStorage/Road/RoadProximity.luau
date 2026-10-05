@@ -120,13 +120,72 @@ local function propShape(m: Instance): (Vector3?, number, number)
 	return m:GetPivot().Position, entry.radius * scale, size.Y
 end
 
--- ponytail: O(props x segments), run on a throttled ghost rebuild and once per placement,
--- never per frame. Index the props by map cell if a large city starts to hitch here.
+-- A city load sweeps EVERY prop against EVERY road here (NaturePlaceService.restore), which was
+-- props x segments -- 50M pair tests for 10,000 trees and 5,000 roads. Past a handful of
+-- segments they are bucketed first, by exactly the box isPointNearRoad's broad phase tests
+-- (the control hull grown by the road's half-width), so each prop only meets the roads whose
+-- box its footprint reaches. Same answer: a road outside those cells fails the broad phase anyway.
+local GRID_MIN_SEGMENTS = 16
+local SEG_CELL = 128
+
+type SegGrid = { [number]: { any } }
+
+local function segmentGrid(segments: any): SegGrid
+	local grid: SegGrid = {}
+	for _, seg in segments do
+		local half = RoadProximity.roadSpec(seg.roadType).width * 0.5
+		local p0, p1, p2, p3 = seg.p0, seg.p1, seg.p2, seg.p3
+		local x0 = math.min(p0.X, p1.X, p2.X, p3.X) - half
+		local x1 = math.max(p0.X, p1.X, p2.X, p3.X) + half
+		local z0 = math.min(p0.Z, p1.Z, p2.Z, p3.Z) - half
+		local z1 = math.max(p0.Z, p1.Z, p2.Z, p3.Z) + half
+		for cz = math.floor(z0 / SEG_CELL), math.floor(z1 / SEG_CELL) do
+			for cx = math.floor(x0 / SEG_CELL), math.floor(x1 / SEG_CELL) do
+				local k = cz * 65536 + cx
+				local list = grid[k]
+				if not list then
+					list = {}
+					grid[k] = list
+				end
+				table.insert(list, seg)
+			end
+		end
+	end
+	return grid
+end
+
+-- The segments whose grown box the disc (pos, r) can reach, each once.
+local function segmentsNear(grid: SegGrid, pos: Vector3, r: number): { any }
+	local out = {}
+	local seen = {}
+	for cz = math.floor((pos.Z - r) / SEG_CELL), math.floor((pos.Z + r) / SEG_CELL) do
+		for cx = math.floor((pos.X - r) / SEG_CELL), math.floor((pos.X + r) / SEG_CELL) do
+			local list = grid[cz * 65536 + cx]
+			if not list then continue end
+			for _, seg in list do
+				if not seen[seg] then
+					seen[seg] = true
+					table.insert(out, seg)
+				end
+			end
+		end
+	end
+	return out
+end
+
 function RoadProximity.propsOnRoads(folder: Instance, segments: any): { Model }
 	local out: { Model } = {}
+	local count = 0
+	for _ in segments do
+		count += 1
+		if count > GRID_MIN_SEGMENTS then break end
+	end
+	local grid = if count > GRID_MIN_SEGMENTS then segmentGrid(segments) else nil
 	for _, m in folder:GetChildren() do
 		local base, radius, height = propShape(m)
-		if base and RoadProximity.isPointNearRoad(segments, base, radius, height) then
+		if not base then continue end
+		local near = if grid then segmentsNear(grid, base, radius) else segments
+		if RoadProximity.isPointNearRoad(near, base, radius, height) then
 			out[#out + 1] = m :: Model
 		end
 	end
