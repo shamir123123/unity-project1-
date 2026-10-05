@@ -50,14 +50,53 @@ local CALL_COOLDOWN = 0.08   -- seconds between accepted calls, per player
 local REMOVE_REFUND = 0.99
 
 local _templates: Folder = RS.Nature
-local _lastCallAt: { [Player]: number } = {}
-local _lastRemoveAt: { [Player]: number } = {}
+-- RATE LIMIT BY ITEMS, NOT BY CALL SPACING. Every remote below used to drop a whole call that
+-- arrived within CALL_COOLDOWN of the previous one -- silently. The bulldozer and the selection
+-- tool send a big delete as several MAX_PER_CALL batches 0.1 s apart, and network jitter
+-- routinely lands two of them closer than 0.08 s: that batch was thrown away, its trees were
+-- never removed, and they "came back" on the next load (and the same cooldown ate placements:
+-- see NatureFreePlaceMode). Now each player has a bucket of items that refills at the old
+-- ceiling (MAX_PER_CALL per CALL_COOLDOWN), so bunched batches pass, and sustained spam is held
+-- to exactly the rate it always was -- and refused loudly, not silently.
+local BUCKET_RATE = MAX_PER_CALL / CALL_COOLDOWN -- items per second
+local BUCKET_BURST = MAX_PER_CALL * 4
+type Bucket = { tokens: number, at: number, warnedAt: number }
+local _buckets: { [Player]: { [string]: Bucket } } = {}
+
+local function takeBudget(player: Player, kind: string, items: number): boolean
+	local mine = _buckets[player]
+	if not mine then
+		mine = {}
+		_buckets[player] = mine
+	end
+	local now = os.clock()
+	local b = mine[kind]
+	if not b then
+		b = { tokens = BUCKET_BURST, at = now, warnedAt = -math.huge }
+		mine[kind] = b
+	end
+	b.tokens = math.min(BUCKET_BURST, b.tokens + (now - b.at) * BUCKET_RATE)
+	b.at = now
+	if b.tokens < items then
+		if now - b.warnedAt > 5 then
+			b.warnedAt = now
+			warn(string.format("[NaturePlaceService] %s refused for %s: over the rate limit (%d items)", kind, player.Name, items))
+		end
+		return false
+	end
+	b.tokens -= items
+	return true
+end
 local _roadService: any = nil
 local _economyService: any = nil
 -- Territory gate (TerritoryService.isPointAllowed), injected by Bootstrap: a player may
 -- only plant on land the city owns. No check injected (tests, tooling) means nothing is
 -- gated. See plantOne for the two things it deliberately does NOT cover.
 local _territoryCheck: ((Vector3) -> boolean)? = nil
+-- Told after a player's hand edit lands (place / remove / move), so the city is saved soon
+-- after rather than whenever the next autosave comes round. Injected by Bootstrap
+-- (CitySlotService.saveSoon); unset means nobody is told.
+local _onEdited: (() -> ())? = nil
 
 -- key -> its index in NatureCatalog.order, so serialize can store a small int per prop.
 local _keyIndex: { [string]: number } = {}
@@ -780,6 +819,18 @@ function NaturePlaceService.setTerritoryCheck(fn: ((Vector3) -> boolean)?)
 	_territoryCheck = fn
 end
 
+function NaturePlaceService.setEditListener(fn: (() -> ())?)
+	_onEdited = fn
+end
+
+local function edited()
+	local fn = _onEdited
+	if fn then
+		local ok, err = pcall(fn)
+		if not ok then warn("[NaturePlaceService] edit listener failed: " .. tostring(err)) end
+	end
+end
+
 -- How many props stand in the city (trees, bushes, rocks, shapes, car parks). Read by
 -- ProgressionService, which pays XP on new highs of it.
 function NaturePlaceService.countProps(): number
@@ -795,14 +846,10 @@ end
 
 function NaturePlaceService.Bind()
 	Net.RequestPlaceNature.OnServerEvent:Connect(function(player: Player, items: any)
-		local now = os.clock()
-		local last = _lastCallAt[player]
-		if last and now - last < CALL_COOLDOWN then return end
-		_lastCallAt[player] = now
-
 		if typeof(items) ~= "table" then return end
 		local n = #items
 		if n == 0 or n > MAX_PER_CALL then return end
+		if not takeBudget(player, "edit", n) then return end
 
 		local folder = natureFolder()
 		if not folder then return end
@@ -833,20 +880,17 @@ function NaturePlaceService.Bind()
 			-- an event every player in the city should see and hear. The tree replicates.
 			Net.PlacementCharged:FireClient(player, Vector3.new(pos.X, groundY(pos.X, pos.Z), pos.Z), charged, "Nature")
 		end
+		if charged > 0 then edited() end
 	end)
 
 	-- Bulldozer removal: client sends the planted models to destroy. Only instances that
 	-- are still children of this city's Nature folder AND carry the NatureProp tag are
 	-- touched -- a spoofed instance ref outside the folder is ignored.
 	Net.RequestRemoveNature.OnServerEvent:Connect(function(player: Player, list: any)
-		local now = os.clock()
-		local last = _lastRemoveAt[player]
-		if last and now - last < CALL_COOLDOWN then return end
-		_lastRemoveAt[player] = now
-
 		if typeof(list) ~= "table" then return end
 		local n = #list
 		if n == 0 or n > MAX_PER_CALL then return end
+		if not takeBudget(player, "remove", n) then return end
 
 		local folder = natureFolder()
 		if not folder then return end
@@ -855,6 +899,7 @@ function NaturePlaceService.Bind()
 		-- the client. One credit for the whole call rather than one per prop: a box selection
 		-- is one action to the player.
 		local refund = 0
+		local removed = 0
 		for _, inst in list do
 			if typeof(inst) == "Instance" and inst.Parent == folder
 				and CollectionService:HasTag(inst, "NatureProp") then
@@ -863,26 +908,25 @@ function NaturePlaceService.Bind()
 				if entry then refund += entry.cost * REMOVE_REFUND end
 				if inst:IsA("Model") and isLot(inst) then unpadLot(inst) end
 				inst:Destroy()
+				removed += 1
 			end
 		end
 		if refund >= 1 and _economyService then _economyService.credit(math.floor(refund)) end
+		if removed > 0 then edited() end
 	end)
 
 	-- Move tool: re-pivot planted props. Same rules as planting -- the prop must still
 	-- be a tagged child of this city's Nature folder, the new spot must be in bounds and
 	-- clear of roads/buildings, and Y re-snaps to the authoritative terrain.
 	Net.RequestMoveNature.OnServerEvent:Connect(function(player: Player, list: any)
-		local now = os.clock()
-		local last = _lastCallAt[player]
-		if last and now - last < CALL_COOLDOWN then return end
-		_lastCallAt[player] = now
-
 		if typeof(list) ~= "table" then return end
 		local n = #list
 		if n == 0 or n > MAX_PER_CALL then return end
+		if not takeBudget(player, "edit", n) then return end
 
 		local folder = natureFolder()
 		if not folder then return end
+		local moved = false
 		for _, item in list do
 			if typeof(item) ~= "table" then continue end
 			local inst = item.inst
@@ -987,12 +1031,13 @@ function NaturePlaceService.Bind()
 			if lot then unpadLot(inst) end
 			inst:PivotTo(propPivot(pos.X, pos.Z, yaw, atY, pitch, roll, yOff))
 			if lot then padLot(inst) end
+			moved = true
 		end
+		if moved then edited() end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player: Player)
-		_lastCallAt[player] = nil
-		_lastRemoveAt[player] = nil
+		_buckets[player] = nil
 	end)
 end
 

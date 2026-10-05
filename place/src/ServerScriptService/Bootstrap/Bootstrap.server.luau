@@ -819,6 +819,9 @@ CitySlotService.SetPlayerStatsService(PlayerStatsService)
 CitySlotService.SetCityTeleport(CityTeleport)
 -- A city carries its own solo/multiplayer choice; the join gate only learns it on load.
 CitySlotService.SetPlaceAccessService(PlaceAccessService)
+-- Bulldozed (or planted / moved) trees are saved shortly after, not only on the next autosave
+-- or a clean leave -- otherwise a session that ended any other way brought them all back.
+NaturePlaceService.setEditListener(CitySlotService.saveSoon)
 -- Lets the online directory name the city this server is showing, so an admin's list reads
 -- "Riverside, pop 400" instead of just a player name.
 PlayerDirectoryService.SetCityContext(CitySlotService.standingCity)

@@ -1182,6 +1182,36 @@ local function saveActiveSlot(userId: number, release: boolean): boolean
 	return okAll
 end
 
+-- SAVE SOON. A hand edit the player would be upset to lose -- bulldozing trees above all --
+-- schedules a save a short while later, instead of waiting for the five-minute autosave or a
+-- clean leave. Without it a session that ended any other way (a crash, a Studio Stop, a quick
+-- rejoin) loaded the last save, and every tree deleted since stood there again. Debounced and
+-- spaced (SOON_SAVE_DELAY after the first edit, never within SOON_SAVE_GAP of the last save) so
+-- a bulldozing spree is one DataStore save, not one per tree.
+local SOON_SAVE_DELAY = 20
+local SOON_SAVE_GAP = 60
+local _soonSaveQueued = false
+local _lastSoonSaveAt = -math.huge
+
+function CitySlotService.saveSoon()
+	if _soonSaveQueued then return end
+	local ownerId = _cityOwnerUserId
+	if not (_cityLoaded and ownerId and _sessions[ownerId]) then return end
+	_soonSaveQueued = true
+	local wait = math.max(SOON_SAVE_DELAY, SOON_SAVE_GAP - (os.clock() - _lastSoonSaveAt))
+	task.delay(wait, function()
+		_soonSaveQueued = false
+		local id = _cityOwnerUserId
+		if not (_cityLoaded and id and _sessions[id]) or _loadInProgress then return end
+		_lastSoonSaveAt = os.clock()
+		_saveDiag.lastReason = "edit"
+		local ok, err = pcall(saveActiveSlot, id, false)
+		if not ok then
+			warn("[CitySlotService] edit save failed: " .. tostring(err))
+		end
+	end)
+end
+
 -- ---------- city load ----------
 
 -- THE ENTRY HOLD. Nothing in the city moves until the player who loaded it is actually
@@ -1509,7 +1539,9 @@ loadStep("generate terrain")
 	-- Camera is per PLAYER, not per city: on a guest load userId is the owner's.
 	_cameraStateByUserId[player.UserId] = cameraState
 
-	if session.persistent then
+	-- A brand-new city's first save (below) writes the index itself; writing it here as well
+	-- would put two writes on the same key seconds apart, which DataStore queues.
+	if session.persistent and typeof(blob) == "table" then
 		task.spawn(writeIndex, userId, session.index, false)
 	end
 
@@ -1519,6 +1551,18 @@ loadStep("generate terrain")
 		os.clock() - tLoad0, tRead - tLoad0, tRestore - tRead, os.clock() - tRestore))
 	Telemetry.funnelStep(1, "city_loaded", player)
 	fireLoadResult(player, true, { slot = table.clone(meta), camera = cameraState })
+
+	-- A brand-new city is stored the moment it exists, behind the load (the player is already
+	-- told it is ready). Until its first save a slot has NO blob, so every load of it ran the map
+	-- generation again -- the same seed regrows the same trees, so a city reloaded before its
+	-- first save came back with every tree the player had bulldozed standing again (and none of
+	-- their roads). Now generation runs once per slot; edits after it ride saveSoon / autosave.
+	if typeof(blob) ~= "table" and session.persistent then
+		task.spawn(function()
+			local ok, err = pcall(saveActiveSlot, userId, false)
+			if not ok then warn("[CitySlotService] first save of a new city failed: " .. tostring(err)) end
+		end)
+	end
 end
 
 -- ---------- friends' cities (lobby) ----------
