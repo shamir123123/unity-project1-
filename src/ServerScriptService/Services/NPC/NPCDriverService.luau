@@ -129,6 +129,8 @@ Tuning.TURN_WAIT_MINOR = 3
 Tuning.EXIT_DETOUR_TIME = 12
 Tuning.EXIT_DETOUR_RETRY = 10
 Tuning.STALLED_IN_BOX_SPEED = 2 -- studs/s: a car in the box slower than this is standing there
+Tuning.LONG_VEHICLE_HALF = 7    -- studs: half-length past which a vehicle sweeps wide in a turn
+Tuning.LONG_VEHICLE_SWEEP = 6   -- studs of extra path clearance a long vehicle's turn needs
 Tuning.EXIT_DETOUR_ALLOWANCE = 40 -- s a way round may cost over the blocked way (the wait it saves)
 -- A car waiting to pull out of (or turn into) a driveway asks the lanes it crosses to leave
 -- it a gap; the request lapses unless its gate keeps asking (see RequestRoadGap).
@@ -1001,7 +1003,7 @@ local function pointSegmentDistanceSq(p: Vector3, a: Vector3, b: Vector3): numbe
 	return x*x+z*z
 end
 
-local function segmentsNear(a: Vector3, b: Vector3, c: Vector3, d: Vector3): boolean
+local function segmentsNear(a: Vector3, b: Vector3, c: Vector3, d: Vector3, clear: number?): boolean
 	local ax, az, bx, bz = b.X-a.X, b.Z-a.Z, d.X-c.X, d.Z-c.Z
 	local denominator = ax*bz-az*bx
 	if math.abs(denominator)>1e-9 then
@@ -1009,29 +1011,38 @@ local function segmentsNear(a: Vector3, b: Vector3, c: Vector3, d: Vector3): boo
 		local t, u = (cx*bz-cz*bx)/denominator, (cx*az-cz*ax)/denominator
 		if t>=0 and t<=1 and u>=0 and u<=1 then return true end
 	end
-	local clearanceSq = Tuning.MOVEMENT_PATH_CLEAR*Tuning.MOVEMENT_PATH_CLEAR
+	local clearance = clear or Tuning.MOVEMENT_PATH_CLEAR
+	local clearanceSq = clearance*clearance
 	return math.min(pointSegmentDistanceSq(a,c,d),pointSegmentDistanceSq(b,c,d),
 		pointSegmentDistanceSq(c,a,b),pointSegmentDistanceSq(d,a,b))<clearanceSq
 end
 
-local function movementPathsConflict(g: any, edge: any, nextId: string?, otherEdge: any, otherNextId: string?): boolean
+-- `a`/`b`: the two vehicles, when known. A bus or a long truck sweeps well outside the path its
+-- centre follows through a turn, so for one of those paths a car-width apart still meet (a bus
+-- turning left clipped the car turning right in from the cross street).
+local function movementPathsConflict(g: any, edge: any, nextId: string?, otherEdge: any, otherNextId: string?, a: DriverState?, b: DriverState?): boolean
 	if not nextId or not otherNextId or nextId==otherNextId or edge.id==otherEdge.id then return true end
+	local wide = (a ~= nil and (a.halfLength or 0) > Tuning.LONG_VEHICLE_HALF)
+		or (b ~= nil and (b.halfLength or 0) > Tuning.LONG_VEHICLE_HALF)
 	local meta = getNodeMeta(g,edge.toNode)
 	local version = g:Version()
 	if meta.movementVersion~=version then
 		meta.movementVersion=version
 		meta.movementConflicts={}
+		meta.wideConflicts={}
 	end
 	local key, otherKey = edge.id..">"..nextId, otherEdge.id..">"..otherNextId
-	local cache = meta.movementConflicts
+	local cache = if wide then meta.wideConflicts else meta.movementConflicts
+	if not cache then cache = {}; meta.wideConflicts = cache end
 	local row = cache[key]
 	if row and row[otherKey]~=nil then return row[otherKey] end
 	local mine = g:GetConnectionPoints(edge.id,nextId)
 	local theirs = g:GetConnectionPoints(otherEdge.id,otherNextId)
 	local conflict = #mine<2 or #theirs<2
+	local clear = if wide then Tuning.MOVEMENT_PATH_CLEAR + Tuning.LONG_VEHICLE_SWEEP else nil
 	for i=1,#mine-1 do
 		for j=1,#theirs-1 do
-			if segmentsNear(mine[i],mine[i+1],theirs[j],theirs[j+1]) then conflict=true;break end
+			if segmentsNear(mine[i],mine[i+1],theirs[j],theirs[j+1],clear) then conflict=true;break end
 		end
 		if conflict then break end
 	end
@@ -1040,10 +1051,6 @@ local function movementPathsConflict(g: any, edge: any, nextId: string?, otherEd
 	return conflict
 end
 
--- How far along the OTHER car's connector it still crosses or brushes our path; past that
--- (its tail beyond it) it has cleared us. A moving car used to hold the line until it left
--- the whole box, so every crossing car cost the side road its full trip through it.
--- Cached per graph version like movementPathsConflict.
 -- Whether `other`'s body is still in front of this car, across its lane: a slow turner swinging
 -- off our path takes a car length or two to clear it, and a straight car released as soon as the
 -- paths parted ran into its rear corner (lab, 2026-10-05: most junction collisions).
@@ -1062,6 +1069,10 @@ function Gridlock.stillAhead(state: DriverState, other: DriverState): boolean
 	return false
 end
 
+-- How far along the OTHER car's connector it still crosses or brushes our path; past that
+-- (its tail beyond it) it has cleared us. A moving car used to hold the line until it left
+-- the whole box, so every crossing car cost the side road its full trip through it.
+-- Cached per graph version like movementPathsConflict.
 function Gridlock.conflictEnd(g: any, edge: any, nextId: string, other: DriverState): number
 	local meta = getNodeMeta(g, edge.toNode)
 	if meta.conflictEndVersion ~= g:Version() then
@@ -1108,7 +1119,7 @@ local function signalizedClear(g: any, state: DriverState, edge: any, nodeId: nu
 		local otherEdge = g:GetEdge(other.edgeId)
 		-- The lane beside ours on the same approach runs parallel through the box: it is not
 		-- cross traffic. Counting it stopped every car level with a neighbour at the line.
-		if not otherEdge or not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,other.nextEdgeId) then continue end
+		if not otherEdge or not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,other.nextEdgeId,state,other) then continue end
 		if Gridlock.hasCleared(g, edge, state.pendingNextEdgeId, other) then continue end
 		if isOpposite(myDir, otherEdge.toDir) then
 			-- Oncoming: a crossing turn conflicts with a straight/nearside move, whichever of
@@ -1150,7 +1161,7 @@ local function signalizedClear(g: any, state: DriverState, edge: any, nodeId: nu
 			local waitingForExit = otherNext ~= nil and (other.currentSpeed or 0) < 0.5
 				and not exitLaneHasRoom(g, other, otherNext)
 			if not waitingForExit and otherMove ~= crossingTurn() and TrafficSignalService.CanGo(other.edgeId, otherNext)
-				and movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,otherNext) then
+				and movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,otherNext,state,other) then
 				local cum = PathFollower.getCum(otherEdge)
 				local total = cum and cum[#cum] or 0
 				local distToStop = total - getStopLineGap(g, nodeId, otherEdge) - other.edgeDist
@@ -1254,7 +1265,7 @@ local function unsignalizedClear(g: any, state: DriverState, edge: any, nodeId: 
 			if etaToStopLine(g, other, otherEdge, nodeId) >= gap then continue end
 			local otherNext = other.pendingNextEdgeId
 			local otherMove = otherNext and otherEdge.outMovement and otherEdge.outMovement[otherNext] or "straight"
-			if not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,otherNext)
+			if not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,otherNext,state,other)
 				or not movesConflict(myDir, myMove, otherEdge, otherMove) then continue end
 			if isOpposite(myDir, otherEdge.toDir) then
 				-- Oncoming: of a crossing pair, the crossing turn gives way.
@@ -1398,7 +1409,7 @@ local function roundaboutClear(g: any, state: DriverState, nodeId: number, _node
 		if other == state or not other.connector or not other.nextEdgeId or not other.model.Parent then continue end
 		local otherEdge = g:GetEdge(other.edgeId)
 		if otherEdge and not otherEdge.isRoundabout and other.edgeId ~= state.edgeId and other.nextEdgeId ~= nextId
-			and movementPathsConflict(g, approach, nextId, otherEdge, other.nextEdgeId) then
+			and movementPathsConflict(g, approach, nextId, otherEdge, other.nextEdgeId, state, other) then
 			return false
 		end
 	end
@@ -1553,7 +1564,7 @@ local function boxHasConflict(g: any, state: DriverState, edge: any, nodeId: num
 			-- keeps its cars apart; a diverging leader holds only until its tail clears.
 			continue
 		end
-		if not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,other.nextEdgeId) then continue end
+		if not movementPathsConflict(g,edge,state.pendingNextEdgeId,otherEdge,other.nextEdgeId,state,other) then continue end
 		if Gridlock.hasCleared(g, edge, state.pendingNextEdgeId, other) then continue end
 		if blocksMyPath(g, other, edge, state.pendingNextEdgeId) then return true end
 	end
@@ -1565,7 +1576,7 @@ local function boxHasConflict(g: any, state: DriverState, edge: any, nodeId: num
 			local otherNextId = other.pendingNextEdgeId
 			if other == state or other.connector or not otherNextId or not other.model.Parent then continue end
 			if distToStopLine(g, other, inEdge, nodeId) >= -0.1 then continue end
-			if movementPathsConflict(g,edge,state.pendingNextEdgeId,inEdge,otherNextId)
+			if movementPathsConflict(g,edge,state.pendingNextEdgeId,inEdge,otherNextId,state,other)
 				and blocksMyPath(g, other, edge, state.pendingNextEdgeId) then return true end
 		end
 	end
@@ -1613,7 +1624,7 @@ local function owesCourtesy(g: any, state: DriverState, edge: any, nodeId: numbe
 	local farSide = getNodeMeta(g, nodeId).farSide
 	if (farSide[claimEdge.id] == true) ~= (farSide[edge.id] == true) then return false end
 	local claimMove = claimEdge.outMovement and claimEdge.outMovement[claimant.pendingNextEdgeId] or "straight"
-	return movementPathsConflict(g,edge,state.pendingNextEdgeId,claimEdge,claimant.pendingNextEdgeId)
+	return movementPathsConflict(g,edge,state.pendingNextEdgeId,claimEdge,claimant.pendingNextEdgeId,state,claimant)
 		and movesConflict(myDir, myMove, claimEdge, claimMove)
 end
 

@@ -142,6 +142,8 @@ RoadSceneryService.Start()
   leg the roads no longer carry replans from where it stands (or waits) instead of asking the
   lane for a gap forever. Buses accelerate like buses, so stops served per hour went down
   about 30% in the lab.
+- Junction checks give buses and long trucks room for their swept path in turns. Before, a
+  turning bus clipped cars turning in from the cross street.
 
 **Through traffic not loading**
 - A restored car that could never find the 3 s empty-lane gap stayed hidden but counted as
@@ -206,8 +208,8 @@ Other lab checks:
   (target 600). After a save and reload, every restored car is driving or dropped within 45 s.
 - **Route groups:** commuters take the shorter street, leisure the tree-lined one, freight and
   visitors avoid the housing street (`scen/scenery.luau` PASS).
-- **Buses:** 2 bus-vs-car touches in 400 s (fewer than before) and about 30% fewer stops served
-  per hour, because buses now accelerate like buses.
+- **Buses:** 1 bus-vs-car touch in four 400 s runs, where the original had several per run.
+  About 30% fewer stops served per hour, because buses now accelerate like buses.
 
 The grids are slower door to door because cars accelerate, brake and leave gaps like real cars,
 and wait for gaps they can actually make. Most of the original's grid speed came from cars that
@@ -215,8 +217,9 @@ overlapped in the box: 40 collisions in the heavy grid against 10 now.
 
 ## 6b. Known limits
 
-- A long bus turning left can still clip a car turning right from the cross street. Turn conflicts
-  are planned with car-width paths, and a bus sweeps wider.
+- Buses and long trucks plan their turns with a 6-stud wider path than cars, because the body
+  sweeps outside the centre line. A bus's tail can still brush a car that starts its turn just
+  as the bus finishes (about once in four lab runs).
 - A side road joining a busy main road without lights queues, as it would in life. The main road
   lets a car in after it has waited about 6 s, but only when it can stop comfortably. The fix is
   the player's: lights, a roundabout, or another route.
