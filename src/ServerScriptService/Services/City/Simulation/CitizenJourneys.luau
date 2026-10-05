@@ -119,6 +119,10 @@ local function journey(h: Household, a: Adult, trip: number, fromDoor: Vector3?,
 		elseif a.outKind == "leisure" then "Evening out"
 		elseif a.outKind == "apply" then "Travelling to a job application"
 		else "Citizen trip")
+	-- Which group's mind prices the roads (DriverProfile): shopping and evenings out are not
+	-- in a hurry and take the nicer street; work, school and job hunting go the quick way.
+	car:SetAttribute("RouteStyle", if a.outKind == "shop" or a.outKind == "leisure" or a.outKind == "walk"
+		then "leisure" else "commuter")
 	-- Leg 1: walk from the door to the parked car.
 	a.walkerId = context.getWalkingService().spawnCommuter(fromDoor, car:GetPivot().Position, function()
 		if stale() then return end

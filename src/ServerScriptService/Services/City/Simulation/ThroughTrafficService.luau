@@ -344,7 +344,8 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 	-- solved over and over. Give each one its own mind BEFORE planning (the seed is
 	-- stamped on the car below, so the driver keeps the same personality), and the
 	-- crossings fan out across parallel roads instead of grinding one corridor.
-	local profile = DriverProfile.forSeed(seed)
+	-- A stranger passing through: main roads, off the side streets (DriverProfile.VISITOR).
+	local profile = DriverProfile.VISITOR
 	local edgeIds: { string }? = nil
 	local startDist: number? = nil
 
@@ -390,7 +391,8 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 
 	local car = VehicleFactory.build(CAR_NAME, variant)
 	car:SetAttribute("Through", true) -- observable marker: through-cars vs household cars
-	car:SetAttribute("DriverSeed", seed) -- the mind this route was planned with
+	car:SetAttribute("DriverSeed", seed)
+	car:SetAttribute("RouteStyle", "visitor") -- the mind this route was planned with
 	car:PivotTo(atCF)
 	car.Parent = carFolder()
 	_cars[car] = { seed = seed, variant = variant, exitId = exitConn.id,

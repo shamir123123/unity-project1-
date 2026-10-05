@@ -3249,6 +3249,7 @@ local function resumeRestoredCar(h: Household, carState: any, keys: any, bySaveK
 	adult.parkStallKey = choice.stallKey
 
 	local kind = if typeof(carState.k) == "string" then carState.k else if adult.jobId == targetId then "work" else "shop"
+	car:SetAttribute("RouteStyle", if kind == "shop" or kind == "leisure" then "leisure" else "commuter")
 	adult.tripId += 1
 	local trip = adult.tripId
 	adult.stage = "transit"

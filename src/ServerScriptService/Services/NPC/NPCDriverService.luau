@@ -128,6 +128,7 @@ Tuning.TURN_WAIT_MINOR = 3
 -- full streets (each head waiting on the next) always has a car that can turn away.
 Tuning.EXIT_DETOUR_TIME = 12
 Tuning.EXIT_DETOUR_RETRY = 10
+Tuning.EXIT_DETOUR_ALLOWANCE = 40 -- s a way round may cost over the blocked way (the wait it saves)
 -- A car waiting to pull out of (or turn into) a driveway asks the lanes it crosses to leave
 -- it a gap; the request lapses unless its gate keeps asking (see RequestRoadGap).
 Tuning.GAP_REQUEST_TTL = 3
@@ -2186,7 +2187,14 @@ function Gridlock.detour(g: any, state: DriverState, edge: any, blockedId: strin
 	if state.profile and state.profile.keepRoute then return false end -- a line bus waits its turn, it never takes another exit
 	local goal = state.goalPos
 	if not goal or not state.route then return false end
-	local best, bestCost = nil, math.huge
+	-- What staying put is worth: the planned way on from the blocked exit. A way round must
+	-- not cost much more than that plus the wait it saves, and it must not come back through
+	-- this junction -- a lap of the block (or a dip into a side road to turn round) to try the
+	-- same exit again brings nothing to the trip (user, 2026-10-05).
+	local at = table.find(state.route, blockedId, state.routeIndex or 1)
+	local stay = if at then g:EstimatePathCost(state.route, at, state.profile) else math.huge
+	local here = edge.toNode
+	local best, bestCost = nil, stay + Tuning.EXIT_DETOUR_ALLOWANCE
 	for _, altId in edge.out do
 		if altId == blockedId or (edge.outMovement and edge.outMovement[altId]) == "uturn" then continue end
 		local alt = g:GetEdge(altId)
@@ -2194,6 +2202,12 @@ function Gridlock.detour(g: any, state: DriverState, edge: any, blockedId: strin
 		local ok, _, tail = pcall(g.FindPath, g, alt.points[1], goal, nil, state.vehicleClass, state.profile,
 			{ edgeId = altId, dist = 0 })
 		if not ok or typeof(tail) ~= "table" or tail[1] ~= altId then continue end
+		local loops = false
+		for i = 2, #tail do
+			local e = g:GetEdge(tail[i])
+			if e and e.toNode == here and i < #tail then loops = true; break end
+		end
+		if loops then continue end
 		local cost = g:EstimatePathCost(tail, 1, state.profile)
 		if cost < bestCost then best, bestCost = tail, cost end
 	end
@@ -3996,6 +4010,7 @@ local function trySpawn(): boolean
 
 		-- Ambient roamers get a mind too: they are the background traffic the routed
 		-- cars have to share the road with, so they must not all drive identically.
+		car:SetAttribute("RouteStyle", "leisure") -- out for a drive: takes the nicer street
 		local profile = DriverProfile.fromModel(car)
 		local spd = edgeSpeed(edge) * (if profile then profile.speedFactor else 1)
 		local hgt = car:GetAttribute("NPCHeightOffset") or 0.6
@@ -4149,6 +4164,10 @@ function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos
 	-- between CitizenService and this service and stays the same car's personality.
 	_nextBookingToken += 1
 	local bookingToken = _nextBookingToken
+	-- A truck nobody gave a trip group drives as freight: big roads, few turns, no housing streets.
+	if vehicleClass == VehicleTypes.Truck and model:GetAttribute("RouteStyle") == nil then
+		model:SetAttribute("RouteStyle", "freight")
+	end
 	local profile = DriverProfile.withToken(DriverProfile.fromModel(model), bookingToken)
 
 	local state: DriverState = {

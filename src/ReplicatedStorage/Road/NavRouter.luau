@@ -149,6 +149,8 @@ end
 -- of the moment) prices pure distance, at a constant speed no faster than the A* heuristic's so
 -- the search stays admissible: no congestion, fuel, signals, road class or turns.
 local SHORTEST_SPEED = 56
+-- The most a street's look can move its price either way (NavCost.BEST_CASE_DISCOUNT counts it).
+local SCENERY_MAX_SWAY = 0.3
 -- ...and a lane change there costs about the distance the move really adds (a flat 3 s would read
 -- as ~170 studs of road, and the line would loop round a block rather than change lanes to turn).
 local SHORTEST_LANE_CHANGE = 12 / SHORTEST_SPEED
@@ -216,6 +218,22 @@ local function edgeRouteCost(graph: any, edge: any, distance: number?, profile: 
 
 	seconds *= NavCost.classFactor(edge.roadClass, if profile then profile.useHighways else nil)
 	seconds += NavCost.classPenaltySeconds(edge.roadClass)
+
+	-- What the street is like (RoadSceneryService publishes it per road): a leisure trip leans
+	-- toward the green or waterside street and away from the smoky one, and trucks and
+	-- strangers keep off local streets lined with homes unless the trip ends there. Matters of
+	-- taste, so only the profiles that carry them, and never below NavCost's heuristic floor.
+	local look = if profile then (graph._scenery and graph._scenery[edge.segmentId]) else nil
+	if profile and look then
+		local scenery = profile.scenery or 0
+		if scenery > 0 then
+			seconds *= 1 - math.clamp(scenery * look.scenic, -SCENERY_MAX_SWAY, SCENERY_MAX_SWAY)
+		end
+		local aversion = profile.residentialAversion or 0
+		if aversion > 0 and (edge.roadClass == "local" or edge.roadClass == "alley") then
+			seconds *= 1 + aversion * look.residential
+		end
+	end
 
 	return seconds * DriverProfile.edgeBias(profile, roadKey(edge))
 end

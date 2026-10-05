@@ -122,10 +122,12 @@ local WEBSTER_MAX_SATURATION = 0.95
 -- A* into greedy best-first, returning whatever route happened to point at the goal.
 -- To stay ADMISSIBLE it must never over-estimate, so it divides by the fastest
 -- travel anything could possibly achieve: the top speed limit, further inflated by
--- the largest discount a persona's class preference and bias can stack up.
+-- the largest discount a profile's class preference, a street's look (at most 30% off,
+-- NavRouter SCENERY_MAX_SWAY) and bias can stack up: 0.82 * 0.7 for a truck on a lovely
+-- motorway is still above the floor.
 local STUDS_PER_KMH = (1 / 3.6) / RoadConstants.STUD_TO_METER
 local MAX_SPEED_KMH = 120 -- fastest speedLimit in RoadTypeCatalog
-local BEST_CASE_DISCOUNT = 0.5 -- floor on classFactor * edgeBias
+local BEST_CASE_DISCOUNT = 0.5 -- floor on classFactor * scenery * edgeBias
 local HEURISTIC_SPEED = MAX_SPEED_KMH * STUDS_PER_KMH / BEST_CASE_DISCOUNT
 
 function NavCost.heuristicSeconds(distance: number): number
