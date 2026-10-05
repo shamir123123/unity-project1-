@@ -28,6 +28,15 @@ local conns = OCS.list()
 print("connections", #conns)
 for _, c in conns do print("  ", c.id, c.dir, c.roadType, c.nodeId) end
 W.Driver.SetOutsideConnService(OCS)
+local DDCOUNT = { ok = 0, fail = 0 }
+do
+	local orig = W.Driver.DriveDirected
+	W.Driver.DriveDirected = function(...)
+		local r = orig(...)
+		if r then DDCOUNT.ok += 1 else DDCOUNT.fail += 1 end
+		return r
+	end
+end
 local TTS = W.req("ServerScriptService.Services.City.Simulation.ThroughTrafficService")
 local frac = tonumber(process.args[4]) or 0.74
 TTS.Init(W.RoadService, OCS, { getDayFraction = function() return frac end, getDay = function() return 1 end })
@@ -36,7 +45,7 @@ for t = 1, math.floor(secs / 30) do
 	W.run(30, 30, function(i) if i % 6 == 0 then W.checkCollisions() end end)
 	local d = TTS.getDemand()
 	local c = W.census()
-	print(string.format("t=%4ds target=%d live=%d drivers=%d stopped=%d avgV=%.1f", math.floor(E.now), d.target, d.live, c.n, c.stopped, c.avgSpeed))
+	print(string.format("t=%4ds target=%d live=%d drivers=%d stopped=%d avgV=%.1f ddOk=%d ddFail=%d", math.floor(E.now), d.target, d.live, c.n, c.stopped, c.avgSpeed, DDCOUNT.ok, DDCOUNT.fail))
 end
 -- save and restore
 local blob = TTS.serialize()

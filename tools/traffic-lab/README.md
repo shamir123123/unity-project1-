@@ -56,7 +56,12 @@ Leave `LAB_PATCH` empty to run the originals for comparison. `LAB_SEED` picks th
 | `scen/scenery.luau` | Route choice by trip group (PASS/FAIL) |
 | `scen/bench.luau` | Smoke test of TrafficBenchmark |
 | `scen/prof.luau <cars>` | Where a driver frame goes (helper calls per frame) |
+| `scen/sharedlane.luau` | A turner and a straight car from one lane through a box: do they stay apart? |
 | `mode_table.luau` | Mode-choice shares by distance, parking, weather, price; school-run shares |
+| `captured_restore.luau <bodyLength>` | The NPCDriverService spec's captured-city restore, with details on stuck cars |
+
+`python3 summarize.py <origDir> <newDir>` turns two `regress_multi.sh` output folders into the
+comparison table in APPLY.md.
 
 ## Specs
 

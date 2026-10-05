@@ -103,6 +103,7 @@ function C.report(name, res)
 	table.sort(rs)
 	print("  reasons: " .. table.concat(rs, " "))
 	print(string.format("  COLLISIONS %d", W.collisions.events))
+	for _, smp in W.collisions.samples do print("    " .. smp) end
 	if W.timeBy then
 		local tot, list = 0, {}
 		for k, v in W.timeBy do tot += v; table.insert(list, { k, v }) end

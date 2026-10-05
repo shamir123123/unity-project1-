@@ -336,8 +336,14 @@ function W.checkCollisions()
 						if not last or E.now - last > 1 then
 							W.collisions.events += 1
 							if #W.collisions.samples < 8 then
-								table.insert(W.collisions.samples, string.format("t=%.0f %s(%s,%.1f) x %s(%s,%.1f) at (%.0f,%.0f)", E.now,
-									a.m.Name, tostring(a.s.stopReason), a.s.currentSpeed or 0, b.m.Name, tostring(b.s.stopReason), b.s.currentSpeed or 0, a.p.X, a.p.Z))
+								local function mv(st)
+									local e = st.edgeId and W.graph:GetEdge(st.edgeId)
+									local m = e and st.nextEdgeId and e.outMovement and e.outMovement[st.nextEdgeId]
+									local sig = e and W.Signals.HasSignal and W.Signals.HasSignal(e.toNode)
+									return string.format("%s>%s %s%s cd=%.1f", tostring(st.edgeId), tostring(st.nextEdgeId), tostring(m), if sig then " SIG" else "", st.connDist or -1)
+								end
+								table.insert(W.collisions.samples, string.format("t=%.0f %s(%s,%.1f) x %s(%s,%.1f) at (%.0f,%.0f) [%s | %s]", E.now,
+									a.m.Name, tostring(a.s.stopReason), a.s.currentSpeed or 0, b.m.Name, tostring(b.s.stopReason), b.s.currentSpeed or 0, a.p.X, a.p.Z, mv(a.s), mv(b.s)))
 							end
 						end
 						W.collisions.pairs[key] = E.now

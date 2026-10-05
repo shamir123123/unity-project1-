@@ -10,7 +10,7 @@ for seed in 1 2 3; do
   jobs+=("lot|$seed|scen/lot.luau 0.25 0.1 300 NarrowRoad")
   jobs+=("lotS|$seed|scen/lot.luau 0.25 0.1 300 NarrowRoad single")
 done
-printf '%s\n' "${jobs[@]}" | xargs -P 4 -I{} bash -c '
+printf '%s\n' "${jobs[@]}" | xargs -P ${PAR:-4} -I{} bash -c '
   IFS="|" read -r name seed cmd <<< "{}"
   out=$(LAB_SEED=$seed LAB_PATCH='"$P"' timeout 1500 lune run $cmd 2>&1 | grep -E "^RESULT|COLLISIONS|^LOT" | tr "\n" " ")
   echo "[$name s$seed] $out" > '"$OUT"'/$name.$seed.txt'
