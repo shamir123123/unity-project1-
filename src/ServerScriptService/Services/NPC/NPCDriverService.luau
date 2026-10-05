@@ -1033,7 +1033,10 @@ local function movementPathsConflict(g: any, edge: any, nextId: string?, otherEd
 	end
 	local key, otherKey = edge.id..">"..nextId, otherEdge.id..">"..otherNextId
 	local cache = if wide then meta.wideConflicts else meta.movementConflicts
-	if not cache then cache = {}; meta.wideConflicts = cache end
+	if not cache then
+		cache = {}
+		if wide then meta.wideConflicts = cache else meta.movementConflicts = cache end
+	end
 	local row = cache[key]
 	if row and row[otherKey]~=nil then return row[otherKey] end
 	local mine = g:GetConnectionPoints(edge.id,nextId)
@@ -1059,14 +1062,11 @@ function Gridlock.stillAhead(state: DriverState, other: DriverState): boolean
 	local cf, ocf = state.smoothCFrame, other.smoothCFrame
 	if not cf or not ocf then return false end
 	-- Its centre or its tail: a turner's tail swings across our lane after its nose has left it.
-	local tail = ocf.Position - ocf.LookVector * (other.halfLength or STOP_LINE_CAR_BUFFER)
-	for _, p in { ocf.Position, tail } do
-		local rel = p - cf.Position
-		if rel:Dot(cf.LookVector) > 0 and math.abs(rel:Dot(cf.RightVector)) < Gridlock.CLEAR_LATERAL then
-			return true
-		end
-	end
-	return false
+	local look, right = cf.LookVector, cf.RightVector
+	local rel = ocf.Position - cf.Position
+	if rel:Dot(look) > 0 and math.abs(rel:Dot(right)) < Gridlock.CLEAR_LATERAL then return true end
+	rel -= ocf.LookVector * (other.halfLength or STOP_LINE_CAR_BUFFER)
+	return rel:Dot(look) > 0 and math.abs(rel:Dot(right)) < Gridlock.CLEAR_LATERAL
 end
 
 -- How far along the OTHER car's connector it still crosses or brushes our path; past that
@@ -1200,18 +1200,28 @@ end
 -- plus its own length, from the speed it has now, pulling away at ACCEL_RATE. A gap shorter
 -- than that is not a gap -- with cars that accelerate like cars, a standing start across a
 -- wide box takes ~3 s, and accepting the old fixed 2.5 s put two cars in the box at once.
+-- Seconds to cover `dist` studs starting at speed v, accelerating at ACCEL_RATE up to vmax.
+function Gridlock.timeToCover(dist: number, v: number, vmax: number): number
+	if dist <= 0 then return 0 end
+	local a = Tuning.ACCEL_RATE
+	vmax = math.max(vmax, 1)
+	v = math.clamp(v, 0, vmax)
+	local dAccel = (vmax * vmax - v * v) / (2 * a)
+	if dist <= dAccel then
+		return (math.sqrt(v * v + 2 * a * dist) - v) / a
+	end
+	return (vmax - v) / a + (dist - dAccel) / vmax
+end
+
 function Gridlock.crossTime(g: any, state: DriverState, edge: any, nextId: string?): number
 	if not nextId then return CROSS_GAP_TIME end
 	local pts = g:GetConnectionPoints(edge.id, nextId)
 	local len = 2 * (state.halfLength or STOP_LINE_CAR_BUFFER)
 	for i = 2, #pts do len += (pts[i] - pts[i - 1]).Magnitude end
 	local v = math.max(0, state.currentSpeed or 0)
-	local a = Tuning.ACCEL_RATE
 	local move = edge.outMovement and edge.outMovement[nextId]
-	local vmax = math.max(v, (if move then Tuning.TURN_ENTRY_SPEED[move] else nil) or state.speed or Tuning.MIN_TURN_SPEED, 1)
-	local dAccel = (vmax * vmax - v * v) / (2 * a)
-	local t = if len <= dAccel then (math.sqrt(v * v + 2 * a * len) - v) / a else (vmax - v) / a + (len - dAccel) / vmax
-	return t + CROSS_GAP_MARGIN
+	local vmax = math.max(v, (if move then Tuning.TURN_ENTRY_SPEED[move] else nil) or state.speed or Tuning.MIN_TURN_SPEED)
+	return Gridlock.timeToCover(len, v, vmax) + CROSS_GAP_MARGIN
 end
 
 local function etaToStopLine(g: any, other: DriverState, otherEdge: any, nodeId: number): number
@@ -1328,18 +1338,7 @@ local RingRules: any = {
 	LOOKBACK_EDGES = 8, -- ring pieces walked upstream at most
 }
 
--- Seconds to cover `dist` studs starting at speed v, accelerating at ACCEL_RATE up to vmax.
-function RingRules.timeToCover(dist: number, v: number, vmax: number): number
-	if dist <= 0 then return 0 end
-	local a = Tuning.ACCEL_RATE
-	vmax = math.max(vmax, 1)
-	v = math.clamp(v, 0, vmax)
-	local dAccel = (vmax * vmax - v * v) / (2 * a)
-	if dist <= dAccel then
-		return (math.sqrt(v * v + 2 * a * dist) - v) / a
-	end
-	return (vmax - v) / a + (dist - dAccel) / vmax
-end
+RingRules.timeToCover = Gridlock.timeToCover
 
 -- Whether `other`, on ring lane `laneId` (or turning onto it), is still circulating when it
 -- reaches `nodeId` -- false when it leaves the ring at or before that node. A routed car knows;
