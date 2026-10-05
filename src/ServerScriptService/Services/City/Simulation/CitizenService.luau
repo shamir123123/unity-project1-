@@ -404,7 +404,23 @@ local Cars: any = {
 	LOT_STANDOFF_CLEARANCE = 0.05,
 	ACCESS_CLEAR_RADIUS = 12,
 	GAP_SECONDS = 3,    -- s of clear road a driver wants before pulling out or turning in
+	JOIN_RETRY = 0.25,  -- s between tries of a car at the end of its pull-out to join the traffic
+	JOIN_TRIES = 60,    -- ...before it gives up and is put away (only a real overlap keeps refusing it)
 }
+-- A lot leg standing at its gate, waiting to pull out: still off the road, and yielding.
+function Cars.waitingToPullOut(trip: any): boolean
+	return trip.leavesRoad == false and trip.gate ~= nil and trip.dist >= (trip.gateDist or 0) - 1e-3
+end
+-- A car turning in off the road has the driveway first, as the rules of the road give it: one
+-- pulling out waits for it. The turning car used to wait instead -- in the lane, for the car
+-- pulling out, which was waiting for a gap in that same lane -- and both stood there for good
+-- while the street queued behind them (lab, 2026-10-05: one car park froze a whole avenue).
+function Cars.turnInNear(pos: Vector3, car: Model): boolean
+	return PathFollower.anyVehicleWithin(pos, Cars.ACCESS_CLEAR_RADIUS, function(other: Model): boolean
+		local trip = _trips[other]
+		return other ~= car and trip ~= nil and trip.leavesRoad == true
+	end)
+end
 function Cars.releaseRoadSlot(car: Model, token: number?): ()
 	local owner = Cars.roadTokens[car]
 	if not owner or (token and owner ~= token) then return end
@@ -533,6 +549,9 @@ type DriveOpts = {
 	attempts: number?,
 	startLane: {edgeId: string, dist: number}?,
 	restorePending: boolean?,
+	-- Coming back from a save onto the exact lane seat it was saved on: a saved queue did not
+	-- overlap, so the car only needs its own seat free, not an empty road around it.
+	exactSeat: boolean?,
 }
 function Cars.pinLane(g: any, pos: Vector3, heading: Vector3): {edgeId: string, dist: number}?
 	if not g.NearestEdge or not g.GetEdgesForSegment then return nil end
@@ -669,7 +688,7 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 	-- the rest wait their turn (measured live: 138 commuters of one parking-less block queued at
 	-- one kerb spot, ~2 a minute getting out; every one asking stopped the lane for nothing).
 	local restoreLane = if startLane then startLane.edgeId else nil
-	if o.restorePending and not NPCDriverService.RoadGapClear(from, Cars.GAP_SECONDS, car, nil, restoreLane) then
+	if o.restorePending and not o.exactSeat and not NPCDriverService.RoadGapClear(from, Cars.GAP_SECONDS, car, nil, restoreLane) then
 		local asker = if restoreLane then Cars.laneAsker[restoreLane] else nil
 		if restoreLane and (asker == nil or asker.car == car or os.clock() - asker.at > DRIVE_RETRY_DELAY * 2) then
 			Cars.laneAsker[restoreLane] = { car = car, at = os.clock() }
@@ -724,9 +743,11 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 		local gate: (() -> boolean)? = function()
 			if not curbEntry and not NPCDriverService.RoadGapClear(stoppedAt,Cars.GAP_SECONDS,car,true) then return false end
 			if o.exitGraphPoint and flatDist(o.exitGraphPoint,graphEnd) > 1 then return true end
+			-- Only a car actually driving out through the mouth holds us; one waiting at its gate
+			-- gives way to us (Cars.turnInNear).
 			return not PathFollower.anyVehicleWithin(graphEnd,Cars.ACCESS_CLEAR_RADIUS,function(other: Model): boolean
 				local trip = _trips[other]
-				return other ~= car and trip ~= nil and trip.leavesRoad == false
+				return other ~= car and trip ~= nil and trip.leavesRoad == false and not Cars.waitingToPullOut(trip)
 			end)
 		end
 		lineFollow(car, appPts, CAR_SPEED, parkAndArrive, nil, gate, true)
@@ -741,7 +762,7 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 	local function startRoad()
 		if not active() then return end
 		if o.restorePending then
-			if not NPCDriverService.RoadGapClear(roadStart, Cars.GAP_SECONDS, car, nil, restoreLane) then
+			if not o.exactSeat and not NPCDriverService.RoadGapClear(roadStart, Cars.GAP_SECONDS, car, nil, restoreLane) then
 				retry(true, false)
 				return
 			end
@@ -754,6 +775,8 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 		end
 		Cars.roadTokens[car] = token
 		_directedCount += 1
+		-- Straight off its own pull-out leg the car is already on the lane, seen by the traffic.
+		local joining = (not o.onRoad and not o.restorePending) or o.exactSeat == true
 		local started = NPCDriverService.DriveDirected(car, roadStart, roadGoal, edgeRoute,
 			function()
 				Cars.releaseRoadSlot(car, token)
@@ -764,12 +787,24 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 				if active() then
 					retry(true)
 				end
-			end, if startLane then startLane.dist else nil)
-		if started then depart() end
-		if not started then
-			Cars.releaseRoadSlot(car, token)
-			if active() then retry(true) end
+			end, if startLane then startLane.dist else nil, joining)
+		if started then
+			NPCDriverService.ClearRoadGap(car)
+			depart()
+			return
 		end
+		Cars.releaseRoadSlot(car, token)
+		if not active() then return end
+		-- Only an actual overlap refuses a joining car: it waits where it stands, still seen by
+		-- the traffic, and tries again -- it is not hidden out of the world to reappear later.
+		o.joinTries = (o.joinTries or 0) + 1
+		if joining and not o.exactSeat and o.joinTries <= Cars.JOIN_TRIES then
+			task.delay(Cars.JOIN_RETRY, startRoad)
+			return
+		end
+		-- A saved seat that is taken after all: back to the ordinary way in (gap, then the lane).
+		o.exactSeat = nil
+		retry(true)
 	end
 
 	if o.onRoad then startRoad() return end
@@ -781,7 +816,10 @@ local function driveTo(car: Model, parkCF: CFrame, onArrive: (() -> ())?, opts: 
 	local handoffIndex = #egressPts
 	if laneEntry then for _, p in laneEntry do table.insert(egressPts, p) end end
 	lineFollow(car, egressPts, CAR_SPEED, startRoad, tonumber(car:GetAttribute("NPCHeightOffset")),
-		function() return NPCDriverService.RoadGapClear(roadHandoff, Cars.GAP_SECONDS, car, false, edgeRoute[1]) end, false,
+		function()
+			return not Cars.turnInNear(roadHandoff, car)
+				and NPCDriverService.RoadGapClear(roadHandoff, Cars.GAP_SECONDS, car, false, edgeRoute[1])
+		end, false,
 		math.max(0, PathFollower.cumOf(egressPts)[handoffIndex] - (if o.egress and #o.egress > 0 then 0 else Cars.ROAD_GATE_SETBACK)))
 	local trip = _trips[car]
 	if trip then
@@ -800,7 +838,8 @@ local function canPassLotManeuver(model: Model, other: Model): boolean
 	if trip.gate and trip.dist >= (trip.gateDist or 0)-1e-3 then
 		return mine.leavesRoad ~= trip.leavesRoad
 	end
-	if mine.leavesRoad ~= trip.leavesRoad then return mine.leavesRoad ~= true end
+	-- The car coming in off the road goes first (Cars.turnInNear): it is the one holding up the street.
+	if mine.leavesRoad ~= trip.leavesRoad then return mine.leavesRoad == true end
 	return (mine.order or 0) < (trip.order or 0)
 end
 
@@ -835,7 +874,9 @@ local function stepTrips(dt: number)
 				end
 				continue
 			end
-			if t.gapAt then NPCDriverService.ClearRoadGap(car) end
+			-- A car turning in is off the road from here; one pulling out keeps its gap until it
+			-- has joined the traffic (startRoad clears it), or the request lapses on its own.
+			if t.gapAt and t.leavesRoad then NPCDriverService.ClearRoadGap(car) end
 			if not t.leavesRoad then
 				local here = if t.smoothCFrame then t.smoothCFrame.Position else car:GetPivot().Position
 				local ahead = PathFollower.pointAtDist(t.path, t.cum, math.min(t.cum[#t.cum], t.dist + 4))
@@ -866,7 +907,7 @@ local function stepTrips(dt: number)
 			local otherToward = otherAhead + Vector3.new(0, other.heightOffset, 0) - otherHere
 			if otherToward.Magnitude > 0.5 and dir:Dot(otherToward.Unit) < 0.3 then
 				local otherFactor, _, _, otherBlocker = PathFollower.getMotionLimits(other.model, otherHere, otherToward.Unit)
-				local hasPriority = if t.leavesRoad ~= other.leavesRoad then t.leavesRoad ~= true
+				local hasPriority = if t.leavesRoad ~= other.leavesRoad then t.leavesRoad == true
 					else (t.order or 0) < (other.order or 0)
 				if otherFactor < 0.01 and otherBlocker == car and hasPriority then
 					factor, clearance = PathFollower.getMotionLimits(car, here, dir, blocker)
@@ -1793,6 +1834,15 @@ function Cars.fetchWhenClear(car: Model, go: () -> (), isValid: (() -> boolean)?
 	task.delay(0.5, Cars.fetchWhenClear, car, go, isValid)
 end
 
+-- A street bay or car-park stall near `pos` (a place with no lot of its own, such as a campus).
+function Cars.parkNear(pos: Vector3?): ParkChoice?
+	if not pos then return nil end
+	local id, cf, access = _parkingService.reserveNearest(pos, ROADSIDE_RADIUS)
+	if not cf then return nil end
+	return { cf = cf, spotId = id, approach = access and access.approach, egress = access and access.egress,
+		lotEntry = access and access.lotEntry, lotExit = access and access.lotExit }
+end
+
 -- Studs from the nearest place this adult's car could be left to `toDoor`, as they would
 -- judge it before setting off; nil when there is nowhere at all. Home with a driveway or a
 -- garage is at the door; a destination with a free lot stall is too.
@@ -2176,7 +2226,8 @@ function Trips.student(h: Household, a: Adult): boolean
 	return true
 end
 
--- To lectures and back. On foot or by bus -- students here do not take the family car.
+-- To lectures and back, walked, ridden or driven like any other trip: a student who owns a car
+-- weighs it like everyone else (they were barred from it, and walked across town to class).
 function Trips.toClass(h: Household, a: Adult)
 	a.tripId += 1
 	local trip = a.tripId
@@ -2188,7 +2239,8 @@ function Trips.toClass(h: Household, a: Adult)
 	a.tripTargetId = nil
 	a.tripTargetHome = false
 	local studyId = a.studyId
-	journey(h, a, trip, door(h.homeId), a.studyPos, false, nil, function()
+	local studyPos = a.studyPos
+	journey(h, a, trip, door(h.homeId), studyPos, true, function() return Cars.parkNear(studyPos) end, function()
 		if _educationService and _educationService.enterSchool then _educationService.enterSchool(studyId) end
 		a.stage = "atStudy"
 	end)
@@ -2206,11 +2258,12 @@ function Trips.fromClass(h: Household, a: Adult)
 	a.stage = "transit"
 	a.tripTargetId = h.homeId
 	a.tripTargetHome = true
-	journey(h, a, trip, a.studyPos, door(h.homeId), false, nil, function()
+	journey(h, a, trip, a.studyPos, door(h.homeId), a.usingCar, function() return pickHomePark(h, a) end, function()
 		a.stage = "atHome"
 		a.outKind = nil
 		a.tripTargetId = nil
 		a.tripTargetHome = false
+		a.usingCar = false
 		-- Graduated (or the university went) while in class: no longer a student.
 		if not a.wantsStudy then a.studyId, a.studyPos = nil, nil end
 	end)
@@ -3242,6 +3295,7 @@ local function resumeRestoredCar(h: Household, carState: any, keys: any, bySaveK
 		pocket = choice.pocket,
 		onRoad = true,
 		restorePending = true,
+		exactSeat = restoredLane ~= nil,
 		startLane = restoredLane,
 		fromGraphPoint = cf.Position,
 		toGraphPoint = choice.lotEntry,

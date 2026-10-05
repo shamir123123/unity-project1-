@@ -108,7 +108,6 @@ local _pendingRestores: {[Model]: () -> boolean} = {}
 local _restoreQueue: {Model} = {}
 local _restoreCursor = 1
 local _restoreGarage: Folder? = nil
-local RESTORE_GAP_SECONDS = 3
 local _rng = Random.new()
 local _running = false
 
@@ -419,12 +418,19 @@ local function launch(g: any, exitConn: any, atCF: CFrame, seed: number, variant
 		end
 		car.Parent = garage
 		local route = edgeIds
+		-- Back on the exact lane seat it was saved on. A saved queue is a set of cars that did not
+		-- overlap, so each one only has to find its own seat free -- the 3 s empty-road gap a
+		-- fresh entrant waits for kept every car whose neighbour was already back waiting in the
+		-- garage for good: invisible, yet counted as live, so no new through traffic came either
+		-- (the "through traffic does not load" after a save).
 		_pendingRestores[car] = function(): boolean
 			if not _cars[car] or not car.Parent then _pendingRestores[car] = nil; return false end
-			if not NPCDriverService.RoadGapClear(src, RESTORE_GAP_SECONDS, car) then return false end
 			car.Parent = carFolder()
+			if not NPCDriverService.DriveDirected(car, src, dst, route, despawn, despawn, startDist, true) then
+				car.Parent = garage
+				return false
+			end
 			_pendingRestores[car] = nil
-			if not NPCDriverService.DriveDirected(car, src, dst, route, despawn, despawn, startDist) then despawn() end
 			return true
 		end
 		table.insert(_restoreQueue, car)

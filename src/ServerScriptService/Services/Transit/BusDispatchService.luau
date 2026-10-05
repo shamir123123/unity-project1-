@@ -240,6 +240,19 @@ end
 -- the lane for a gap and runs `again` shortly, like a bus waiting to leave a stop. It never gives up
 -- its line for that (it used to drive home while a fresh bus rolled out: the "shift change").
 local function pullOut(bus: Bus, from: Vector3, goal: Vector3, edges: { string }, onArrive: () -> (), onFail: () -> (), again: () -> ())
+	-- A leg the roads no longer carry (edited since it was planned) is not a blocked pull-out: no
+	-- gap would ever let it go, and asking for one held the lane behind the stop for good. The
+	-- shortest way on from where the bus stands, or wait for a road.
+	if not NPCDriverService.RouteDrivable(bus.model, edges) then
+		local fresh = pathFrom(from, goal)
+		if not fresh or not NPCDriverService.RouteDrivable(bus.model, fresh) then
+			NPCDriverService.ClearRoadGap(bus.model)
+			bus.retry = again
+			bus.retryTimer = PULL_OUT_RETRY
+			return
+		end
+		edges = fresh
+	end
 	if NPCDriverService.DriveDirected(bus.model, from, goal, edges, onArrive, onFail) then
 		NPCDriverService.ClearRoadGap(bus.model)
 		bus.blocked = 0

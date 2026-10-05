@@ -91,8 +91,22 @@ local FOLLOW_BUMPER     = 2 * WS    -- clear air left between two stopped vehicl
 Tuning.FOLLOW_LOOKAHEAD = 42 * WS
 local QUEUE_TIE_EPSILON = 0.05
 Tuning.UNSTUCK_BACKUP_RATE = 18 * WS
-Tuning.ACCEL_RATE = 28 * WS
+-- Longitudinal driving (half-scale world: 2 studs = 1 m). A car pulls away at ~3.5 m/s^2 easing
+-- off toward its cruise speed, plans every stop at a comfortable ~2.5 m/s^2, brakes firmly (5)
+-- for a late surprise, and BRAKE_RATE (15) is the emergency ceiling. It keeps a time gap to the
+-- car ahead in moving traffic and takes a moment to react when the car ahead (or the light) lets
+-- it go -- which is what makes a queue discharge as a wave at ~1,900 cars an hour per lane, not
+-- as a rigid train at ~2,800 (lab, 2026-10-05). Before this, cars accelerated at 7 m/s^2 and
+-- braked for a red only in the last 2.5 studs: they arrived at full speed and stopped dead.
+Tuning.ACCEL_RATE = 14 * WS
 Tuning.BRAKE_RATE = 60 * WS
+Tuning.COMFORT_DECEL = 10 * WS
+Tuning.FIRM_DECEL = 20 * WS
+Tuning.FOLLOW_HEADWAY = 1.0      -- s of time gap kept behind a moving car, on top of the standstill gap
+Tuning.LAUNCH_REACTION = 0.6     -- s (mean) before a stopped car moves off once it may
+Tuning.HEAVY_ACCEL = 0.55        -- trucks and buses pull away at this share of a car's acceleration
+Tuning.GIVEWAY_APPROACH = 26 * WS -- studs/s a car on a give-way arm arrives at its line (~23 km/h)
+Tuning.ARRIVE_SPEED = 6 * WS     -- studs/s a car is down to as it reaches the end of its trip
 -- Traffic is never cleared by a timer. A queue, a full exit, a red or a gridlocked box holds
 -- every car in it until the road clears -- or until the player rebuilds the road. Only a
 -- car the traffic rules cannot explain (see waitingInTraffic) counts as bugged, and only a
@@ -122,9 +136,11 @@ Tuning.CONNECTOR_STANDOFF_ESCAPE = 4  -- s two cars blocking EACH OTHER wait bef
 Tuning.RESCUE_CLEAR_DIST = 30 * WS    -- studs a rescued (bugged) car must cover before it obeys traffic again
 Tuning.STANDOFF_CHAIN_HOPS = 6         -- cars followed round a box lock looking for a cycle (inMutualStandoff)
 local TURN_SLOW_ZONE    = 20 * WS   -- studs before the stop line over which cars ease down to turn entry speed
-Tuning.CONNECTOR_LAT_ACCEL = 14 * WS -- studs/s^2 comfortable lateral accel through a turn
+Tuning.CONNECTOR_LAT_ACCEL = 12 * WS -- studs/s^2 comfortable lateral accel through a turn (3 m/s^2)
 Tuning.MIN_TURN_SPEED = 6 * WS    -- studs/s floor so tight U-turns never crawl to a stop
-Tuning.TURN_ENTRY_SPEED = table.freeze({ left = 12 * WS, right = 10 * WS, uturn = 7 * WS })
+-- Speeds a driver takes a junction turn at (~20 / 15 / 10 km/h); a tight bend caps them lower
+-- (connectorSpeedCap). They were 11 / 9 / 6 km/h -- every turn crawled and queued the arm behind it.
+Tuning.TURN_ENTRY_SPEED = table.freeze({ left = 22 * WS, right = 17 * WS, uturn = 11 * WS })
 local STALL_RESCUE_TIME  = 60   -- s of zero movement before the watchdog re-seats a car (legit waits are bounded far below)
 Tuning.STALL_MOVE_EPSILON = 0.25 * WS -- studs of movement that count as progress for the watchdog
 Tuning.ROUNDABOUT_YIELD_DIST = RoadConstants.ROUNDABOUT_YIELD_DIST or 30 * WS -- studs a circulating car blocks an entry
@@ -146,6 +162,9 @@ Tuning.TRAFFIC_REROUTE_MAX_PER_TRIP = RoadConstants.NAV_REROUTE_MAX_PER_TRIP or 
 Tuning.TRAFFIC_REROUTE_REVERSAL_LOCK = RoadConstants.NAV_REROUTE_REVERSAL_LOCK or 60
 Tuning.LANE_MOVE_MIN_SAVING = 3 -- s a same-roads plan on another lane must save, beyond the move itself
 Tuning.ROAMER_LANE_KEEP = 2.5   -- extra cars an ambient roamer accepts in its own lane before moving over at a junction
+Tuning.WANDER_MIN_TRIP = 250    -- studs: the nearest destination an ambient car bothers driving to
+Tuning.RING_MAX_LAPS = 2        -- extra laps a car takes round a roundabout whose exit is full before it waits there
+Tuning.RING_LAP_LOOK = 30       -- studs before the end of a ring lane a full exit is noticed
 
 -- Camera-pos rate limiting is handled entirely by NetMiddleware.RegisterServerRateLimit.
 Tuning.CAM_REPORT_MIN_DT = 1 / 15  -- 15 Hz max, passed to NetMiddleware
@@ -251,6 +270,10 @@ type DriverState = PathFollower.FollowerState & {
 	laneMoveKinds: { [string]: number }?, -- debug: discipline moves by kind (yield / pass / back)
 	exitWait: number?,          -- s at the line with a full exit (drives Gridlock.detour)
 	nextDetourAt: number?,      -- _simClock of this car's next detour look
+	launchAt: number?,          -- _simClock before which a car just allowed to move off is still reacting
+	wander: boolean?,           -- an ambient car on a trip it picked itself (Gridlock.wanderOn); no owner to hand back to
+	ringLaps: number?,          -- extra laps taken round the current roundabout because its exit was full
+	holding: boolean?,          -- a bus standing at its kerb stop: still in the lane, until its next leg or release
 }
 
 -- Route bookings are keyed by an integer that must be unique across LIVE trips, so a
@@ -1204,74 +1227,179 @@ local function unsignalizedClear(g: any, state: DriverState, edge: any, nodeId: 
 	return true
 end
 
--- Roundabout give-way. A car entering the ring from an approach yields to traffic
--- already circulating that is about to pass its entry node; a car already on the
--- ring has priority. Circulating conflicts: a car on the ring arc whose toNode is
--- our entry (within Tuning.ROUNDABOUT_YIELD_DIST), or one mid-crossing onto a ring arc
--- leaving our node.
-local function roundaboutClear(g: any, state: DriverState, nodeId: number, nodePos: Vector3): boolean
-	-- A car crossing our node onto the ring, or one that has just reached our node on a ring
-	-- arc, is circulating through -- give way.
-	for _, other in _connByLandingNode[nodeId] or EMPTY do
-		if other == state or not other.connector or not other.model.Parent then continue end
-		local nextE = other.nextEdgeId and g:GetEdge(other.nextEdgeId)
-		if nextE and nextE.isRoundabout and nextE.fromNode == nodeId and g:GetEdge(other.edgeId) then
-			return false
+-- Max comfortable speed through a connector polyline, from its tightest bend:
+-- v = sqrt(a_lat * r). Stops cars taking 90-deg turns and U-turns at the full
+-- road speed limit, which read as snapping at the wheel.
+local function connectorSpeedCap(pts: { Vector3 }): number?
+	if #pts < 3 then return nil end
+	local minRadius = math.huge
+	for i = 2, #pts - 1 do
+		local a = pts[i] - pts[i - 1]
+		local b = pts[i + 1] - pts[i]
+		local la, lb = a.Magnitude, b.Magnitude
+		if la > 1e-4 and lb > 1e-4 then
+			local angle = math.acos(math.clamp(a:Dot(b) / (la * lb), -1, 1))
+			if angle > 1e-3 then
+				minRadius = math.min(minRadius, ((la + lb) * 0.5) / angle)
+			end
 		end
 	end
-	for _, other in _connByLeavingNode[nodeId] or EMPTY do
-		if other == state or not other.connector or not other.model.Parent then continue end
-		local otherEdge = g:GetEdge(other.edgeId)
-		if otherEdge and otherEdge.isRoundabout and otherEdge.toNode == nodeId then
-			return false
-		end
+	if minRadius == math.huge then return nil end
+	return math.max(math.sqrt(Tuning.CONNECTOR_LAT_ACCEL * minRadius), Tuning.MIN_TURN_SPEED)
+end
+
+-- Roundabout give-way, as a driver judges it. Looking upstream along the ring, the car that
+-- matters is the next one that will reach this entry STILL CIRCULATING -- not one leaving the
+-- ring before or at this arm (a driver reads the indicator; here the route says so) -- and the
+-- question is time: does it arrive later than this car needs to merge, plus a margin? A car
+-- already past the merge point is traffic to follow, not a conflict (the queue logic and
+-- exitLaneHasRoom keep the spacing), and a stopped car is priced at how long it takes to get
+-- going, not at the ring's speed limit.
+-- The old check gave way to anything inside a fixed reach of the node at the ring's limit speed
+-- (~64 studs on a small ring): the car ahead from our own lane, cars turning off at this very
+-- arm, cars a quarter-ring back about to leave. Each entry took one car in ~5 s and a single-lane
+-- roundabout carried ~850 veh/h where a real one carries ~2000 (lab, 2026-10-05).
+type Ring = { edges: { string }, capacity: number }
+local RingRules: any = {
+	SLOT = 22 * WS,     -- studs of ring lane one queued car takes (measured ~10.5 centre to centre)
+	RESERVE = 1,        -- slots entering traffic always leaves free
+	LAG_MARGIN = 1.0,   -- s a circulating car must still be away once we have merged
+	LOOKBACK_EDGES = 8, -- ring pieces walked upstream at most
+}
+
+-- Seconds to cover `dist` studs starting at speed v, accelerating at ACCEL_RATE up to vmax.
+function RingRules.timeToCover(dist: number, v: number, vmax: number): number
+	if dist <= 0 then return 0 end
+	local a = Tuning.ACCEL_RATE
+	vmax = math.max(vmax, 1)
+	v = math.clamp(v, 0, vmax)
+	local dAccel = (vmax * vmax - v * v) / (2 * a)
+	if dist <= dAccel then
+		return (math.sqrt(v * v + 2 * a * dist) - v) / a
 	end
-	-- An inner-lane entry crosses the outer circulating lane. Reserve enough time
-	-- to clear the entry, including cars approaching on the preceding ring arcs.
-	local entryLength = 0
+	return (vmax - v) / a + (dist - dAccel) / vmax
+end
+
+-- Whether `other`, on ring lane `laneId` (or turning onto it), is still circulating when it
+-- reaches `nodeId` -- false when it leaves the ring at or before that node. A routed car knows;
+-- a roamer has chosen only its next turn, so one further back counts as staying on.
+function RingRules.passes(g: any, other: DriverState, laneId: string, nodeId: number): boolean
+	local route = other.route
+	if route then
+		local i = table.find(route, laneId, math.max(1, other.routeIndex or 1))
+		if not i then return true end
+		for k = i, math.min(#route, i + 24) do
+			local e = g:GetEdge(route[k])
+			if not e or not e.isRoundabout then return false end
+			if e.toNode == nodeId then
+				local after = route[k + 1]
+				local ae = if after then g:GetEdge(after) else nil
+				return ae ~= nil and ae.isRoundabout == true
+			end
+		end
+		return false
+	end
+	if other.edgeId == laneId and not other.connector then
+		local nxt = other.pendingNextEdgeId and g:GetEdge(other.pendingNextEdgeId)
+		if nxt and not nxt.isRoundabout then return false end
+	end
+	return true
+end
+
+local function roundaboutClear(g: any, state: DriverState, nodeId: number, _nodePos: Vector3): boolean
 	local nextId = state.pendingNextEdgeId
-	if nextId then
-		local points = g:GetConnectionPoints(state.edgeId, nextId)
-		for i = 2, #points do entryLength += (points[i] - points[i - 1]).Magnitude end
-	end
 	local approach = g:GetEdge(state.edgeId)
-	local movement = if approach and nextId then approach.outMovement[nextId] else nil
-	local entrySpeed = (if movement then Tuning.TURN_ENTRY_SPEED[movement] else nil) or Tuning.MIN_TURN_SPEED
-	local crossingTime = math.max(Tuning.JUNCTION_LOOKAHEAD_TIME,
-		(entryLength + 2 * (state.halfLength or STOP_LINE_CAR_BUFFER)) / entrySpeed
-			+ entrySpeed / Tuning.ACCEL_RATE)
-	local pending = {}
-	local seen: { [string]: boolean } = {}
-	for _, e in g._edgesByToNode[nodeId] or EMPTY do
-		if e.isRoundabout then table.insert(pending, { edge = e, distance = 0 }) end
+	local landing = if nextId then g:GetEdge(nextId) else nil
+	if not nextId or not approach or not landing then return true end
+	local pts, fromSetback, landAt = g:GetConnectionPoints(state.edgeId, nextId)
+	local connLen = 0
+	for i = 2, #pts do connLen += (pts[i] - pts[i - 1]).Magnitude end
+	local myHalf = state.halfLength or STOP_LINE_CAR_BUFFER
+	-- Until this car is in: the rest of its lane to the mouth, the entry curve at the pace its
+	-- bend allows, and its own half-length onto the ring.
+	local toMouth = math.max(0, approach.length - fromSetback - state.edgeDist)
+	local entrySpeed = math.min(connectorSpeedCap(pts) or Tuning.MIN_TURN_SPEED, driverSpeed(landing, state))
+	local window = RingRules.timeToCover(toMouth + connLen + myHalf, state.currentSpeed or 0, entrySpeed)
+		+ RingRules.LAG_MARGIN
+
+	-- `pos` is the other car's distance on the landing lane's scale (negative while still short
+	-- of it). It conflicts when it would be on top of, or close behind, our merge point before
+	-- this car has merged.
+	local function conflicts(other: DriverState, pos: number, laneEdge: any): boolean
+		if other == state or not other.model.Parent then return false end
+		local otherHalf = other.halfLength or STOP_LINE_CAR_BUFFER
+		if pos - otherHalf > landAt + myHalf + 0.5 then return false end
+		local room = landAt - pos - followGap(other, state)
+		if room <= 0 then return true end
+		return RingRules.timeToCover(room, other.currentSpeed or 0, driverSpeed(laneEdge, other)) < window
 	end
-	while #pending > 0 do
-		local item = table.remove(pending)
-		local e, distance = item.edge, item.distance
-		if seen[e.id] then continue end
-		seen[e.id] = true
-		local length = e.length or 0
-		local function conflicts(other: DriverState, position: number): boolean
-			if other == state or not other.model.Parent then return false end
-			local remaining = distance + math.max(0, length - position)
-			local reach = math.max(Tuning.ROUNDABOUT_YIELD_DIST,
-				math.max(other.currentSpeed or 0, edgeSpeed(e)) * crossingTime
-					+ (other.halfLength or STOP_LINE_CAR_BUFFER))
-			return remaining <= reach
+
+	-- Already on the landing lane, or turning onto it here. Cars from our own lane are the queue
+	-- we are part of, not traffic we give way to.
+	for _, other in _edgeDriverIndex[nextId] or EMPTY do
+		if not other.connector and other.edgeId == nextId and conflicts(other, other.edgeDist, landing) then return false end
+	end
+	for _, other in _connectorByNextEdgeIndex[nextId] or EMPTY do
+		if other.connector and other.nextEdgeId == nextId and other.edgeId ~= state.edgeId
+			and conflicts(other, lanePos(other, nextId), landing) then return false end
+	end
+	-- Another entry lane of this arm crossing our path into the ring (a multi-lane mouth).
+	for _, other in _connByLandingNode[nodeId] or EMPTY do
+		if other == state or not other.connector or not other.nextEdgeId or not other.model.Parent then continue end
+		local otherEdge = g:GetEdge(other.edgeId)
+		if otherEdge and not otherEdge.isRoundabout and other.edgeId ~= state.edgeId and other.nextEdgeId ~= nextId
+			and movementPathsConflict(g, approach, nextId, otherEdge, other.nextEdgeId) then
+			return false
 		end
-		for _, other in _edgeDriverIndex[e.id] or EMPTY do
-			if not other.connector and other.edgeId == e.id and conflicts(other, other.edgeDist) then return false end
+	end
+
+	-- Upstream along every ring lane that arrives here and whose path through the node crosses
+	-- or joins ours.
+	for _, e in g._edgesByToNode[nodeId] or EMPTY do
+		if not e.isRoundabout then continue end
+		local eNext: string? = nil
+		for _, outId in e.out do
+			local o = g:GetEdge(outId)
+			if o and o.isRoundabout then eNext = outId; break end
 		end
-		for _, other in _connectorByNextEdgeIndex[e.id] or EMPTY do
-			if other.connector and other.nextEdgeId == e.id and conflicts(other, lanePos(other, e.id)) then return false end
-		end
-		local lookback = math.max(Tuning.ROUNDABOUT_YIELD_DIST, edgeSpeed(e) * crossingTime + FOLLOW_MIN_GAP)
-		if distance + length <= lookback then
-			for _, previous in g._edgesByToNode[e.fromNode] or EMPTY do
-				if previous.isRoundabout and not seen[previous.id] then
-					table.insert(pending, { edge = previous, distance = distance + length })
+		if not eNext then continue end
+		if eNext ~= nextId and not movementPathsConflict(g, approach, nextId, e, eNext) then continue end
+		local through, eFrom, eLand = g:GetConnectionPoints(e.id, eNext)
+		local throughLen = 0
+		for i = 2, #through do throughLen += (through[i] - through[i - 1]).Magnitude end
+		-- Through cars still on the connector at this node, heading for another ring lane.
+		if eNext ~= nextId then
+			for _, other in _connectorByNextEdgeIndex[eNext] or EMPTY do
+				if other.connector and other.edgeId == e.id and conflicts(other, lanePos(other, eNext) - eLand + landAt, landing) then
+					return false
 				end
 			end
+		end
+		-- base: where a car at distance 0 along `lane` stands on our landing scale. Another ring
+		-- lane is mapped so its landing point lines up with ours (where the paths cross).
+		local shift = if eNext == nextId then 0 else landAt - eLand
+		local lane, base = e, eLand - throughLen - (e.length - eFrom) + shift
+		for _ = 1, RingRules.LOOKBACK_EDGES do
+			for _, other in _edgeDriverIndex[lane.id] or EMPTY do
+				if not other.connector and other.edgeId == lane.id
+					and RingRules.passes(g, other, lane.id, nodeId) and conflicts(other, base + other.edgeDist, lane) then
+					return false
+				end
+			end
+			for _, other in _connectorByNextEdgeIndex[lane.id] or EMPTY do
+				if other.connector and other.nextEdgeId == lane.id
+					and RingRules.passes(g, other, lane.id, nodeId) and conflicts(other, base + lanePos(other, lane.id), lane) then
+					return false
+				end
+			end
+			-- Far enough back that even a car at the ring's limit takes longer than our window.
+			if (landAt - base) / math.max(edgeSpeed(lane) * 1.2, 1) > window then break end
+			local prev: any = nil
+			for _, p in g._edgesByToNode[lane.fromNode] or EMPTY do
+				if p.isRoundabout and p.laneOrdinal == lane.laneOrdinal then prev = p; break end
+			end
+			if not prev then break end
+			lane, base = prev, base - (prev.length or 0)
 		end
 	end
 	return true
@@ -1279,10 +1407,6 @@ end
 
 -- A ring's lanes and how many queued cars they hold. Built per ring on first use; a graph
 -- rebuild drops them (clearGraphCaches).
-type Ring = { edges: { string }, capacity: number }
-local RING_SLOT = 22 * WS   -- studs of ring lane one queued car takes (measured ~10.5 centre to centre)
-local RING_RESERVE = 1      -- slots entering traffic always leaves free
-
 local function ringOf(g: any, edge: any): Ring
 	local ring = _ringByEdge[edge.id]
 	if ring then return ring end
@@ -1302,7 +1426,7 @@ local function ringOf(g: any, edge: any): Ring
 			end
 		end
 	end
-	ring = { edges = edges, capacity = math.max(2, math.floor(length / RING_SLOT)) }
+	ring = { edges = edges, capacity = math.max(2, math.floor(length / RingRules.SLOT)) }
 	for _, id in edges do _ringByEdge[id] = ring end
 	return ring
 end
@@ -1311,10 +1435,10 @@ end
 -- for the one ahead -- none can move, and a car that wants to leave is stuck behind the
 -- car in front of it just the same. That deadlock was reachable: an entry that waited its
 -- IMPATIENCE_TIME noses in regardless of circulating traffic, and a busy ring filled up.
--- Entries therefore always leave RING_RESERVE slots free, so the circle keeps moving.
+-- Entries therefore always leave RingRules.RESERVE slots free, so the circle keeps moving.
 local function ringHasRoom(g: any, ringEdge: any): boolean
 	local ring = ringOf(g, ringEdge)
-	local limit = ring.capacity - RING_RESERVE
+	local limit = ring.capacity - RingRules.RESERVE
 	local count = 0
 	-- Connector cars are indexed by the lane they are heading into, lane cars by their lane:
 	-- counting both covers every car on the ring, every car already committed onto it, and
@@ -1518,27 +1642,6 @@ local function chooseEnterableNextEdgeId(g: any, state: DriverState, edge: any, 
 	return currentNextId, false
 end
 
--- Max comfortable speed through a connector polyline, from its tightest bend:
--- v = sqrt(a_lat * r). Stops cars taking 90-deg turns and U-turns at the full
--- road speed limit, which read as snapping at the wheel.
-local function connectorSpeedCap(pts: { Vector3 }): number?
-	if #pts < 3 then return nil end
-	local minRadius = math.huge
-	for i = 2, #pts - 1 do
-		local a = pts[i] - pts[i - 1]
-		local b = pts[i + 1] - pts[i]
-		local la, lb = a.Magnitude, b.Magnitude
-		if la > 1e-4 and lb > 1e-4 then
-			local angle = math.acos(math.clamp(a:Dot(b) / (la * lb), -1, 1))
-			if angle > 1e-3 then
-				minRadius = math.min(minRadius, ((la + lb) * 0.5) / angle)
-			end
-		end
-	end
-	if minRadius == math.huge then return nil end
-	return math.max(math.sqrt(Tuning.CONNECTOR_LAT_ACCEL * minRadius), Tuning.MIN_TURN_SPEED)
-end
-
 -- Connector Y interpolates mouth-to-mouth, but a graded junction's interior is
 -- a blended surface that can bow away from that line -- cars sank into the
 -- slab mid-box. Ground each interior point on the real rendered junction
@@ -1602,6 +1705,8 @@ local function startConnector(
 	nextId:       string,
 	resumeDist:   number
 )
+	-- The graph hands out its cached junction curves frozen; this car grounds its own copy.
+	if table.isfrozen(pts) then pts = table.clone(pts) end
 	groundConnectorPoints(pts)
 	-- Pre-compute and cache the cum-distances for the connector arc once.
 	local cum = PathFollower.cumOf(pts)
@@ -1725,6 +1830,17 @@ end
 -- hand control back to the caller (onAbort), which parks the citizen/delivery car
 -- where it is. Used when the road changes under a routed car or it wedges for good.
 local function abortDirected(state: DriverState)
+	if state.wander then
+		-- An ambient car's own trip: it simply drives on from where it is to somewhere else.
+		state.wander = nil
+		state.route = nil
+		releaseBooking(state)
+		if Gridlock.anchor(state) then
+			local g = nav()
+			if g then Gridlock.wanderOn(g, state) end
+		end
+		return
+	end
 	local cb = state.onAbort
 	releaseBooking(state)
 	leaveWhereItStands(state)
@@ -1770,6 +1886,8 @@ local function anchorToNearest(state: DriverState): boolean
 	state.deadEndTimer = 0
 	return true
 end
+
+Gridlock.anchor = anchorToNearest
 
 -- Distance along an edge to the point on it nearest a world position.
 -- Distance along a lane of the point on it closest to `pos`.
@@ -1845,6 +1963,27 @@ local function tryReroute(state: DriverState): boolean
 			end
 		end
 	end
+	-- Off its lane (mid-turn) a line bus still never improvises: it rejoins the rest of its own
+	-- line at the nearest of the lanes still ahead of it. Re-planned from the bare position it took
+	-- the shortest way to the stop instead, skipping the roads the player drew the line along.
+	if not own and kept and state.profile and state.profile.keepRoute then
+		local bestI, bestD, bestDist = nil, REANCHOR_MAX_DIST, 0
+		for i = state.routeIndex or 1, math.min(#kept, (state.routeIndex or 1) + 3) do
+			local e = g:GetEdge(kept[i])
+			if e then
+				local d = distAlongEdgeNearest(e, pos)
+				local p = PathFollower.pointAtDist(e.points, PathFollower.getCum(e), d)
+				local off = (p - pos).Magnitude
+				if off < bestD then bestI, bestD, bestDist = i, off, d end
+			end
+		end
+		if bestI then
+			own = kept[bestI]
+			state.edgeDist = bestDist
+			keepAt = bestI
+			route = table.move(kept, bestI, #kept, 1, {})
+		end
+	end
 	if own and not route then
 		local ok, _, r = pcall(g.FindPath, g, pos, goal, nil, state.vehicleClass, state.profile,
 			{ edgeId = own, dist = state.edgeDist })
@@ -1882,6 +2021,41 @@ local function tryReroute(state: DriverState): boolean
 	state.nextTrafficRerouteAt = os.clock() + TRAFFIC_REROUTE_COOLDOWN
 	bookRoute(state)
 	return true
+end
+
+-- An ambient car is somebody going somewhere: it drives to a destination picked anywhere on the
+-- network and, there, picks the next. Roaming junction to junction at random sent it down every
+-- cul-de-sac on its way, to turn round at the end and come straight back out -- the drive into a
+-- side road that brings nothing to the trip. False when no destination could be planned (the car
+-- then roams as before until its next chance).
+function Gridlock.wanderOn(g: any, state: DriverState): boolean
+	if state.connector or not g:GetEdge(state.edgeId) then return false end
+	local edges = g:GetEdges()
+	if #edges == 0 then return false end
+	local here = getStatePosition(state)
+	for _ = 1, 6 do
+		local e = edges[math.random(1, #edges)]
+		if not edgeAllows(e, state.vehicleClass) or (e.length or 0) < 20 then continue end
+		local goal = PathFollower.pointAtDist(e.points, PathFollower.getCum(e), e.length * 0.5)
+		if (goal - here).Magnitude < Tuning.WANDER_MIN_TRIP then continue end
+		local ok, _, route = pcall(g.FindPath, g, here, goal, nil, state.vehicleClass, state.profile,
+			{ edgeId = state.edgeId, dist = state.edgeDist })
+		local last = if ok and typeof(route) == "table" and route[1] == state.edgeId then g:GetEdge(route[#route]) else nil
+		if last then
+			state.route = route
+			state.routeIndex = 1
+			state.goalPos = goal
+			state.finalDist = distAlongEdgeNearest(last, goal)
+			state.arrived = false
+			state.pendingNextEdgeId = nil
+			state.wander = true
+			state.trafficReroutes = 0
+			state.nextTrafficRerouteAt = os.clock() + TRAFFIC_REROUTE_COOLDOWN
+			bookRoute(state)
+			return true
+		end
+	end
+	return false
 end
 
 local function sameRemainingRoute(oldRoute: { string }, oldIndex: number, newRoute: { string }): boolean
@@ -2038,6 +2212,45 @@ function Gridlock.detour(g: any, state: DriverState, edge: any, blockedId: strin
 	state.exitWait = 0
 	bookRoute(state)
 	tagCarInfo(state, "Rerouting", best[1])
+	return true
+end
+
+-- A roundabout car whose exit is backed up goes round again instead of nosing into the queue
+-- on the exit and stopping half across the ring -- which blocked every car behind it, and every
+-- entry it was blocking blocked another arm in turn. A routed car is given the lap (round the ring
+-- back to this lane, then the same exit); a roamer just carries on round.
+function Gridlock.ringLap(g: any, state: DriverState, edge: any): boolean
+	local onward: any = nil
+	for _, outId in edge.out do
+		local o = g:GetEdge(outId)
+		if o and o.isRoundabout and o.laneOrdinal == edge.laneOrdinal then onward = o; break end
+	end
+	if not onward or not ringHasRoom(g, onward) then return false end
+	if not state.route then
+		state.pendingNextEdgeId = onward.id
+		return true
+	end
+	local lap: { string } = {}
+	local cur: any = onward
+	for _ = 1, 64 do
+		if not cur or cur.id == edge.id then break end
+		table.insert(lap, cur.id)
+		local nxt: any = nil
+		for _, outId in cur.out do
+			local o = g:GetEdge(outId)
+			if o and o.isRoundabout and o.laneOrdinal == cur.laneOrdinal then nxt = o; break end
+		end
+		cur = nxt
+	end
+	if not cur or cur.id ~= edge.id or #lap == 0 then return false end
+	local i = state.routeIndex or 1
+	local route = table.move(state.route, 1, i, 1, {})
+	for _, id in lap do table.insert(route, id) end
+	table.insert(route, edge.id)
+	table.move(state.route, i + 1, #state.route, #route + 1, route)
+	state.route = route
+	state.pendingNextEdgeId = nil
+	bookRoute(state)
 	return true
 end
 
@@ -2267,8 +2480,10 @@ local function waitingInTraffic(state: DriverState): boolean
 		return not inMutualStandoff(state)
 	end
 	local reason = state.stopReason
+	-- "roadGap": holding back for a driveway car that asked for a gap. Its request lapses the
+	-- moment it stops asking (GAP_REQUEST_TTL), so this hold can never outlive the car asking.
 	if reason == "carAhead" or reason == "redLight" or reason == "laneChange" or reason == "merge"
-		or reason == "yield" or reason == "blocked" or reason == "noExit" then
+		or reason == "yield" or reason == "blocked" or reason == "noExit" or reason == "roadGap" or reason == "busStop" then
 		return true
 	end
 	return getNearestQueueLeader(state) ~= nil
@@ -2452,23 +2667,6 @@ local function resolveQueueSpacing(state: DriverState, edge: any, cum: { number 
 		local pos, dir = PathFollower.pointAtDist(edge.points, cum, state.edgeDist)
 		PathFollower.place(state, pos, dir, dt)
 	end
-end
-
-local function getQueueSpeedFactor(nearestGap: number?, currentSpeed: number, minGap: number): number
-	if not nearestGap then
-		return 1
-	end
-	if nearestGap <= minGap then
-		return 0
-	end
-
-	local lookahead = math.max(Tuning.FOLLOW_LOOKAHEAD, currentSpeed * 0.8)
-	if nearestGap >= lookahead then
-		return 1
-	end
-
-	local t = (nearestGap - minGap) / math.max(lookahead - minGap, 1)
-	return math.clamp(t * t, 0, 1)
 end
 
 -- Vehicle half-length (centre to nose), read from its Hitbox so long trucks stop the
@@ -2707,7 +2905,7 @@ local function getMergeCourtesy(state: DriverState): (DriverState?, number?)
 	if byCar then
 		local now = os.clock()
 		local speed = state.currentSpeed or 0
-		local brake = speed * speed / (2 * Tuning.BRAKE_RATE)
+		local brake = speed * speed / (2 * Tuning.FIRM_DECEL)
 		for vehicle, req in byCar do
 			if now - req.at > Tuning.GAP_REQUEST_TTL then
 				NPCDriverService.ClearRoadGap(vehicle) -- its owner stopped asking
@@ -2941,6 +3139,30 @@ end
 
 -- == Per-vehicle tick ==========================================================
 local function finishDirected(state: DriverState)
+	-- A bus at a kerb stop does not leave the road while it boards: it stands in its lane as the
+	-- traffic it is, so the cars behind queue for it (or pass it) instead of driving through a bus
+	-- nobody could see -- and it pulls away from there as the same driver, rather than having to
+	-- find a free seat in the traffic it had been hidden from (the bus that "gets stuck" at stops).
+	if state.vehicleClass == VehicleTypes.Bus and state.route and not state.wander then
+		state.arrived = true
+		state.currentSpeed = 0
+		state.holding = true
+		local cb = state.onArrive
+		state.onArrive = nil
+		state.onAbort = nil -- boarding now; a road edit under it simply drops the hold (abortDirected)
+		releaseBooking(state)
+		leaveWhereItStands(state)
+		if cb then task.spawn(cb) end
+		return
+	end
+	if state.wander then
+		releaseBooking(state)
+		state.route = nil
+		state.wander = nil
+		local g = nav()
+		if g then Gridlock.wanderOn(g, state) end
+		return
+	end
 	state.arrived = true
 	state.currentSpeed = 0
 	local cb = state.onArrive
@@ -3001,6 +3223,13 @@ local function updateDriver(state: DriverState, dt: number)
 			-- despawn if nothing survived within range.
 			return
 		end
+	end
+
+	if state.holding then
+		state.currentSpeed = 0
+		state.stopReason = "busStop"
+		state.blockedBy = nil
+		return
 	end
 
 	-- The current lane can survive a road edit while its next turn disappears.
@@ -3073,7 +3302,7 @@ local function updateDriver(state: DriverState, dt: number)
 			-- edgeDist 0, so it drove the same lane back out at the map edge, again, forever --
 			-- the "cars teleport to the intersection and try to leave again" loop. Hand it back
 			-- instead (through traffic despawns, a citizen's car parks where it stands).
-			if state.route then
+			if state.route and not state.wander then
 				_lostRouteExits += 1
 				if os.clock() - _lastLostRouteWarn > LOST_ROUTE_WARN_INTERVAL then
 					_lastLostRouteWarn = os.clock()
@@ -3138,13 +3367,23 @@ local function updateDriver(state: DriverState, dt: number)
 		-- Only OUR approach being yellow lets us commit; a red arm must not move when
 		-- the crossing group goes yellow.
 		local isYellow = TrafficSignalService.IsApproachYellow(edge.id)
-		local safeStoppingDistance = currentSpeed * 1.5
-		local committed = (state.edgeDist > stopDist + 0.1) or (isYellow and distToStop < safeStoppingDistance)
+		-- On yellow a driver who cannot stop at a firm deceleration goes on through.
+		local firmStop = currentSpeed * currentSpeed / (2 * Tuning.FIRM_DECEL)
+		local committed = (state.edgeDist > stopDist + 0.1) or (isYellow and distToStop < firmStop)
+		local signalized = isSignalizedIntersection(edge.toNode)
 
-		-- Right of way is asked only of a car that could reach its line soon. Every car on
-		-- every lane used to ask every tick, however far back in the block it was, and each
-		-- ask walks the junction -- the answer is only ever used near the line.
-		if nextId and not committed and distToStop <= math.max(Tuning.JUNCTION_LOOKAHEAD_MIN, currentSpeed * Tuning.JUNCTION_LOOKAHEAD_TIME) then
+		-- Right of way is asked only of a car that could reach its line soon -- within a firm stop
+		-- of it, plus half a second. Every car on every lane used to ask every tick, however far
+		-- back in the block it was, and each ask walks the junction.
+		local askAt = math.max(Tuning.JUNCTION_LOOKAHEAD_MIN, firmStop + currentSpeed * 0.5)
+		-- A red is cheap to read and a driver sees it from far off: from a comfortable stop away
+		-- it plans the stop, rather than braking hard once inside the full right-of-way horizon.
+		local comfortStop = currentSpeed * currentSpeed / (2 * Tuning.COMFORT_DECEL) + currentSpeed * 0.5
+		if nextId and not committed and signalized and distToStop > askAt and distToStop <= comfortStop
+			and not TrafficSignalService.CanGo(edge.id, nextId) then
+			mustStop = true
+			interReason = "redLight"
+		elseif nextId and not committed and distToStop <= askAt then
 			local chosenNextId, canEnter = chooseEnterableNextEdgeId(g, state, edge, nextId)
 			nextId = chosenNextId
 			if not canEnter then
@@ -3250,7 +3489,30 @@ local function updateDriver(state: DriverState, dt: number)
 		queueLead, queueGap = merger, mergeGap
 	end
 	local queueMinGap = followGap(state, queueLead)
-	local queueSpeedFactor = getQueueSpeedFactor(queueGap, currentSpeed, queueMinGap)
+	local cruise = math.max(state.speed, 0.1)
+	local comfort = Tuning.COMFORT_DECEL
+	-- Safe speeds (Gipps): the fastest this car can go and still settle in behind what is ahead
+	-- at a comfortable deceleration -- keeping a time gap behind a moving car -- or stop short of
+	-- a body in its path at a firm one. Braking for a queue starts early and smooth instead of at
+	-- the last moment.
+	local followSpeed = math.huge
+	if queueGap then
+		if queueGap <= queueMinGap then
+			followSpeed = 0
+		else
+			local leadV = if queueLead and queueLead ~= merger then math.max(0, queueLead.currentSpeed or 0) else 0
+			local room = queueGap - queueMinGap - currentSpeed * Tuning.FOLLOW_HEADWAY
+			followSpeed = math.sqrt(leadV * leadV + 2 * comfort * math.max(0, room))
+		end
+	end
+	local proxSpeed = math.huge
+	if forwardClearance < math.huge then
+		local blockerState = if blocker then _drivers[blocker] else nil
+		local blockerV = if blockerState and (blockerDot or 0) > 0.7 then math.max(0, blockerState.currentSpeed or 0) else 0
+		proxSpeed = math.sqrt(blockerV * blockerV + 2 * Tuning.FIRM_DECEL * math.max(0, forwardClearance - 0.5))
+	end
+	local queueSpeedFactor = math.min(1, followSpeed / cruise)
+	proximitySpeedFactor = math.min(1, proxSpeed / cruise)
 	local speedFactor = math.min(proximitySpeedFactor, queueSpeedFactor)
 
 	-- debug: classify WHY this car is at its current speed (in-memory only, read
@@ -3272,36 +3534,28 @@ local function updateDriver(state: DriverState, dt: number)
 		state.stopReason = "cruise"
 	end
 
-	-- == Smoothed Target Speed Calculation (Processed ONCE per frame) ==
-	local targetSpeed = state.speed * speedFactor
+	local targetSpeed = math.min(cruise, followSpeed, proxSpeed)
+	-- Pull up at the destination (a bus stop, the kerb by a lot) instead of stopping dead on it.
+	if edge and state.route and not state.connector and (state.routeIndex or 1) >= #state.route then
+		local toGoal = math.max(0, (state.finalDist or edge.length) - state.edgeDist)
+		targetSpeed = math.min(targetSpeed, math.sqrt(Tuning.ARRIVE_SPEED * Tuning.ARRIVE_SPEED + 2 * comfort * toGoal))
+	end
 	if lcHoldDist then
 		targetSpeed = math.min(targetSpeed, math.sqrt(2 * LaneChange.HOLD_DECEL * lcHoldDist))
 	end
 	if mustStop then
-		-- FIX: Guard distToStop so that an NPC that is already past the stop
-		-- line (distToStop < 0) is never forced to slow down. The old code let
-		-- a negative distToStop feed into the quadratic, producing a small
-		-- positive t² and an artificially low targetSpeed that stalled the car
-		-- well in front of the line -- exactly the "stops way before the red
-		-- light" bug.
+		-- Plan the stop at the line; a car already past it is committed and never held back.
 		if distToStop > 0 then
-			-- Only feather speed right at the stop line; cars should keep cruising
-			-- until they are close enough to actually stop for the light.
-			if distToStop <= Tuning.STOP_DECEL_DISTANCE then
-				local t = distToStop / Tuning.STOP_DECEL_DISTANCE
-				targetSpeed = targetSpeed * (t * t)
-			end
+			targetSpeed = math.min(targetSpeed, math.sqrt(2 * comfort * distToStop))
 		else
-			-- Already at or past the stop line; committed -- don't impose any
-			-- additional braking here (committed flag handles re-entry above).
-			-- Setting targetSpeed = 0 here would cause jitter when mustStop flips.
 			mustStop = false
 		end
 	end
 
-	-- Slow into turns: a connector is capped by its tightest bend, and the
-	-- approach eases down so the car arrives at a speed it can actually hold
-	-- through the arc instead of whipping around the corner at road speed.
+	-- Slow into turns: a connector is capped by its tightest bend, and the approach eases down
+	-- (at the comfortable deceleration) to the speed the car can hold through the arc. A car on
+	-- a give-way arm -- a minor road, a roundabout entry -- comes up to its line slowly enough to
+	-- stop there if it has to, whether or not it does.
 	if state.connector then
 		-- A lane change is not a turn: its ribbon is laid out long enough for the car's speed
 		-- (laneChangeMinLength), so the car drifts over at the speed it had. Only the traffic
@@ -3309,19 +3563,47 @@ local function updateDriver(state: DriverState, dt: number)
 		if state.connSpeedCap and not laneChangeOf(state) then
 			targetSpeed = math.min(targetSpeed, state.connSpeedCap)
 		end
-	elseif edge and distToStop > -1 and distToStop < TURN_SLOW_ZONE then
-		local pendingId = state.pendingNextEdgeId
-		local movement = if pendingId and edge.outMovement then edge.outMovement[pendingId] else nil
-		local entrySpeed = if movement then Tuning.TURN_ENTRY_SPEED[movement] else nil
-		if entrySpeed and entrySpeed < targetSpeed then
-			local t = math.clamp(distToStop / TURN_SLOW_ZONE, 0, 1)
-			targetSpeed = entrySpeed + (targetSpeed - entrySpeed) * t
+	elseif edge and distToStop > -1 and state.pendingNextEdgeId then
+		local pendingId = state.pendingNextEdgeId :: string
+		local movement = if edge.outMovement then edge.outMovement[pendingId] else nil
+		local arrive = if movement then Tuning.TURN_ENTRY_SPEED[movement] else nil
+		local reach = math.max(0, distToStop)
+		if reach < cruise * cruise / (2 * comfort) and not edge.isRoundabout and isIntersectionNode(g, edge.toNode)
+			and not isSignalizedIntersection(edge.toNode) then
+			local nextEdge = g:GetEdge(pendingId)
+			if (nextEdge and nextEdge.isRoundabout) or getArmPriority(g, edge.toNode, edge.id) == "minor" then
+				arrive = math.min(arrive or math.huge, Tuning.GIVEWAY_APPROACH)
+			end
+		end
+		if arrive and arrive < targetSpeed then
+			targetSpeed = math.min(targetSpeed, math.sqrt(arrive * arrive + 2 * comfort * reach))
 		end
 	end
 
-	-- Smoothly interpolate currentSpeed towards targetSpeed
+	-- A car standing still that may go now moves off after a moment's reaction, not on the
+	-- same tick: a queue starts as a wave.
+	if currentSpeed < 0.3 then
+		if targetSpeed > 1 then
+			local at = state.launchAt
+			if not at then
+				at = _simClock + Tuning.LAUNCH_REACTION * (0.6 + math.random() * 0.8)
+				state.launchAt = at
+			end
+			if _simClock < at then targetSpeed = 0 end
+		else
+			state.launchAt = nil
+		end
+	else
+		state.launchAt = nil
+	end
+
+	-- Pull away hard from a standstill and ease off nearing cruise; brake as hard as the target
+	-- asks, up to the emergency ceiling.
 	if currentSpeed < targetSpeed then
-		currentSpeed = math.min(currentSpeed + Tuning.ACCEL_RATE * dt, targetSpeed)
+		local accel = Tuning.ACCEL_RATE
+			* (if state.vehicleClass == VehicleTypes.Truck or state.vehicleClass == VehicleTypes.Bus then Tuning.HEAVY_ACCEL else 1)
+		local free = 1 - (currentSpeed / cruise) ^ 4
+		currentSpeed = math.min(currentSpeed + accel * math.max(0.25, free) * dt, targetSpeed)
 	else
 		currentSpeed = math.max(currentSpeed - Tuning.BRAKE_RATE * dt, targetSpeed)
 	end
@@ -3424,7 +3706,7 @@ local function updateDriver(state: DriverState, dt: number)
 		if not currentEdge then
 			-- Edge under us vanished: a directed car hands back (keeps the trip contract);
 			-- an ambient roamer re-anchors to the nearest lane or despawns.
-			if state.route then abortDirected(state) else anchorToNearest(state) end
+			if state.route and not state.wander then abortDirected(state) else anchorToNearest(state) end
 			break
 		end
 
@@ -3470,6 +3752,16 @@ local function updateDriver(state: DriverState, dt: number)
 		end
 
 		local nextId = if #currentEdge.out > 0 then getPendingNextEdgeId(g, state, currentEdge) else nil
+		-- Decided on the approach to the exit, before the car is at its mouth (see Gridlock.ringLap).
+		if not currentEdge.isRoundabout then
+			state.ringLaps = nil
+		elseif nextId and state.edgeDist >= total - Tuning.RING_LAP_LOOK and (state.ringLaps or 0) < Tuning.RING_MAX_LAPS then
+			local exit = g:GetEdge(nextId)
+			if exit and not exit.isRoundabout and not exitLaneHasRoom(g, state, nextId) and Gridlock.ringLap(g, state, currentEdge) then
+				state.ringLaps = (state.ringLaps or 0) + 1
+				nextId = getPendingNextEdgeId(g, state, currentEdge)
+			end
+		end
 		local gap = getStopLineGap(g, currentEdge.toNode, currentEdge)
 		local stopDistVal = math.max(0, total - gap - noseSetback(state))
 
@@ -3490,8 +3782,8 @@ local function updateDriver(state: DriverState, dt: number)
 		-- Recheck stopping on current step
 		local isYellow = TrafficSignalService.IsApproachYellow(currentEdge.id)
 		local distToStopVal = stopDistVal - state.edgeDist
-		local safeStoppingDistance = currentSpeed * 1.5
-		local committed = (state.edgeDist > stopDistVal + 0.1) or (isYellow and distToStopVal < safeStoppingDistance)
+		local committed = (state.edgeDist > stopDistVal + 0.1)
+			or (isYellow and distToStopVal < currentSpeed * currentSpeed / (2 * Tuning.FIRM_DECEL))
 
 		local loopMustStop = false
 		-- Only a step that would carry the car over its line needs the answer (see above).
@@ -3757,6 +4049,7 @@ local function trySpawn(): boolean
 
 		tagCarInfo(state, "Cruising", slot.edgeId)
 		PathFollower.seedProximity(car, (i - 1) * (PathFollower.PROXIMITY_CHECK_DT / math.max(count, 1)))
+		Gridlock.wanderOn(g, state :: any)
 	end
 
 	return true
@@ -3775,7 +4068,12 @@ end
 -- startPos onto it. Only a caller restoring a saved vehicle has that number (it saved the
 -- car's own edgeDist), and using it keeps a reloaded queue in exactly the order and
 -- spacing it was saved in rather than one re-derived from rounded world positions.
-function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos: Vector3, route: { string }, onArrive: (() -> ())?, onAbort: (() -> ())?, exactStartDist: number?): boolean
+-- `joining`: the car is already standing on this lane in plain view of the traffic -- its own
+-- pull-out leg drove it there, registered, so the cars behind have been braking for it. Such a
+-- car joins unless it actually overlaps another; the empty-seat test a fresh spawn needs (no
+-- car anywhere near) refused it whenever traffic had closed up behind, and its owner then hid
+-- it out of the world to try again later -- the "car comes out of the lot and vanishes".
+function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos: Vector3, route: { string }, onArrive: (() -> ())?, onAbort: (() -> ())?, exactStartDist: number?, joining: boolean?): boolean
 	local g = nav()
 	if not g or not g:HasEdges() or typeof(route) ~= "table" or #route == 0 then return false end
 	local firstEdge = g:GetEdge(route[1])
@@ -3805,13 +4103,13 @@ function NPCDriverService.DriveDirected(model: Model, startPos: Vector3, goalPos
 			-noseSetback({halfLength=vehicleHalfLength(model)} :: any))
 		if startDist>stopAt then
 			local seat=PathFollower.pointAtDist(firstEdge.points,PathFollower.getCum(firstEdge),stopAt)
-			if not NPCDriverService.RoadGapClear(seat,0,model) then return false end
+			if not joining and not NPCDriverService.RoadGapClear(seat,0,model) then return false end
 			startDist=stopAt
 		end
 	end
 	if not _drivers[model] then
 		local seat, direction = PathFollower.pointAtDist(firstEdge.points,PathFollower.getCum(firstEdge),startDist)
-		if not NPCDriverService.RoadGapClear(seat,0,model) then return false end
+		if not joining and not NPCDriverService.RoadGapClear(seat,0,model) then return false end
 		-- Parking handoffs still occupy road space after leaving the driver registry.
 		if PathFollower.anyVehicleWithin(seat, FOLLOW_BUMPER, function(other: Model): boolean
 			return other ~= model
@@ -4036,6 +4334,22 @@ function NPCDriverService.SpawnTestCarsNear(center: Vector3?, count: number?, ra
 	}
 end
 
+-- Whether `route` is a chain the roads carry right now for this vehicle (every lane exists and
+-- admits it, each step a turn or a mid-block lane change). DriveDirected refuses anything else;
+-- an owner asks first so it never mistakes a dead route for a blocked seat.
+function NPCDriverService.RouteDrivable(model: Model, route: { string }): boolean
+	local g = nav()
+	if not g or typeof(route) ~= "table" or #route == 0 then return false end
+	local vehicleClass = VehicleTypes.classOf(model)
+	for i, id in route do
+		local edge = g:GetEdge(id)
+		if not edge or not edgeAllows(edge, vehicleClass) then return false end
+		local nextId = route[i + 1]
+		if nextId and not edgeHasOutgoing(edge, nextId) and not g:GetLaneChangeWindow(id, nextId) then return false end
+	end
+	return true
+end
+
 -- Silently drop a directed car from the driver pool WITHOUT firing onArrive/onAbort
 -- (the caller is destroying it / taking it over). Returns true if it was directed.
 function NPCDriverService.ReleaseDirected(model: Model): boolean
@@ -4059,7 +4373,7 @@ function NPCDriverService.ResetAll(): number
 	local all: { DriverState } = {}
 	for _, state in _drivers do table.insert(all, state) end
 	for _, state in all do
-		if state.route then abortDirected(state) else despawnDriver(state) end
+		if state.route and not state.wander then abortDirected(state) else despawnDriver(state) end
 	end
 	return #all
 end
@@ -4895,7 +5209,7 @@ local function safeUpdateDriver(state: DriverState, dt: number): boolean
 	if ok then return true end
 	warn(("[NPCDriverService] update failed for %s on %s: %s"):format(state.model.Name,state.edgeId,tostring(cause)))
 	-- Settle the owner's trip and remove its indexes before processing the next car.
-	if state.route then abortDirected(state) else despawnDriver(state) end
+	if state.route and not state.wander then abortDirected(state) else despawnDriver(state) end
 	return false
 end
 
@@ -5020,7 +5334,7 @@ function NPCDriverService.Start()
 					-- move-in drive-ins silently stopped and arrivals sat at entrances
 					-- in retry loops (the recurring entrance jam). Abort instead: the
 					-- owner parks the car at its destination and the books stay right.
-					if state.route then
+					if state.route and not state.wander then
 						abortDirected(state)
 					else
 						despawnDriver(state)

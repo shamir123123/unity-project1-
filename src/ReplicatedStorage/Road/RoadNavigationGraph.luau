@@ -197,6 +197,10 @@ local LANE_SHIFT_SECONDS = 4
 -- between two pieces of road: shifting there crossed the neighbour lane's cars as they
 -- shifted the other way, with no gap check, where a mid-block change waits for a gap.
 local JUNCTION_SHIFT_SECONDS = 20
+-- Turning round at the end of a dead end someone does not live on: into the bulb, round, and back
+-- out past the houses. Drivers go round the block or turn into a driveway across the road
+-- instead; priced at the bare U-turn (~33 s) the router sent cars into cul-de-sacs to turn round.
+local DEAD_END_TURNAROUND_SECONDS = 45
 local function junctionStraightLaneAllowed(inEdge: LaneEdge, outEdge: LaneEdge): boolean
 	return inEdge.laneOrdinal <= outEdge.laneCountInDirection
 		and laneShift(inEdge, outEdge) <= 1
@@ -1462,6 +1466,7 @@ function RoadNavigationGraph._rebuildConnectionsForNodes(self: any, network: any
 					local perLane = if isRA then LANE_SHIFT_SECONDS else JUNCTION_SHIFT_SECONDS
 					inEdge.turnCost[outEdge.id] = movementCost(movement, inEdge.toDir, outEdge.fromDir)
 						+ shift * perLane
+						+ (if movement == "uturn" and #node.segments <= 1 then DEAD_END_TURNAROUND_SECONDS else 0)
 				end
 			end
 		end
@@ -2078,13 +2083,36 @@ local function buildConnectionPoints(graph: any, fromEdge: LaneEdge, toEdge: Lan
 	return out, fromSetback, toSetback
 end
 
+-- Connector geometry only changes when the graph does (every rebuild, relink and handle edit
+-- bumps _version), but the driver asks for the same few curves every tick for every car near a
+-- junction -- each ask used to rebuild the curve from scratch. Kept per version; the points
+-- come back FROZEN, so a caller that wants to adjust them (startConnector grounds them) clones.
+local EMPTY_POINTS: { Vector3 } = table.freeze({})
+local function connectionCache(self: any): { [string]: any }
+	local cache = self._connCache
+	if not cache or self._connCacheVersion ~= self._version then
+		cache = {}
+		self._connCache = cache
+		self._connCacheVersion = self._version
+	end
+	return cache
+end
+
 function RoadNavigationGraph.GetConnectionPoints(self: any, fromEdgeId: string, toEdgeId: string): ({ Vector3 }, number, number)
 	local fromEdge = self._edges[fromEdgeId]
 	local toEdge = self._edges[toEdgeId]
 	if not fromEdge or not toEdge then
-		return {}, 0, 0
+		return EMPTY_POINTS, 0, 0
 	end
-	return buildConnectionPoints(self, fromEdge, toEdge, self._customConnectionHandles[connectionKey(fromEdgeId, toEdgeId)])
+	local key = connectionKey(fromEdgeId, toEdgeId)
+	local cache = connectionCache(self)
+	local hit = cache[key]
+	if not hit then
+		local pts, fromSetback, toSetback = buildConnectionPoints(self, fromEdge, toEdge, self._customConnectionHandles[key])
+		hit = { table.freeze(pts), fromSetback, toSetback }
+		cache[key] = hit
+	end
+	return hit[1], hit[2], hit[3]
 end
 
 -- Setbacks for the connector between two edges: (distance back from the
@@ -2096,7 +2124,15 @@ function RoadNavigationGraph.GetConnectionSetbacks(self: any, fromEdgeId: string
 	if not fromEdge or not toEdge then
 		return 0, 0
 	end
-	return connectionEdgeSetbacks(self, fromEdge, toEdge)
+	local key = "s" .. connectionKey(fromEdgeId, toEdgeId)
+	local cache = connectionCache(self)
+	local hit = cache[key]
+	if not hit then
+		local fromSetback, toSetback = connectionEdgeSetbacks(self, fromEdge, toEdge)
+		hit = { fromSetback, toSetback }
+		cache[key] = hit
+	end
+	return hit[1], hit[2]
 end
 
 -- The connector between two lanes as the cubic it is built from, { p0, c1, c2, p3 }: the exact
