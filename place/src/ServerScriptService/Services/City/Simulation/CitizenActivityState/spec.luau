@@ -1,0 +1,40 @@
+--!strict
+return function()
+ local State=require(script.Parent)
+ local Columns=require(script.Parent.Parent.CitizenSaveColumns)
+ local HttpService=game:GetService("HttpService")
+ local function person(): any return {pid=77,age=42,name="Sam",gender="M",eduLevel=2,
+ stage="atWork",commutedWorkDay=12,outKind="work",usingCar=false} end
+ describe("Resident activity persistence",function()
+  it("preserves worker identity, shift day and settled work state",function()
+   local p=person();local record=State.pack(p,2,2,nil)
+   local restored:any={pid=1,eduLevel=0}
+   assert(State.apply(restored,record))
+   assert(restored.pid==77 and restored.stage=="atWork" and restored.commutedWorkDay==12 and restored.eduLevel==2)
+  end)
+  it("keeps a walking trip position and intent through JSON columns",function()
+   local p=person();p.stage="transit";p.tripTargetHome=true
+   local record=State.pack(p,2,1,Vector3.new(10.04,5,120.06))
+   local rows={{h=1,a=1,k=0,f=12,e={0,0,1,0},j={{2,1}},rs={record},ks={},hh=9,fn="Jones",g=0}}
+   local back=Columns.fromColumns(HttpService:JSONDecode(HttpService:JSONEncode(Columns.toColumns(rows))))
+   assert(back[1].rs[1][1]==77 and back[1].rs[1][11]==true and back[1].g==0)
+   assert(back[1].hh==9 and back[1].fn=="Jones")
+   local pos=State.position(back[1].rs[1][12]);assert(pos and (pos-Vector3.new(10,5,120.1)).Magnitude<.001)
+  end)
+  it("school and homebound states retain different destinations",function()
+   local p=person();p.stage="transit";p.schoolId=4;p.schoolPos=Vector3.new(40,0,100)
+   local record=State.pack(p,nil,nil,Vector3.new(30,0,90))
+   assert(record[15]==4 and record[11]==false and #record[16]==3)
+   p.tripTargetHome=true;assert(State.pack(p,nil,nil,nil)[11]==true)
+  end)
+  it("malformed identities and states cannot enter the simulation",function()
+   local p=person();assert(not State.apply(p,{}));assert(not State.apply(p,{0/0,40,"x","M",0,0,"atHome"}))
+   assert(not State.apply(p,{1,40,"x","M",0,0,"unknown"}))
+   assert(State.position({math.huge,0,0})==nil)
+  end)
+  it("old rows still load without activity records or invented pantry goods",function()
+   local back=Columns.fromColumns(Columns.toColumns({{h=1,a=1,k=0,f=2,j={},e={1,0,0,0}}}))
+   assert(back[1].rs==nil and back[1].g==nil and back[1].a==1)
+  end)
+ end)
+end
