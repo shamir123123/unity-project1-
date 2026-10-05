@@ -33,7 +33,6 @@ local CHUNKS = Constants.CHUNKS_PER_AXIS
 local CT = Constants.CHUNK_TILES
 local CC = Constants.CHUNK_CORNERS
 local cornerToWorld = Constants.cornerToWorld
-local worldYToRaw = Constants.worldYToRaw
 local HALF = Constants.MAP_HALF_EXTENT
 -- Base noise wavelength, scaled with the map so a bigger map shows similarly-sized
 -- landmasses (not just more of them). 900 was tuned for the old 4096-stud map.
@@ -148,6 +147,31 @@ end
 local COARSE_STEP = 2
 local LANDFORM_STEP = 4
 
+local FLOOR_Y = Constants.FLOOR_Y
+local HEIGHT_STEP = Constants.HEIGHT_STEP
+local RAW_MAX = Constants.RAW_MAX
+-- Per coarse step: for every chunk-local corner 0..CT, the two coarse columns it lies between and
+-- how far along. Built on first use and reused by every chunk -- the fill below used to recompute
+-- (and floor) these 4,225 times a chunk. Same arithmetic as before, so the same heights.
+type Lerp = { lo: { number }, hi: { number }, t: { number } }
+local _lerps: { [number]: Lerp } = {}
+local function lerpFor(step: number): Lerp
+	local cached = _lerps[step]
+	if cached then return cached end
+	local cols = CT // step + 1
+	local lo, hi, t = table.create(CT + 1), table.create(CT + 1), table.create(CT + 1)
+	for l = 0, CT do
+		local f = l / step
+		local i0 = math.floor(f)
+		lo[l + 1] = i0
+		hi[l + 1] = math.min(i0 + 1, cols - 1)
+		t[l + 1] = f - i0
+	end
+	local made = { lo = lo, hi = hi, t = t }
+	_lerps[step] = made
+	return made
+end
+
 function TerrainGenerator.generateChunk(hm: Heightmap.Heightmap, cx: number, cz: number, p: GenParams)
 	local chunk = hm:ensureChunk(cx, cz)
 	-- The base map is BARE ground. Heights are rewritten below, but a heightmap that
@@ -178,25 +202,27 @@ function TerrainGenerator.generateChunk(hm: Heightmap.Heightmap, cx: number, cz:
 		end
 	end
 
+	-- worldYToRaw inlined (same expression, same clamp): a call per corner was a third of this.
+	local L = lerpFor(step)
+	local lo, hi, tt = L.lo, L.hi, L.t
 	for lz = 0, CT do
-		local fz = lz / step
-		local z0 = math.floor(fz)
-		local tz = fz - z0
-		local row0 = z0 * cols
-		local row1 = math.min(z0 + 1, cols - 1) * cols
-		local outRow = lz * CC
-		for lx = 0, CT do
-			local fx = lx / step
-			local x0 = math.floor(fx)
-			local tx = fx - x0
-			local x1 = math.min(x0 + 1, cols - 1)
-			local a = coarse[row0 + x0 + 1]
-			local b = coarse[row0 + x1 + 1]
-			local c = coarse[row1 + x0 + 1]
-			local d = coarse[row1 + x1 + 1]
+		local z0 = lo[lz + 1]
+		local tz = tt[lz + 1]
+		local row0 = z0 * cols + 1
+		local row1 = hi[lz + 1] * cols + 1
+		local off = lz * CC * 2
+		for i = 1, CT + 1 do
+			local x0, x1, tx = lo[i], hi[i], tt[i]
+			local a = coarse[row0 + x0]
+			local b = coarse[row0 + x1]
+			local c = coarse[row1 + x0]
+			local d = coarse[row1 + x1]
 			local top = a + (b - a) * tx
 			local bot = c + (d - c) * tx
-			buffer.writeu16(heights, (outRow + lx) * 2, worldYToRaw(top + (bot - top) * tz))
+			local raw = math.round((top + (bot - top) * tz - FLOOR_Y) / HEIGHT_STEP)
+			if raw < 0 then raw = 0 elseif raw > RAW_MAX then raw = RAW_MAX end
+			buffer.writeu16(heights, off, raw)
+			off += 2
 		end
 	end
 end

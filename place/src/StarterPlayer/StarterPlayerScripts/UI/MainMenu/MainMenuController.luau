@@ -38,7 +38,7 @@ local MENU_OUT_TIME = 0.36
 local MENU_IN_TIME = 0.55
 -- However fast a city loads, its screen stays up this long: one that flashes past reads as a
 -- glitch, and the loader gets a few laps in.
-local MIN_LOADING_SCREEN_TIME = 5
+local MIN_LOADING_SCREEN_TIME = 1.5
 local MENU_SLIDE_OFFSET = 28
 local PARALLAX_OFFSET_X = 22
 local PARALLAX_OFFSET_Y = 14
@@ -719,6 +719,13 @@ end
 -- horizon filling in after entry is exactly what they asked for by pressing it.
 -- ponytail: just the ground under the camera; raise it if players see holes on skip.
 local SKIP_GROUND_RADIUS = 500
+-- AUTO-ENTER (load-time pass, 2026-10-05): the screen no longer waits for the far horizon's
+-- geometry. Once every chunk has its heights and water (the far pass) and the ground is drawn
+-- this far round the camera, the build is handed to finishInBackground exactly as a skip does,
+-- and the last far blocks -- 2 km and more away, the farthest ground there is -- land over the
+-- next seconds. Waiting for them was the single longest stretch of a cold load: every one is a
+-- ~30 ms bake that cannot be sliced. Set to math.huge to wait for the whole map again.
+local AUTO_ENTER_RADIUS = 2048
 local function buildTerrain(setBar: (number) -> (), fromFrac: number, skipped: () -> boolean)
 	local BUILD_FROM = math.clamp(fromFrac, 0, 1)
 	setBar(BUILD_FROM)
@@ -737,8 +744,12 @@ local function buildTerrain(setBar: (number) -> (), fromFrac: number, skipped: (
 	end)
 	while not done do
 		local cam = workspace.CurrentCamera
-		if skipped() and TerrainBuildController.groundReadyAround(
-			if cam then cam.CFrame.Position else Vector3.zero, SKIP_GROUND_RADIUS) then
+		local camPos = if cam then cam.CFrame.Position else Vector3.zero
+		local early = skipped() and TerrainBuildController.groundReadyAround(camPos, SKIP_GROUND_RADIUS)
+		if not early and AUTO_ENTER_RADIUS < math.huge and TerrainBuildController.farPassDone() then
+			early = TerrainBuildController.groundReadyAround(camPos, AUTO_ENTER_RADIUS)
+		end
+		if early then
 			entered = true
 			TerrainBuildController.finishInBackground()
 			return

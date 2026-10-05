@@ -96,7 +96,7 @@ local WORD_X = MARK_LOGO_X + MARK_SIZE / 2 + MARK_GAP
 
 local BLOCK_DIM = 0.84 -- the loader's unlit blocks
 local ORBIT_STEP = 0.16
-local LOGO_HOLD = 1.0
+local LOGO_HOLD = 0.35 -- was 1.0: the logo plays AFTER the city is ready, so every beat here is load time
 
 -- The skip pill. Kit.Button's capsule, restated: Kit cannot be required from ReplicatedFirst.
 -- It comes up SKIP_DELAY into a screen's life, so a load that is over that fast never shows it.

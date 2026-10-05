@@ -91,6 +91,9 @@ local BACKGROUND_DRAW_TIMEOUT = 300
 local _frameBudget = FRAME_BUDGET
 -- The current build's near pass is done: the city's own ground is painted.
 local _nearDone = false
+-- ...and its far pass: every chunk on the map has its heights and its water, and every mesh
+-- that is not built yet is at least queued. All that can be left is the far ground's geometry.
+local _farDone = false
 
 local function chunkCentreX(cx: number): number return -HALF + (cx + 0.5) * CHUNK_STUDS end
 local function chunkCentreZ(cz: number): number return -HALF + (cz + 0.5) * CHUNK_STUDS end
@@ -131,6 +134,7 @@ function TerrainBuildController.build(net: any, onProgress: ((number) -> ())?, b
 	local myGen = _buildGen
 	_frameBudget = FRAME_BUDGET
 	_nearDone = false
+	_farDone = false
 	local terrain = workspace:FindFirstChildOfClass("Terrain")
 	if not terrain then return false end
 
@@ -227,6 +231,11 @@ function TerrainBuildController.build(net: any, onProgress: ((number) -> ())?, b
 			return cornerMat(hm, gx, gz)
 		end, ensureChunkData, function(key: number): buffer?
 			ensureChunkData(key)
+			local chunk = hm:getChunk(Heightmap.decodeKey(key))
+			return if chunk then chunk.heights else nil
+		end, function(key: number): buffer?
+			-- Loaded or not, never generated here: cornerY answers the seed's surface for a chunk
+			-- that is not in yet, and the mesh's row reader must give the same answer.
 			local chunk = hm:getChunk(Heightmap.decodeKey(key))
 			return if chunk then chunk.heights else nil
 		end)
@@ -359,6 +368,7 @@ function TerrainBuildController.build(net: any, onProgress: ((number) -> ())?, b
 		RunService.Heartbeat:Wait()
 	end
 	local tFar = os.clock()
+	if myGen == _buildGen then _farDone = true end
 	if beforeDraw then
 		local okWait, waitErr = pcall(beforeDraw)
 		if not okWait then warn("[TerrainBuildController] beforeDraw failed:", waitErr) end
@@ -422,6 +432,11 @@ end
 -- would not be a skip, it would be a bug.
 function TerrainBuildController.groundReadyAround(pos: Vector3, radius: number): boolean
 	return _nearDone and (not MESH_GROUND or TerrainMeshView.drawnAround(pos, radius))
+end
+
+-- The far pass is done: heights and water everywhere, only far ground geometry still queued.
+function TerrainBuildController.farPassDone(): boolean
+	return _farDone
 end
 
 -- The VISIBLE ground surface at a world point -- the client twin of

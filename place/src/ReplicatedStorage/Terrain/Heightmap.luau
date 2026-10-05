@@ -58,6 +58,20 @@ local function axisOwners(g: number): (number, number, number?, number?)
 	return cHigh, primaryLocal, nil, nil
 end
 
+-- A chunk's worth of sea-level heights, built once and copied into every new chunk (a
+-- per-corner write loop was 4,225 calls a chunk, 1,024 chunks a map).
+local _seaTemplate: buffer? = nil
+local function seaTemplate(): buffer
+	local t = _seaTemplate
+	if t then return t end
+	local b = buffer.create(CORNER_COUNT * 2)
+	for i = 0, CORNER_COUNT - 1 do
+		buffer.writeu16(b, i * 2, SEA_RAW)
+	end
+	_seaTemplate = b
+	return b
+end
+
 function Heightmap.new(): Heightmap
 	return setmetatable({
 		_chunks = {},
@@ -77,9 +91,7 @@ function Heightmap.ensureChunk(self: Heightmap, cx: number, cz: number): Types.C
 	if existing then return existing end
 
 	local heights = buffer.create(CORNER_COUNT * 2)
-	for i = 0, CORNER_COUNT - 1 do
-		buffer.writeu16(heights, i * 2, SEA_RAW)
-	end
+	buffer.copy(heights, 0, seaTemplate())
 	local chunk: Types.Chunk = {
 		cx = cx,
 		cz = cz,

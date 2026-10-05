@@ -51,6 +51,9 @@ export type Geo = {
 	tri: { number }, -- 1-based vertex indices, three per triangle
 }
 
+-- Bulk twin of sampleY: fill out[at + k] with the height of corner (gx0 + k, gz), k = 0..count-1.
+export type FillRow = (gx0: number, gz: number, count: number, out: { number }, at: number) -> ()
+
 
 -- Ground colour from height, slope and depth, in the palette of a city-builder map: lush
 -- green in the lowlands drying to olive and sandy tan as the ground climbs or steepens, rock
@@ -103,6 +106,15 @@ local OVERRIDE = table.freeze({
 
 -- worldY is the HEIGHTMAP value; the visible surface, which is what meets the water, is two
 -- studs above it (RENDER_BULGE).
+-- The land blend, channel by channel: the same chain of Lerps, done in plain numbers so a vertex
+-- allocates ONE Color3 instead of five (this runs for every vertex of every chunk on a cold load).
+local LUSH_R, LUSH_G, LUSH_B = COL_LUSH.R, COL_LUSH.G, COL_LUSH.B
+local MEADOW_R, MEADOW_G, MEADOW_B = COL_MEADOW.R, COL_MEADOW.G, COL_MEADOW.B
+local DRY_R, DRY_G, DRY_B = COL_DRY.R, COL_DRY.G, COL_DRY.B
+local ROCK_R, ROCK_G, ROCK_B = COL_ROCK.R, COL_ROCK.G, COL_ROCK.B
+local SNOW_R, SNOW_G, SNOW_B = COL_SNOW.R, COL_SNOW.G, COL_SNOW.B
+local SAND_R, SAND_G, SAND_B = COL_SAND.R, COL_SAND.G, COL_SAND.B
+
 function TerrainMesh.surfaceColor(worldY: number, slopeRad: number, matId: number): Color3
 	local override = OVERRIDE[matId]
 	if override then return override end
@@ -114,12 +126,19 @@ function TerrainMesh.surfaceColor(worldY: number, slopeRad: number, matId: numbe
 		return COL_DROP:Lerp(COL_DEEP, ramp(16, 45, d))
 	end
 	local slopeDeg = math.deg(slopeRad)
-	local c = COL_LUSH:Lerp(COL_MEADOW, ramp(4, 30, s))
-	c = c:Lerp(COL_DRY, ramp(28, 110, s) * 0.85 + ramp(18, 34, slopeDeg) * 0.5)
-	c = c:Lerp(COL_ROCK, ramp(32, 48, slopeDeg))
-	c = c:Lerp(COL_SNOW, ramp(SNOW_LINE, SNOW_LINE + 30, s) * (1 - ramp(35, 50, slopeDeg)))
+	local t = ramp(4, 30, s)
+	local r = LUSH_R + (MEADOW_R - LUSH_R) * t
+	local g = LUSH_G + (MEADOW_G - LUSH_G) * t
+	local b = LUSH_B + (MEADOW_B - LUSH_B) * t
+	t = ramp(28, 110, s) * 0.85 + ramp(18, 34, slopeDeg) * 0.5
+	r, g, b = r + (DRY_R - r) * t, g + (DRY_G - g) * t, b + (DRY_B - b) * t
+	t = ramp(32, 48, slopeDeg)
+	r, g, b = r + (ROCK_R - r) * t, g + (ROCK_G - g) * t, b + (ROCK_B - b) * t
+	t = ramp(SNOW_LINE, SNOW_LINE + 30, s) * (1 - ramp(35, 50, slopeDeg))
+	r, g, b = r + (SNOW_R - r) * t, g + (SNOW_G - g) * t, b + (SNOW_B - b) * t
 	-- Sand only on the gentle part of the shore: a cliff dropping into the sea stays rock.
-	return c:Lerp(COL_SAND, (1 - ramp(0.25, BEACH_TOP, s)) * (1 - ramp(14, 26, slopeDeg)))
+	t = (1 - ramp(0.25, BEACH_TOP, s)) * (1 - ramp(14, 26, slopeDeg))
+	return Color3.new(r + (SAND_R - r) * t, g + (SAND_G - g) * t, b + (SAND_B - b) * t)
 end
 
 -- How far the mesh drawn at each stride can stray from the full-resolution grid, for one chunk.
@@ -132,15 +151,25 @@ end
 -- run the same way), so that second term is exact at five points per quad. ~5,700 point tests a
 -- chunk for every stride at once, against ~34,000 to measure each one exactly. Never under the
 -- real error, so a stride it accepts is always within tolerance.
-function TerrainMesh.strideErrors(cx: number, cz: number, sampleY: (number, number) -> number): ({ number }, { [number]: number })
+-- fillRow (optional): fillRow(gx0, gz, count, out, at) writes the same heights sampleY would
+-- answer for corners gx0 .. gx0 + count - 1 of row gz into out[at ..]. A whole row per call
+-- instead of a function call per corner: the per-corner sampler was most of the cost of a cold
+-- terrain build (two padded grids per chunk, ~9 million calls a map).
+function TerrainMesh.strideErrors(cx: number, cz: number, sampleY: (number, number) -> number, fillRow: FillRow?): ({ number }, { [number]: number })
 	local gx0, gz0 = cx * CHUNK_TILES, cz * CHUNK_TILES
 	local w = CHUNK_TILES + 1
 	local h = table.create(w * w)
-	for j = 0, CHUNK_TILES do
-		local base = j * w
-		local gz = gz0 + j
-		for i = 0, CHUNK_TILES do
-			h[base + i + 1] = sampleY(gx0 + i, gz)
+	if fillRow then
+		for j = 0, CHUNK_TILES do
+			fillRow(gx0, gz0 + j, w, h, j * w + 1)
+		end
+	else
+		for j = 0, CHUNK_TILES do
+			local base = j * w
+			local gz = gz0 + j
+			for i = 0, CHUNK_TILES do
+				h[base + i + 1] = sampleY(gx0 + i, gz)
+			end
 		end
 	end
 
@@ -339,7 +368,8 @@ function TerrainMesh.buildChunk(
 	cz: number,
 	sampleY: (number, number) -> number,
 	sampleMat: (number, number) -> number,
-	strideAt: (number, number) -> number
+	strideAt: (number, number) -> number,
+	fillRow: FillRow?
 ): Geo
 	local gx0, gz0 = cx * CHUNK_TILES, cz * CHUNK_TILES
 	local gbx0, gbz0 = cx * BLOCKS, cz * BLOCKS
@@ -352,11 +382,17 @@ function TerrainMesh.buildChunk(
 	-- mirrored edge creases visibly.
 	local pad = CHUNK_TILES + 3
 	local h = table.create(pad * pad)
-	for j = -1, CHUNK_TILES + 1 do
-		local base = (j + 1) * pad + 2
-		local gz = gz0 + j
-		for i = -1, CHUNK_TILES + 1 do
-			h[base + i] = sampleY(gx0 + i, gz)
+	if fillRow then
+		for j = -1, CHUNK_TILES + 1 do
+			fillRow(gx0 - 1, gz0 + j, pad, h, (j + 1) * pad + 1)
+		end
+	else
+		for j = -1, CHUNK_TILES + 1 do
+			local base = (j + 1) * pad + 2
+			local gz = gz0 + j
+			for i = -1, CHUNK_TILES + 1 do
+				h[base + i] = sampleY(gx0 + i, gz)
+			end
 		end
 	end
 	local inv2span = 1 / (2 * SPACING)

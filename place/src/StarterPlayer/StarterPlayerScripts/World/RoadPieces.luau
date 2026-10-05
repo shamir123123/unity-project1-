@@ -229,6 +229,16 @@ local function groundCap(gx: number, gz: number): number?
 	return caps[(gz - cz * TILES) * (TILES + 1) + (gx - cx * TILES)]
 end
 
+-- groundCap a chunk at a time: the same memoised table, for TerrainMeshView's row reader.
+local function chunkCaps(key: number): { [number]: number }?
+	local caps = _capOf[key]
+	if caps == nil then
+		caps = capsFor(key)
+		_capOf[key] = caps
+	end
+	return if caps then caps else nil
+end
+
 local function flushGround()
 	for key in _groundDirty do
 		_capOf[key] = nil
@@ -657,7 +667,7 @@ end
 -- `notify(dirtyCells)` is called after every rebuild with the cells whose pieces changed.
 function RoadPieces.start(notify: (dirty: { [string]: boolean }) -> ())
 	_notify = notify
-	TerrainMeshView.setGroundCap(groundCap)
+	TerrainMeshView.setGroundCap(groundCap, chunkCaps)
 	_signals = readSignals()
 	-- Lights placed or removed: a stop line instead of give-way teeth (or back) on that node's roads.
 	local function watchLights(lights: Instance)

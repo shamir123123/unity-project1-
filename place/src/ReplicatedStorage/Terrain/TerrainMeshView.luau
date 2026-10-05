@@ -101,6 +101,13 @@ local _drawn: { [number]: number } = {}
 -- never meets the waterline, which is the answer for most of the map.
 local _caps: { [number]: { number } | false } = {}
 local _heightsOf: ((number) -> buffer?)? = nil
+-- The bulk sampler handed to TerrainMesh (see makeFillRow): rows straight off the chunk buffers.
+-- nil until setSource is given chunkHeights; the per-corner path is then used as before.
+local _fillRow: TerrainMesh.FillRow? = nil
+local makeFillRow: (capped: (number, number) -> number, chunkHeights: (number) -> buffer?) -> TerrainMesh.FillRow
+-- Per-chunk form of _groundCap: the memoised cap table for a chunk (0-based corner index
+-- lz * 65 + lx), or nil where no road holds the ground down. Lets a row skip the per-corner call.
+local _groundCapChunk: ((number) -> { [number]: number }?)? = nil
 -- A sculpting stroke in progress: the chunks it has touched, and per chunk the blocks it
 -- has touched. See editArea for why both are held for the whole stroke rather than per tick.
 local _editChunks: { [number]: boolean } = {}
@@ -330,6 +337,71 @@ local function skirtDepth(b: number): number
 	return 4 * toleranceOf(b) + 1
 end
 
+-- THE ROW READER. Heights for a run of corners along one row, read straight off the chunk
+-- buffers -- identical numbers to `capped` (the per-corner sampler: heightmap where the chunk is
+-- loaded, the seed's surface where it is not, held under any road cap), without a closure call,
+-- a chunk lookup and a key decode per corner. Off the map's interior (the outer border rows, the
+-- far edge corner the heightmap does not own) it simply asks `capped`, so every edge case keeps
+-- whatever answer it had before.
+local CT = Constants.CHUNK_TILES
+local CC = Constants.CHUNK_CORNERS
+local INTERIOR = CHUNKS * CT -- corners 0 .. INTERIOR - 1 sit inside a chunk the heightmap owns
+local FLOOR_Y = Constants.FLOOR_Y
+local HEIGHT_STEP = Constants.HEIGHT_STEP
+function makeFillRow(capped: (number, number) -> number, chunkHeights: (number) -> buffer?): TerrainMesh.FillRow
+	return function(gx0: number, gz: number, count: number, out: { number }, at: number)
+		local last = gx0 + count - 1
+		if gz < 0 or gz >= INTERIOR then
+			for k = 0, count - 1 do out[at + k] = capped(gx0 + k, gz) end
+			return
+		end
+		local capChunk = _groundCapChunk
+		-- A cap with no per-chunk form: keep the exact per-corner semantics.
+		if _groundCap and not capChunk then
+			for k = 0, count - 1 do out[at + k] = capped(gx0 + k, gz) end
+			return
+		end
+		local cz = gz // CT
+		local rowOff = (gz - cz * CT) * CC
+		local gx, o = gx0, at
+		while gx <= last do
+			if gx < 0 or gx >= INTERIOR then
+				out[o] = capped(gx, gz)
+				gx += 1
+				o += 1
+				continue
+			end
+			local cx = gx // CT
+			local x0 = cx * CT
+			local segEnd = math.min(last, x0 + CT - 1)
+			local key = cz * CHUNKS + cx
+			local heights = chunkHeights(key)
+			if not heights then
+				for x = gx, segEnd do
+					out[o] = capped(x, gz)
+					o += 1
+				end
+			else
+				local caps = if capChunk then capChunk(key) else nil
+				local li = rowOff + (gx - x0)
+				local off = li * 2
+				for _ = gx, segEnd do
+					local y = FLOOR_Y + buffer.readu16(heights, off) * HEIGHT_STEP
+					if caps then
+						local c = caps[li]
+						if c and c < y then y = c end
+					end
+					out[o] = y
+					o += 1
+					off += 2
+					li += 1
+				end
+			end
+			gx = segEnd + 1
+		end
+	end
+end
+
 -- How much error each stride would cost in each block of a chunk. Asking FORCES the chunk's
 -- heights to exist, because a neighbour's strides have to be exact before this chunk can stitch
 -- to them -- and generating it now is free in total, since the background fill was going to
@@ -340,7 +412,7 @@ local function errorsFor(key: number): Errors?
 	local sampleY, ensureData = _sampleY, _ensureData
 	if not sampleY or not ensureData or not ensureData(key) then return nil end
 	local cx = key % CHUNKS
-	local blocks, chunk = TerrainMesh.strideErrors(cx, (key - cx) / CHUNKS, sampleY)
+	local blocks, chunk = TerrainMesh.strideErrors(cx, (key - cx) / CHUNKS, sampleY, _fillRow)
 	local errs = { blocks = blocks, chunk = chunk }
 	_errs[key] = errs
 	return errs
@@ -582,7 +654,7 @@ function TerrainMeshView.buildChunk(key: number, eye: Vector3?, live: boolean?):
 	local tier = bucketOf(key, at)
 	local geo = TerrainMesh.buildChunk(cx, cz, sampleY, sampleMat, function(gbx: number, gbz: number): number
 		return strideAt(gbx, gbz, at)
-	end)
+	end, _fillRow)
 	if not _underground then TerrainMesh.addSkirt(geo, skirtDepth(tier)) end
 	local epoch = _epoch
 	local mp, em = bake(geo, live == true)
@@ -684,7 +756,7 @@ local function buildSuper(sk: number, eye: Vector3): boolean
 		local g = TerrainMesh.buildChunk(cx, (key - cx) / CHUNKS, sampleY, sampleMat,
 			function(gbx: number, gbz: number): number
 				return strideAt(gbx, gbz, eye)
-			end)
+			end, _fillRow)
 		if not _underground then TerrainMesh.addSkirt(g, skirtDepth(buckets[key])) end
 		tris += #g.tri // 3
 		geos[#geos + 1] = g
@@ -940,28 +1012,38 @@ end
 -- ensureData(chunkKey) -> load or generate that chunk's real heights if they are not there
 -- yet, and report whether sampleY can now answer for it exactly.
 -- heightsOf(chunkKey) -> that chunk's raw height buffer, ensured, for the shore caps; optional.
+-- chunkHeights(chunkKey) -> that chunk's raw height buffer if it is ALREADY loaded, else nil
+--   (never generates). Optional; when given, the mesh reads whole rows off the buffers instead
+--   of calling sampleY per corner, and sampleY is only asked where this answers nil. It must
+--   agree with sampleY: sampleY(gx, gz) == rawToWorldY(raw at that corner) wherever it answers.
 function TerrainMeshView.setSource(
 	sampleY: (number, number) -> number,
 	sampleMat: (number, number) -> number,
 	ensureData: (number) -> boolean,
-	heightsOf: ((number) -> buffer?)?
+	heightsOf: ((number) -> buffer?)?,
+	chunkHeights: ((number) -> buffer?)?
 )
-	_sampleY = function(gx: number, gz: number): number
+	local capped = function(gx: number, gz: number): number
 		local y = sampleY(gx, gz)
 		local cap = _groundCap
 		local c = if cap then cap(gx, gz) else nil
 		return if c and c < y then c else y
 	end
+	_sampleY = capped
 	_sampleMat = sampleMat
 	_ensureData = ensureData
 	_heightsOf = heightsOf
+	_fillRow = if chunkHeights then makeFillRow(capped, chunkHeights) else nil
 	table.clear(_errs)
 	table.clear(_caps)
 end
 
 -- See _groundCap. The caller marks the chunks whose caps changed dirty (markDirty).
-function TerrainMeshView.setGroundCap(cap: ((number, number) -> number?)?)
+-- capChunk(key) is the same caps a chunk at a time (see _groundCapChunk); without it the rows
+-- fall back to asking `cap` per corner.
+function TerrainMeshView.setGroundCap(cap: ((number, number) -> number?)?, capChunk: ((number) -> { [number]: number }?)?)
 	_groundCap = cap
+	_groundCapChunk = if cap then capChunk else nil
 end
 
 -- Chunks the city has built on. Distance never coarsens a pinned chunk (its own flatness
