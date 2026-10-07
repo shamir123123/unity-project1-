@@ -90,7 +90,7 @@ local SETTLE_WATERMARK = 16_000
 -- frosted panes (Kit.Frost) allocate from the same budget when a new panel shape first shows.
 local MAX_LIVE_MESHES = 24
 local SETTLE_MESHES = 12
-local SETTLE_QUIET = 4
+local SETTLE_QUIET = 2
 -- An edit queues a few road cells; a city load queues every one at once. A longer backlog than
 -- this means a load (or a huge paste), and that bakes static like it always did.
 local LIVE_MAX_BACKLOG = 16
