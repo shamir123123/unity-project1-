@@ -34,6 +34,7 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
 | M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.SeasonTintClient | LocalScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AmbienceController | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AmbientCityView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AssetLODView | ModuleScript |
@@ -146,6 +147,13 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
 - **Hover** (`BuildingInfoController`): a full-length pick ray ran on *every* mouse-move
   event (several per frame) and re-marshalled the ray filter each time. Now once per
   frame, filter written only when it changes.
+- **Rain and fog fades** (`SeasonTintClient`): while the weather faded in or out (40 s for
+  rain, 12 s for fog) the client re-tinted **every tree in the city, back to back, for the
+  whole fade** — 400 trees a frame — though leaf colour does not depend on wetness. It now
+  re-tints only when the frost on the leaves moves. Offline, 2,000 trees: rain fade-in
+  **continuous → 0 passes**; snow 259 → 20 passes; same colours.
+- **Hover tooltip** (`BuildingInfoController`): every frame the cursor was over a road or
+  the ground, the (already hidden) tooltip started a new fade tween. Now a no-op.
 - **Ambience** (`AmbienceController`): counted nearby cars by walking the whole fleet every
   0.8 s; now a radius query on the cars' hitboxes.
 - **Street names** (`StreetNameView`): every name was one Part + SurfaceGui + TextLabel

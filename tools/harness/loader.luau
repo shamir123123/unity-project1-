@@ -293,6 +293,8 @@ function H.run(path: string)
 	local inst = _byPath[path]
 	assert(inst, path)
 	local src = fs.readFile(ROOT .. _files[inst])
+	local patch = H.patches[path]
+	if patch then src = patch(src) end
 	local env = table.clone(_env)
 	env.script = inst
 	env.require = H.require

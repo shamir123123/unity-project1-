@@ -386,7 +386,10 @@ RunService.Heartbeat:Connect(function(dt)
 		shownWet = wetLevel
 		applyGrade(wetLevel)
 	end
-	if math.abs(leafFrost - lastLeaf) > 0.05 or leafFrost == 0 or leafFrost == 1 then
+	-- Only when the frost itself moved. "or leafFrost == 0" alone was true on every frame of a
+	-- 40 s rain or fog fade (wetness changing, frost at 0), and re-tinted every tree in the city
+	-- back to back for all of it -- 400 trees a frame -- though leaf colour ignores wetness.
+	if math.abs(leafFrost - lastLeaf) > 0.05 or ((leafFrost == 0 or leafFrost == 1) and leafFrost ~= lastLeaf) then
 		lastLeaf = leafFrost
 		retintAll()
 	end

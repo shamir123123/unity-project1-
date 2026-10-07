@@ -1407,6 +1407,9 @@ end
 
 -- ---------------------------------------------------------------- hover --
 local function hidePreview()
+	-- Runs every frame the cursor is over a road or the ground: already hidden, there is no
+	-- fade to start (each call built and played a new Tween).
+	if not _hoverModel and not _preview.Visible then return end
 	if _hoverModel then
 		if _hoverModel ~= _selectedModel then _hoverHL.Adornee = nil end
 		_hoverModel = nil
