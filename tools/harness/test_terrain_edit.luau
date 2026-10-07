@@ -37,7 +37,7 @@ local function edit(label, key)
 	frames(2)
 	while TMV.pending() > 0 and os.clock() - t0 < 600 do frames(1) end
 	frames(5)
-	print(string.format("%s: %d chunk builds, %d bakes", label, builds - b0, H.emStats.bakes - k0))
+	print(string.format("%s: %d chunk builds, %d static bakes, %d live snapshots alive", label, builds - b0, H.emStats.bakes - k0, H.emStats.fixedAlive))
 end
 local key = 16 * 32 + 16
 edit("first road in a chunk", key)
@@ -45,4 +45,8 @@ edit("second road, same chunk", key)
 edit("third road, same chunk", key)
 edit("road in the next chunk", key + 1)
 edit("again in the next chunk", key + 1)
+local k0 = H.emStats.bakes
+local t = os.clock()
+while os.clock() - t < 9 do hb:Fire(1 / 60); H.task.wait(1 / 60) end
+print(string.format("after 9 s quiet: %d static bakes (settle), %d live snapshots alive", H.emStats.bakes - k0, H.emStats.fixedAlive))
 process.exit(0)

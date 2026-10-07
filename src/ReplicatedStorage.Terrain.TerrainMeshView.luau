@@ -124,6 +124,17 @@ local _liveOrder: { number } = {}
 -- neighbours in too, so four was low enough that an ordinary stroke near a seam evicted a
 -- chunk every tick -- and every eviction is a full static re-bake.
 local MAX_LIVE = 9
+-- Ground the CITY just changed (a road graded, a pad levelled) redraws LIVE too, like a brush
+-- stroke: the static bake is a ~30 ms blocking frame (see bake), and it landed on the frame the
+-- road went down. Live chunks settle back to static once quiet for CITY_SETTLE_QUIET (oldest
+-- first past MAX_CITY_LIVE), through the queue like any other rebuild. They share MAX_LIVE with
+-- the brush, which always wins.
+local LIVE_CITY_EDITS = true
+local MAX_CITY_LIVE = 4
+local CITY_SETTLE_QUIET = 3
+local _cityLive: { number } = {}
+local _cityLiveAt: { [number]: number } = {}
+local _citySettleArmed = false
 local BLOCK_TILES = Constants.MESH_BLOCK_TILES
 local BLOCK_STUDS = BLOCK_TILES * Constants.SAMPLE_SPACING
 local MAX_BLOCK = CHUNKS * BLOCKS - 1
@@ -1146,6 +1157,23 @@ local function takeJob(queue: { number }, isRetier: (number) -> boolean): (numbe
 	return nil, false
 end
 
+local function citySettle()
+	_citySettleArmed = false
+	local now = os.clock()
+	for i = #_cityLive, 1, -1 do
+		local key = _cityLive[i]
+		if now - (_cityLiveAt[key] or 0) >= CITY_SETTLE_QUIET then
+			table.remove(_cityLive, i)
+			_cityLiveAt[key] = nil
+			enqueueChunk(key) -- unchanged ground: a static rebuild, queued and sliced
+		end
+	end
+	if #_cityLive > 0 and not _citySettleArmed then
+		_citySettleArmed = true
+		task.delay(CITY_SETTLE_QUIET, citySettle)
+	end
+end
+
 local function tick(dt: number, sweeps: boolean)
 	local cam = Workspace.CurrentCamera
 	if not cam then return end
@@ -1214,10 +1242,34 @@ local function tick(dt: number, sweeps: boolean)
 			end
 			if not _superOf[key] then
 				local urgent = _shapeDirty[key] == true
+				local cityLive = LIVE_CITY_EDITS and urgent and _cityShape[key] == true and not _loading
+					and #_liveOrder + #_cityLive < MAX_LIVE
 				if urgent then _sliceEnd[co] = math.huge end
 				_inFlight += 1
 				_building[key] = true
-				local ok, built = pcall(TerrainMeshView.buildChunk, key, camPos)
+				local ok, built = pcall(TerrainMeshView.buildChunk, key, camPos, cityLive)
+				if cityLive and ok and not built then
+					-- the live snapshot was refused (shared budget): bake it static now instead
+					ok, built = pcall(TerrainMeshView.buildChunk, key, camPos, false)
+				end
+				local was = table.find(_cityLive, key)
+				if was then table.remove(_cityLive, was) end
+				local drawn = _states[key]
+				if cityLive and ok and built and drawn and drawn.em then
+					table.insert(_cityLive, key)
+					_cityLiveAt[key] = os.clock()
+					while #_cityLive > MAX_CITY_LIVE do
+						local oldest = table.remove(_cityLive, 1) :: number
+						_cityLiveAt[oldest] = nil
+						enqueueChunk(oldest)
+					end
+					if not _citySettleArmed then
+						_citySettleArmed = true
+						task.delay(CITY_SETTLE_QUIET, citySettle)
+					end
+				else
+					_cityLiveAt[key] = nil
+				end
 				_building[key] = nil
 				if urgent then _sliceEnd[co] = t0 + slice end
 				_inFlight = math.max(_inFlight - 1, 0)
@@ -1712,6 +1764,8 @@ function TerrainMeshView.reset()
 	table.clear(_editChunks)
 	table.clear(_editFine)
 	table.clear(_liveOrder)
+	table.clear(_cityLive)
+	table.clear(_cityLiveAt)
 	table.clear(_pinned)
 	table.clear(_queue)
 	table.clear(_queued)
