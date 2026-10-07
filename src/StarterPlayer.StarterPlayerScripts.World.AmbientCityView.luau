@@ -296,9 +296,19 @@ local function step(dt: number)
 	end
 end
 
+-- The road index is only read while this view is on (full city sim OFF). Rebuilding it on every
+-- road edit for the players who never use it -- every segment's lanes and length, the whole city
+-- -- was a per-edit cost paid for nothing; it is now built when the view turns on, and kept
+-- current only while it is on.
+local _indexStale = true
+
 local function turnOff()
 	if _off then return end
 	_off = true
+	if _indexStale then
+		_indexStale = false
+		indexSegments(DataCache.GetSegments())
+	end
 	local folder = Instance.new("Folder")
 	folder.Name = "AmbientCity"
 	folder.Parent = Workspace
@@ -358,8 +368,9 @@ local function apply(v: any)
 end
 
 function AmbientCityView.Start()
-	DataCache.On("segments", indexSegments)
-	indexSegments(DataCache.GetSegments())
+	DataCache.On("segments", function(list: { any })
+		if _off then indexSegments(list) else _indexStale = true end
+	end)
 	Settings.onChanged("fullCitySim", apply)
 	apply(Settings.get("fullCitySim"))
 end

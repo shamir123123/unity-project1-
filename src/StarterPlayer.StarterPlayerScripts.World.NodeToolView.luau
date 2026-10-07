@@ -983,9 +983,18 @@ function NodeToolView.Start()
 
 	-- --------------------------------------------------------------- toggle --
 
+	-- The arm table is read only while the tool is open. Rebuilding it for the whole city on
+	-- every segment AND every node update -- twice per road edit, tool open or not -- was a
+	-- city-sized cost on every edit; closed, an update now only marks it stale.
+	local _armsStale = false
+
 	local function setActive(on: boolean)
 		_active = on
 		_banner.Visible = on
+		if on and _armsStale then
+			_armsStale = false
+			rebuildArms()
+		end
 		if on then
 			-- The lane connector's banner and side panel occupy exactly these coordinates, so
 			-- claiming the slot closes it rather than letting the two draw over each other.
@@ -1012,6 +1021,10 @@ function NodeToolView.Start()
 	rebuildArms()
 
 	DataCache.On("segments", function()
+		if not _active then
+			_armsStale = true
+			return
+		end
 		rebuildArms()
 		-- An angle edit rebuilt its segment under a new id. Re-pick the arm that now
 		-- points closest to where the old one did, so the arm's fields stay live.
@@ -1044,6 +1057,10 @@ function NodeToolView.Start()
 	end)
 
 	DataCache.On("nodes", function()
+		if not _active then
+			_armsStale = true
+			return
+		end
 		rebuildArms()
 		if _nodeId and not armsOf(_nodeId) then
 			_nodeId, _segId = nil, nil

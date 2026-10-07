@@ -26,7 +26,9 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AmbienceController | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.AmbientCityView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AssetLODView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.NodeToolView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadEditPreview | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadMeshView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadPieces | ModuleScript |
@@ -83,6 +85,12 @@ delta the server sends. Four things stood between the click and the real road:
 - The server re-sent **every junction's lane data in the city** after each in-place
   upgrade/reversal (`commitInPlace` → full lane-path broadcast). It now re-sends only the
   touched junctions (the incremental path the nav flush already has).
+
+- **Per-edit work for tools that are closed**: on every road edit NodeToolView rebuilt arm
+  data for every node in the city (twice: on the segment and the node update) and
+  AmbientCityView re-indexed every segment — even with the node tool closed and full city
+  sim on (the ambient view is only used when it is off). Both now just mark themselves
+  stale and rebuild when they are actually opened/used.
 
 ### 3. Ground under road edits (`TerrainMeshView`)
 
