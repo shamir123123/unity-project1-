@@ -36,6 +36,9 @@ local Const        = require(ServerScriptService.Services.City.CitySimConstants)
 local WaterService = {}
 
 local TICK = 2.0
+-- Where in each period this sim runs, as a share of it (0.75 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0.375
 local CELL = 16 -- matches CoverageService, so a query lands on the cell its building was marked in
 local EPS  = 1e-6
 
@@ -376,9 +379,14 @@ function WaterService.Start()
 	task.spawn(function()
 		while _running do
 			local speed = GameSpeed.get()
-			task.wait(TICK / math.max(1, speed))
+			local period = TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 			if speed <= 0 then continue end
+			debug.profilebegin("WaterService.rebuild")
 			local ok, err = pcall(rebuild)
+			debug.profileend()
 			if not ok then warn("[WaterService] rebuild failed: " .. tostring(err)) end
 		end
 	end)

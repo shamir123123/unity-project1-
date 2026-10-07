@@ -22,6 +22,9 @@ local FireService = {}
 
 -- == Tuning ====================================================================
 local FIRE_TICK         = 4.0   -- game-seconds between fire passes (GameSpeed-scaled)
+-- Where in each period this sim runs, as a share of it (1.75 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0.4375
 -- Random ignition was OFF (0 / 0) for a while: at the old rates (0.04 / 0.0006) spontaneous
 -- fires levelled whole neighbourhoods, because nothing actually put them out. Now that a
 -- covered fire gets an engine, ignition is back on at roughly a sixth of the old rate --
@@ -254,9 +257,14 @@ function FireService.Start()
 	task.spawn(function()
 		while _running do
 			local speed = GameSpeed.get()
-			task.wait(FIRE_TICK / math.max(1, speed))
+			local period = FIRE_TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 			if speed <= 0 then continue end
+			debug.profilebegin("FireService.tick")
 			local ok, err = pcall(tick)
+			debug.profileend()
 			if not ok then
 				warn("[FireService] tick failed: " .. tostring(err))
 			end

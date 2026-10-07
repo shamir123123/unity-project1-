@@ -16,6 +16,9 @@ local SicknessService = {}
 
 -- == Tuning ====================================================================
 local SICK_TICK           = 8.0   -- game-seconds between sickness passes
+-- Where in each period this sim runs, as a share of it (1.375 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0.171875
 local BASE_SICK_CHANCE    = 0.015 -- per-household per-tick base illness chance
 local COVERAGE_MULT       = 3.0   -- how much low coverage amplifies sickness risk
 -- A sick adult recovers by reaching a Hospital. Without hospital access they take
@@ -217,9 +220,14 @@ function SicknessService.Start()
 	task.spawn(function()
 		while _running do
 			local speed = GameSpeed.get()
-			task.wait(SICK_TICK / math.max(1, speed))
+			local period = SICK_TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 			if speed <= 0 then continue end
+			debug.profilebegin("SicknessService.tick")
 			local ok, err = pcall(tick)
+			debug.profileend()
 			if not ok then warn("[SicknessService] tick failed: " .. tostring(err)) end
 		end
 	end)

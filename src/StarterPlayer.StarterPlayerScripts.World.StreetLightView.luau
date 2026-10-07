@@ -144,9 +144,7 @@ function StreetLightView.Start()
 			local city = Workspace:FindFirstChild("_City")
 			if city and city ~= _city then bindCity(city) end
 			debug.profilebegin("StreetLightView.sweep")
-			local ok, err = pcall(function(): ()
-				sweep()
-			end)
+			local ok, err = pcall(sweep)
 			debug.profileend()
 			if not ok then warn("[StreetLightView] sweep failed: " .. tostring(err)) end
 			task.wait(SWEEP_SECONDS)

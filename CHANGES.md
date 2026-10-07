@@ -20,6 +20,15 @@ Current list (run the script for the up-to-date one):
 
 | | Studio path | Class |
 |---|---|---|
+| M | ServerScriptService.Services.City.CityStatsService | ModuleScript |
+| M | ServerScriptService.Services.City.Civic.CrimeService | ModuleScript |
+| M | ServerScriptService.Services.City.Civic.DeathcareService | ModuleScript |
+| M | ServerScriptService.Services.City.Civic.SicknessService | ModuleScript |
+| M | ServerScriptService.Services.City.Economy.CityEconomyService | ModuleScript |
+| M | ServerScriptService.Services.City.PowerService | ModuleScript |
+| M | ServerScriptService.Services.City.ProgressionService | ModuleScript |
+| M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |
+| M | ServerScriptService.Services.City.WaterService | ModuleScript |
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |
 | M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
@@ -146,6 +155,30 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   that runs ~0.35 s after every road edit re-sampled every street in the city; unchanged
   streets now reuse their polyline: **46 → 12 ms** on an 840-segment grid (offline).
 
+### 6. Server sims share the second instead of colliding
+
+Nine city sims (stats, economy, power, water, progression, fire, crime, sickness, deathcare)
+each ran `task.wait(period)` in a loop started in the same boot frame, on 1–10 s periods,
+and drifted freely — so several of them regularly ran in one server frame (power and water
+rebuilds are full-network passes). A long server frame holds back everything else sent that
+frame — road deltas, car positions.
+Each now waits for its own slot within its period; at 1× speed the slots are:
+
+| Sim | Period | Runs at (s into period) |
+|---|---|---|
+| CityStats | 1 | 0.0 |
+| Economy | 1 | 0.5 |
+| Power | 2 | 0.25 |
+| Water | 2 | 0.75 |
+| Progression | 2 | 1.25 |
+| Fire | 4 | 1.75 |
+| Crime | 6 | 0.875 |
+| Sickness | 8 | 1.375 |
+| Deathcare | 10 | 1.625 |
+
+No two share a slot (at any game speed — slots scale with the period). Tick rates are
+unchanged. Each tick now has a MicroProfiler label (`PowerService.rebuild`, `FireService.tick`, …).
+
 ## Toggles (to A/B in Studio)
 
 | Where | Constant | Off = old behaviour |
@@ -160,7 +193,8 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
 
 MicroProfiler labels added: `RoadMeshView.lod`, `StreetNameView.poll`,
 `AmbienceController.sample`, `BuildingInfo.hover`, `TrafficJamView.scan`,
-`StreetLightView.sweep`.
+`StreetLightView.sweep`; server: `<Sim>.tick` / `PowerService.rebuild` /
+`WaterService.rebuild` for each city sim.
 
 1. Place roads (straight, crossing 5+ streets, T-junction, open ground) and upgrade a few:
    real road should appear within a couple of frames of the delta; no flat stand-ins on

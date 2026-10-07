@@ -16,6 +16,9 @@ local CAP = table.freeze({
 })
 
 local TICK             = 1.0
+-- Where in each period this sim runs, as a share of it (0.0 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0
 local DISPLAY_LERP     = 0.25
 local SCALE_BASE       = 18
 local SCALE_POP_FACTOR = 0.5
@@ -477,11 +480,16 @@ function CityStatsService.Start()
 		while _running do
 			local speed = GameSpeed.get()
 
-			task.wait(TICK / math.max(1, speed))
+			local period = TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 
 			if speed <= 0 then continue end
 
+			debug.profilebegin("CityStatsService.tick")
 			local ok, err = pcall(CityStatsService.tick)
+			debug.profileend()
 
 			if not ok then
 				_lastTickError = tostring(err)

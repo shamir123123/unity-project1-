@@ -31,6 +31,9 @@ local TerritoryGrid = require(ReplicatedStorage.City.TerritoryGrid)
 local ProgressionService = {}
 
 local TICK = 2.0
+-- Where in each period this sim runs, as a share of it (1.25 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0.625
 local GROWTH_EVERY_N_TICKS = 5 -- growth XP is a few full-domain scans; ~every 10 s, not every tick
 local XP_SYNC_MIN_GAP = 3.0 -- min seconds between XP-only snapshot broadcasts
 local UNLOCK_COOLDOWN = 0.2 -- per-player RequestDevUnlock rate limit
@@ -479,13 +482,18 @@ function ProgressionService.Start()
 	task.spawn(function()
 		while _running do
 			local speed = GameSpeed.get()
-			task.wait(TICK / math.max(1, speed))
+			local period = TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 			if speed <= 0 then
 				_lastTickAt = os.clock() -- paused time never earns cap
 				continue
 			end
 
+			debug.profilebegin("ProgressionService.tick")
 			local ok, err = pcall(ProgressionService.tick)
+			debug.profileend()
 			if not ok then
 				warn("[ProgressionService] tick failed: " .. tostring(err))
 			end

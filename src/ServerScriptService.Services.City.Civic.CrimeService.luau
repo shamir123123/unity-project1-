@@ -14,6 +14,9 @@ local CrimeService = {}
 
 -- == Tuning ====================================================================
 local CRIME_TICK        = 6.0   -- game-seconds between crime passes (GameSpeed-scaled)
+-- Where in each period this sim runs, as a share of it (0.875 s at 1x speed). Staggered across
+-- the city sims (see their Start loops) so no two land in the same frame.
+local TICK_PHASE = 0.145833
 local INCIDENT_BASE     = 0.06  -- per-tick chance a new incident spawns somewhere
 local INCIDENT_PER_BLDG = 0.0008-- + per building (bigger city, higher baseline crime)
 local INCIDENT_MAX      = 0.30  -- cap on per-tick spawn chance
@@ -216,9 +219,14 @@ function CrimeService.Start()
 	task.spawn(function()
 		while _running do
 			local speed = GameSpeed.get()
-			task.wait(CRIME_TICK / math.max(1, speed))
+			local period = CRIME_TICK / math.max(1, speed)
+			-- On this sim's own slot within the period (TICK_PHASE). The sims all started in the boot
+			-- frame on 1-4 s periods and drifted freely, so any number of them could share one frame.
+			task.wait(period - (os.clock() - TICK_PHASE * period) % period)
 			if speed <= 0 then continue end
+			debug.profilebegin("CrimeService.tick")
 			local ok, err = pcall(tick)
+			debug.profileend()
 			if not ok then warn("[CrimeService] tick failed: " .. tostring(err)) end
 		end
 	end)
