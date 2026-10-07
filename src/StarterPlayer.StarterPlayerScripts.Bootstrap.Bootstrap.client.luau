@@ -233,6 +233,11 @@ if not okFire then warn("[Bootstrap] FireView failed to start") end
 local okWin = pcall(function() require(world:WaitForChild("WindowLightsView")).Start() end)
 if not okWin then warn("[Bootstrap] WindowLightsView failed to start") end
 
+-- Lamp light: street, car park and bridge lamps cast light only at night, nearest first, as
+-- many as the graphics preset allows. Isolated like the other views.
+local okLamps = pcall(function() require(world:WaitForChild("StreetLightView", 10)).Start() end)
+if not okLamps then warn("[Bootstrap] StreetLightView failed to start") end
+
 -- Sky light: the hour (golden dawn/dusk, moonlit night), the season and the weather,
 -- blended off ClockTime + the replicated YearFraction / Weather. Isolated so a view fault
 -- can't halt the gameplay controllers.

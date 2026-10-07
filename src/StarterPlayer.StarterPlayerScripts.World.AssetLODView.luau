@@ -593,7 +593,29 @@ end
 
 -- ---- binding -------------------------------------------------------------------------------
 
+-- Street furniture rides INSIDE the road pieces: RoadSceneRenderer parents a segment's lamps,
+-- street trees, name blades and yield signs to its Segment_/Junction_ model. RoadMeshView owns
+-- the road surface, not these, so they used to get no ladder at all -- every street tree full
+-- mesh and every lamp part drawn at any distance, avenue after avenue. Each furniture model is
+-- taken here like any other prop (the pieces themselves stay RoadMeshView's).
+local function adoptRoadPiece(piece: Instance)
+	if not piece:IsA("Model") then
+		return
+	end
+	piece.ChildAdded:Connect(register)
+	for _, c in piece:GetChildren() do
+		register(c)
+	end
+end
+
 local function adopt(folder: Instance)
+	if folder:IsA("Folder") and folder.Name == "Roads" then
+		folder.ChildAdded:Connect(adoptRoadPiece)
+		for _, c in folder:GetChildren() do
+			adoptRoadPiece(c)
+		end
+		return
+	end
 	if not folder:IsA("Folder") or OWNED[folder.Name] then
 		return
 	end

@@ -57,6 +57,7 @@ local ISA = {
 	StringValue = { "ValueBase" }, IntValue = { "ValueBase" }, NumberValue = { "ValueBase" }, BoolValue = { "ValueBase" },
 	ObjectValue = { "ValueBase" }, Decal = { "FaceInstance" }, Texture = { "Decal", "FaceInstance" },
 	RemoteEvent = { "BaseRemoteEvent" }, UnreliableRemoteEvent = { "BaseRemoteEvent" },
+	SpotLight = { "Light" }, PointLight = { "Light" }, SurfaceLight = { "Light" }, Folder = {},
 }
 
 local Instance = {}

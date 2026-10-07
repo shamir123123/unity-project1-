@@ -1251,6 +1251,13 @@
          "filePaths": [
           "src/StarterPlayer.StarterPlayerScripts.World.UtilityOffView.luau"
          ]
+        },
+        {
+         "name": "StreetLightView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.StreetLightView.luau"
+         ]
         }
        ]
       },
