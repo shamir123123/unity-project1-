@@ -1,0 +1,1000 @@
+## ReplicatedFirst (3)
+
+- `ReplicatedFirst.LoadingController` [Local L249] — !strict
+- `ReplicatedFirst.LoadingController.LoadingView` [Module L555] — !strict LoadingView: what the loading screens look like. LoadingController (the join) and
+  - fns: LoadingView.new, view.setProgress, view.setStatus, view.showProgress, view.holdUntil, view.allowSkip, view.skipped, view.playLogo, view.fadeOut, view.destroy
+- `ReplicatedFirst.LoadingController.LoadingView.Transition.spec` [Module L62] — !strict
+  - fns: view.fadeOut, connection.Disconnect
+
+## ReplicatedStorage (145)
+
+- `ReplicatedStorage.Access.CityRoles` [Module L59] — !strict CityRoles
+  - fns: CityRoles.normalize, CityRoles.canEdit, CityRoles.canManage
+- `ReplicatedStorage.Access.CityRoles.spec` [Module L60] — !strict Roles come off a stored record and, on the grant path, straight off a remote. The
+- `ReplicatedStorage.Access.PlacesConfig` [Module L113] — !strict PlacesConfig
+  - fns: PlacesConfig.isLobby, PlacesConfig.isCity, PlacesConfig.isReservedCity, PlacesConfig.menuIsElsewhere, PlacesConfig.ownerKey, PlacesConfig.serverKey, PlacesConfig.guestKey
+- `ReplicatedStorage.Access.PlacesConfig.spec` [Module L58] — !strict Which kind of server am I? Everything routes off this: a wrong answer either strands
+- `ReplicatedStorage.BadApple.BadAppleFrames` [Module L196] — !strict BadAppleFrames -- decodes the generated Bad Apple frame data into per-frame pixel flips.
+  - fns: BadAppleFrames.load, BadAppleFrames.newPlayer, BadAppleFrames.rewind, BadAppleFrames.step
+- `ReplicatedStorage.City.AddressBook` [Module L318] — !strict AddressBook
+  - fns: AddressBook.classOf, AddressBook.autoName, AddressBook.buildIndex, AddressBook.keyOf, AddressBook.nameOf, AddressBook.chainOf, AddressBook.numberAt, AddressBook.addressAt, AddressBook.nearestSegmentId, AddressBook.addressOfPoint
+- `ReplicatedStorage.City.AddressBook.spec` [Module L112] — !strict
+- `ReplicatedStorage.City.BuildingTextures` [Module L110] — !strict BuildingTextures
+- `ReplicatedStorage.City.CitizenModel` [Module L208] — !strict CitizenModel
+  - fns: CitizenModel.lookOf, CitizenModel.lookOfModel, CitizenModel.build
+- `ReplicatedStorage.City.CitizenModel.CitizenModel.spec` [Module L90] — !strict Citizens stand on their root, are the right height for their age, wear the outfit lookOf
+  - fns: spec.run
+- `ReplicatedStorage.City.CitizenWardrobe` [Module L85] — !strict CitizenWardrobe
+- `ReplicatedStorage.City.DevelopmentTree` [Module L162] — !strict DevelopmentTree
+  - fns: DevelopmentTree.baseRoadId, DevelopmentTree.totalCost, DevelopmentTree.milestoneFor, DevelopmentTree.isGranted
+- `ReplicatedStorage.City.FootprintGen` [Module L83] — !strict FootprintGen
+  - fns: FootprintGen.generate
+- `ReplicatedStorage.City.MapPresets` [Module L207] — !strict Map presets selectable at city creation. Shared: the client map picker reads
+  - fns: MapPresets.getShape, MapPresets.isShape, MapPresets.get, MapPresets.genOf, MapPresets.getOrDefault
+- `ReplicatedStorage.City.MapPreview` [Module L77] — !strict Top-down terrain minimap built from a seed, for the map picker. Pure client UI
+  - fns: MapPreview.create, MapPreview.paint
+- `ReplicatedStorage.City.MapResources` [Module L143] — !strict Natural resources for a map (Water / Wood / Farmland / Oil), sampled from the SAME
+  - fns: MapResources.of, MapResources.rank
+- `ReplicatedStorage.City.MilestoneUnlocks` [Module L165] — !strict MilestoneUnlocks
+  - fns: MilestoneUnlocks.placeableMilestone, MilestoneUnlocks.roadMilestone, MilestoneUnlocks.zoneMilestone, MilestoneUnlocks.get, MilestoneUnlocks.tierFor
+- `ReplicatedStorage.City.MilestoneUnlocks.spec` [Module L42] — !strict The pacing contract: no city reaches Megalopolis in under three hours of real time, and
+- `ReplicatedStorage.City.OutsideConnectionConstants` [Module L53] — !strict Tunables for Outside Connections (map-edge road links). Immutable, shared.
+- `ReplicatedStorage.City.OutsideConnectionTypes` [Module L35] — !strict Shared shapes for Outside Connections.
+- `ReplicatedStorage.City.PipeArt` [Module L59] — !strict PipeArt
+  - fns: PipeArt.collarColor, PipeArt.shapePipe, PipeArt.shapeCollar
+- `ReplicatedStorage.City.PlotGeometry` [Module L1411] — !strict PlotGeometry
+  - fns: PlotGeometry.packPlots, PlotGeometry.spanForWidth, PlotGeometry.fitLots, PlotGeometry.fitDepthLots, PlotGeometry.seatCorners, PlotGeometry.buildingRect, PlotGeometry.buildRoadIndex, PlotGeometry.bridgeJoins, PlotGeometry.clampSpan, PlotGeometry.rectBlocked, PlotGeometry.rectOnRoad, PlotGeometry.buildingBlocked, PlotGeometry.groupParcels, PlotGeometry.planSpan, PlotGeometry.capRingRadius, PlotGeometry.capSpanForWidth, …(+2)
+- `ReplicatedStorage.City.PlotGeometry.PlanningBudget.spec` [Module L97] — !strict
+- `ReplicatedStorage.City.PlotGeometry.PolygonIndex.spec` [Module L136] — !strict
+  - fns: env._guard
+- `ReplicatedStorage.City.PlotGeometry.RoadIndex.spec` [Module L88] — !strict
+  - fns: env._guard
+- `ReplicatedStorage.City.PlotGeometry.spec` [Module L473] — !strict What a zoned street must look like on the ground: houses that tile without gaps, and no
+- `ReplicatedStorage.City.SchoolModel` [Module L208] — !strict SchoolModel
+  - fns: SchoolModel.build, SchoolModel.entrance
+- `ReplicatedStorage.City.SchoolTypes` [Module L91] — !strict SchoolTypes
+  - fns: SchoolTypes.get, SchoolTypes.all, SchoolTypes.footprintStuds
+- `ReplicatedStorage.City.ServiceBuildingModel` [Module L721] — !strict ServiceBuildingModel
+  - fns: ServiceBuildingModel.build, ServiceBuildingModel.entrance
+- `ReplicatedStorage.City.ServiceTypes` [Module L336] — !strict ServiceTypes
+  - fns: ServiceTypes.usesUtility, ServiceTypes.get, ServiceTypes.all, ServiceTypes.footprintStuds
+- `ReplicatedStorage.City.TerritoryGrid` [Module L174] — !strict The city's buyable LAND: a 16x16 grid of 512-stud tiles laid over the map. A new city
+  - fns: TerritoryGrid.allowanceFor, TerritoryGrid.priceFor, TerritoryGrid.priceForBatch, TerritoryGrid.tileAt, TerritoryGrid.idOf, TerritoryGrid.fromId, TerritoryGrid.isValidId, TerritoryGrid.idAt, TerritoryGrid.boundsOf, TerritoryGrid.centerOf, TerritoryGrid.idsInRect, TerritoryGrid.startIds, TerritoryGrid.fromLegacy, TerritoryGrid.boxOwned
+- `ReplicatedStorage.City.UIEvents` [Module L40] — !strict Client-side UI signals shared between the main menu (cloned into PlayerGui)
+- `ReplicatedStorage.City.WaterImage` [Module L209] — !strict Custom water overlay painter (one EditableImage per tile): transparent over land,
+  - fns: WaterImage.create, WaterImage.bake, WaterImage.rebakeRect, WaterImage.compose
+- `ReplicatedStorage.City.ZoneGrid` [Module L33] — !strict ZoneGrid
+- `ReplicatedStorage.City.ZoneTypes` [Module L153] — !strict
+  - fns: ZoneTypes.isValid, ZoneTypes.isPaintable, ZoneTypes.getInfo, ZoneTypes.getColor, ZoneTypes.getTransparency, ZoneTypes.getDemandKey, ZoneTypes.getTemplateFolder, ZoneTypes.isResidential
+- `ReplicatedStorage.DataCache` [Module L226] — !strict
+  - fns: DataCache.On, DataCache.SetNodes, DataCache.ApplyNodesDelta, DataCache.SetSegments, DataCache.ApplySegmentsDelta, DataCache.ApplyIntersections, DataCache.ApplyTurnPermissions, DataCache.ApplyLanePaths, DataCache.ApplyLaneGates, DataCache.GetNodes, DataCache.GetSegments, DataCache.GetIntersections, DataCache.GetNodeById, DataCache.GetRoadRevision, DataCache.GetSegmentById, DataCache.GetIntersectionById, …(+5)
+- `ReplicatedStorage.DataCache.spec` [Module L13] — !strict
+- `ReplicatedStorage.Editor.CreationBuilder` [Module L320] — !strict CreationBuilder
+  - fns: CreationBuilder.cfToArr, CreationBuilder.arrToCf, CreationBuilder.v3ToArr, CreationBuilder.arrToV3, CreationBuilder.colToArr, CreationBuilder.arrToCol, CreationBuilder.makePrimitive, CreationBuilder.applyMaterial, CreationBuilder.normalizeSoundId, CreationBuilder.applySound, CreationBuilder.readSound, CreationBuilder.anchorAll, CreationBuilder.build, CreationBuilder.count
+- `ReplicatedStorage.Editor.CreationBuilder.spec` [Module L192] — !strict
+- `ReplicatedStorage.Editor.CreationCategories` [Module L96] — !strict CreationCategories
+  - fns: CreationCategories.get, CreationCategories.isValid, CreationCategories.getOrDefault, CreationCategories.normalize, CreationCategories.all
+- `ReplicatedStorage.Editor.CreationCategories.spec` [Module L87] — !strict
+- `ReplicatedStorage.Editor.EditorConfig` [Module L14] — !strict Shared constants for the Creation Editor. Client and server read the SAME values so
+- `ReplicatedStorage.GameSpeed` [Module L38] — !strict Single source of truth for the player-controlled simulation speed.
+  - fns: GameSpeed.get, GameSpeed.steps, GameSpeed.scaled, GameSpeed.isPaused
+- `ReplicatedStorage.GameSpeed.spec` [Module L20] — !strict
+- `ReplicatedStorage.Nature.NatureCatalog` [Module L134] — !strict Shared nature-asset catalog: placeable trees / bushes / rocks / shapes. Templates live
+  - fns: NatureCatalog.get
+- `ReplicatedStorage.NetMiddleware` [Module L159] — !strict
+  - fns: NetMiddleware.FireQueued, NetMiddleware.FireQueuedClient, NetMiddleware.WrapClientReceive, NetMiddleware.ThrottledFireServer, NetMiddleware.RegisterServerRateLimit, NetMiddleware.CheckServerRate, NetMiddleware.OnPlayerRemoving, NetMiddleware.GetCachedAttribute, NetMiddleware.InvalidateCachedAttribute
+- `ReplicatedStorage.Networker` [Module L361] — !strict
+  - fns: Networker:WaitForRemote
+- `ReplicatedStorage.Networker.spec` [Module L53] — !strict
+- `ReplicatedStorage.Road.BezierUtil` [Module L212] — !strict
+  - fns: BezierUtil.point, BezierUtil.tangent, BezierUtil.secondDerivative, BezierUtil.minRadius, BezierUtil.splitAt, BezierUtil.subCurve, BezierUtil.length, BezierUtil.hullNear, BezierUtil.closestParam, BezierUtil.isFiniteVector, BezierUtil.selfIntersects, BezierUtil.closestPoint
+- `ReplicatedStorage.Road.BezierUtil.spec` [Module L62] — !strict
+- `ReplicatedStorage.Road.BridgeBuilder` [Module L618] — !strict
+  - fns: BridgeBuilder.plan, BridgeBuilder.build, BridgeBuilder.addElevatedStructure, BridgeBuilder.deckHalfFor
+- `ReplicatedStorage.Road.DeadEndRenderer` [Module L214] — !strict
+  - fns: DeadEndRenderer.build
+- `ReplicatedStorage.Road.DriverProfile` [Module L127] — !strict DriverProfile
+  - fns: DriverProfile.edgeBias, DriverProfile.forSeed, DriverProfile.fromModel, DriverProfile.forStyle, DriverProfile.withToken
+- `ReplicatedStorage.Road.IntersectionRenderer` [Module L1009] — !strict
+  - fns: IntersectionRenderer.armOverrides, IntersectionRenderer.armSidewalks, IntersectionRenderer.armCornerDistances, IntersectionRenderer.armBoundaryDistances, IntersectionRenderer.connectorMinRadius, IntersectionRenderer.build
+- `ReplicatedStorage.Road.IntersectionRenderer.spec` [Module L179] — !strict
+- `ReplicatedStorage.Road.IntersectionRenderer_specrun` [Module L914] — !strict
+  - fns: IntersectionRenderer.armOverrides, IntersectionRenderer.armBoundaryDistances, IntersectionRenderer.connectorMinRadius, IntersectionRenderer.build
+- `ReplicatedStorage.Road.IntersectionRenderer_specrun.spec` [Module L62] — !strict
+- `ReplicatedStorage.Road.LaneArrow` [Module L124] — !strict
+  - fns: LaneArrow.triangles
+- `ReplicatedStorage.Road.NavCost` [Module L286] — !strict NavCost
+  - fns: NavCost.litresPer100km, NavCost.heuristicSeconds, NavCost.freeFlowSeconds, NavCost.bprFactor, NavCost.websterDelay, NavCost.turnSeconds, NavCost.maneuverSeconds, NavCost.classifyRoad, NavCost.classFactor, NavCost.classPenaltySeconds, NavCost.fuelSeconds
+- `ReplicatedStorage.Road.NavRouter` [Module L588] — !strict NavRouter
+  - fns: NavRouter.estimatePathCost, NavRouter.nearestEdgeToward, NavRouter.findPath
+- `ReplicatedStorage.Road.RegionCatalog` [Module L983] — !strict RegionCatalog
+  - fns: RegionCatalog.mphToKmh, RegionCatalog.applyOverlay, RegionCatalog.get, RegionCatalog.getOrDefault, RegionCatalog.withException
+- `ReplicatedStorage.Road.RoadBeams` [Module L83] — !strict RoadBeams -- painted road lines as Beams: ONE Beam per marking line instead of one Part
+  - fns: RoadBeams.line
+- `ReplicatedStorage.Road.RoadConstants` [Module L681] — !strict
+  - fns: RoadConstants.getGroundY, RoadConstants.getSurfaceY, RoadConstants.getRoadTopY, RoadConstants.asphaltPartColor, RoadConstants.formatMeters
+- `ReplicatedStorage.Road.RoadGeometry` [Module L2260] — !strict RoadGeometry -- the road as a mesh, straight from its cross-section and its nodes' plans.
+  - fns: RoadGeometry.mirror, RoadGeometry.hatch, RoadGeometry.body, RoadGeometry.dressEnd, RoadGeometry.cap, RoadGeometry.matchSections, RoadGeometry.bend, RoadGeometry.taper, RoadGeometry.fork, RoadGeometry.junction, RoadGeometry.ring, RoadGeometry.culdesac
+- `ReplicatedStorage.Road.RoadJunctionSolver` [Module L985] — !strict RoadJunctionSolver -- what a NODE is, decided once, for everyone: the renderer draws it, the
+  - fns: RoadJunctionSolver.rightOf, RoadJunctionSolver.drawnCurve, RoadJunctionSolver.arm, RoadJunctionSolver.at, RoadJunctionSolver.forkTurn, RoadJunctionSolver.edgeToCircle, RoadJunctionSolver.approachOf, RoadJunctionSolver.buildOutEnd, RoadJunctionSolver.solve, RoadJunctionSolver.carryShifts, RoadJunctionSolver.armShift, RoadJunctionSolver.planAt, RoadJunctionSolver.stuckArms, RoadJunctionSolver.stuckAt
+- `ReplicatedStorage.Road.RoadJunctionSolver.spec` [Module L47] — !strict
+- `ReplicatedStorage.Road.RoadMeshBuilder` [Module L874] — !strict RoadMeshBuilder -- collects box/wedge specs for a road piece. Opaque SERVER bakes (live
+  - fns: RoadMeshBuilder.new, RoadMeshBuilder.addBox, RoadMeshBuilder.addPrismTri, RoadMeshBuilder.addSurfaceStrip, RoadMeshBuilder.addFootway, RoadMeshBuilder.addMarkingLine, RoadMeshBuilder.addFan, RoadMeshBuilder.addTris, RoadMeshBuilder.addSymbol, RoadMeshBuilder.specsOf, RoadMeshBuilder.addTri, RoadMeshBuilder.addQuad, RoadMeshBuilder.addStripQuad, RoadMeshBuilder.isEmpty, RoadMeshBuilder.decodeSpecs, RoadMeshBuilder.encode, …(+2)
+- `ReplicatedStorage.Road.RoadMeshBuilder.spec` [Module L42] — !strict RoadMeshBuilder.addFootway: the kerb band is KERB_TOP_WIDTH wide, on the ROAD side, in
+  - fns: Spec.run
+- `ReplicatedStorage.Road.RoadMoveGeometry` [Module L80] — !strict RoadMoveGeometry -- pure curve math for the Move tool (CS2 "Move It" style).
+  - fns: RoadMoveGeometry.isStraight, RoadMoveGeometry.movedEndpoint, RoadMoveGeometry.bendThrough, RoadMoveGeometry.rotateY, RoadMoveGeometry.validate
+- `ReplicatedStorage.Road.RoadNavigationGraph` [Module L2421] — !strict
+  - fns: RoadNavigationGraph.new, RoadNavigationGraph.Version, RoadNavigationGraph.HasEdges, RoadNavigationGraph.GetEdges, RoadNavigationGraph.GetEdge, RoadNavigationGraph.SetCongestionSnapshot, RoadNavigationGraph.GetRoadCongestion, RoadNavigationGraph.GetEdgesForSegment, RoadNavigationGraph.GetEdgeCongestion, RoadNavigationGraph.SetControlDelaySnapshot, RoadNavigationGraph.GetEdgeControlDelay, RoadNavigationGraph.BookRoute, RoadNavigationGraph.ReleaseBooking, RoadNavigationGraph.PruneBookings, RoadNavigationGraph.GetEdgeBookingPressure, RoadNavigationGraph.GetIncomingEdgesForSegment, …(+39)
+- `ReplicatedStorage.Road.RoadNavigationGraph.spec` [Module L566] — !strict
+- `ReplicatedStorage.Road.RoadNetwork` [Module L2797] — !strict
+  - fns: RoadNetwork.new, RoadNetwork.findNodeNear, RoadNetwork.beginBulkWeld, RoadNetwork.endBulkWeld, RoadNetwork._createNode, RoadNetwork.touchNode, RoadNetwork.moveRoundaboutBy, RoadNetwork.touchSegment, RoadNetwork.reverseSegment, RoadNetwork.consumeChanges, RoadNetwork.getOrCreateNode, RoadNetwork.getNodeKind, RoadNetwork.splitSegment, RoadNetwork.getOrCreateJunctionNode, RoadNetwork.dedupeParallel, RoadNetwork.mergeNodes, …(+33)
+- `ReplicatedStorage.Road.RoadNetwork.spec` [Module L572] — !strict
+- `ReplicatedStorage.Road.RoadProfile` [Module L434] — !strict RoadProfile -- a road's CROSS-SECTION: an ordered list of strips, LEFT to RIGHT looking along
+  - fns: RoadProfile.isSide, RoadProfile.angledSides, RoadProfile.parkingWidths, RoadProfile.footways, RoadProfile.fromSpec, RoadProfile.lanes, RoadProfile.offsets, RoadProfile.parkRows, RoadProfile.widths, RoadProfile.encode, RoadProfile.decode
+- `ReplicatedStorage.Road.RoadProfile.spec` [Module L238] — !strict A road's cross-section decides where every car drives. The one promise that matters: every
+- `ReplicatedStorage.Road.RoadProximity` [Module L211] — !strict RoadProximity -- "is this world point too close to a road?", answered once for both sides.
+  - fns: RoadProximity.reachesLayer, RoadProximity.flatDistance, RoadProximity.roadSpec, RoadProximity.isPointNearRoad, RoadProximity.samplePavement, RoadProximity.propsOnRoads, RoadProximity.propsInDisc
+- `ReplicatedStorage.Road.RoadProximity.spec` [Module L121] — !strict Trees do not stand on the road -- not even an ELEVATED one whose ground has been sculpted
+- `ReplicatedStorage.Road.RoadRenderer` [Module L1478] — !strict
+  - fns: RoadRenderer.build
+- `ReplicatedStorage.Road.RoadRules` [Module L467] — !strict RoadRules
+  - fns: RoadRules.getDrivingSide, RoadRules.getLaneSideSign, RoadRules.getNearsideTurn, RoadRules.getCrossingTurn, RoadRules.isCrossingTurn, RoadRules.isNearsideTurn, RoadRules.setDrivingSide, RoadRules.onDrivingSideChanged, RoadRules.getSpeedLimitKmh, RoadRules.getSpeedLimitStuds, RoadRules.allowedVehicleSet, RoadRules.laneAllowedVehicleSet, RoadRules.allowsVehicle, RoadRules.roadClass, RoadRules.hasParking, RoadRules.highwayJunction, …(+7)
+- `ReplicatedStorage.Road.RoadSceneRenderer` [Module L3443] — !strict
+  - fns: Memo.get, RoadSceneRenderer.init, RoadSceneRenderer.syncRoundabouts, RoadSceneRenderer.refreshRoundaboutsFor, RoadSceneRenderer.removeSegmentModel, RoadSceneRenderer.removeNodeVisuals, RoadSceneRenderer.syncDeadEnds, RoadSceneRenderer.endSurfaceTrim
+- `ReplicatedStorage.Road.RoadSection` [Module L270] — !strict RoadSection -- a profile laid out ACROSS the road in studs, as seen from one end: bands with
+  - fns: RoadSection.of, RoadSection.shifted, RoadSection.bulbed, RoadSection.bayed, RoadSection.parkWidth, RoadSection.lanes
+- `ReplicatedStorage.Road.RoadTypeCatalog` [Module L996] — !strict
+  - fns: RoadTypeCatalog.carriagewayWidth, RoadTypeCatalog.parkingApron, RoadTypeCatalog.isAsymmetric, RoadTypeCatalog.footwayWidth, RoadTypeCatalog.footprintHalf, RoadTypeCatalog.minCurveRadius, RoadTypeCatalog.minCornerRadius, RoadTypeCatalog.encodeConfig, RoadTypeCatalog.get, RoadTypeCatalog.getOrDefault
+- `ReplicatedStorage.Road.RoadTypes` [Module L78] — !strict
+- `ReplicatedStorage.Road.RoadVerticalProfile` [Module L105] — !strict
+  - fns: RoadVerticalProfile.condition, RoadVerticalProfile.conditionLinear, RoadVerticalProfile.conditionToSurface, RoadVerticalProfile.maxAbsGrade
+- `ReplicatedStorage.Road.RoadVerticalProfile.spec` [Module L25] — !strict RoadVerticalProfile: how a road's height runs between its two ends.
+- `ReplicatedStorage.Road.SignalSpec` [Module L616] — !strict SignalSpec
+  - fns: SignalSpec.yellowForSpeedKmh, SignalSpec.redClearance, SignalSpec.pedClearance, SignalSpec.websterCycle, SignalSpec.travelOffset, SignalSpec.idealSpacingStuds, SignalSpec.bandwidthEfficiency, SignalSpec.defaultPlan, SignalSpec.sanitizePlan, SignalSpec.armPlan, SignalSpec.defaultGroup, SignalSpec.sanitizeGroup, SignalSpec.validate, SignalSpec.minimumCycle, SignalSpec.hasError
+- `ReplicatedStorage.Road.SnapUtil` [Module L1196] — !strict SnapUtil
+  - fns: SnapUtil.setSegments, SnapUtil.setIntersectionCentres, SnapUtil.setBuildingFronts, SnapUtil.setActiveRoadType, SnapUtil.getActiveRoadType, SnapUtil.setRoadSnapEnabled, SnapUtil.isRoadSnapEnabled, SnapUtil.setLaneSnapEnabled, SnapUtil.isLaneSnapEnabled, SnapUtil.setGuideEnabled, SnapUtil.isGuideEnabled, SnapUtil.setIntersectionSnapEnabled, SnapUtil.isIntersectionSnapEnabled, SnapUtil.setAngleSnapEnabled, SnapUtil.isAngleSnapEnabled, SnapUtil.setAngleFreeOverride, …(+15)
+- `ReplicatedStorage.Road.SnapUtil.SnapConstants` [Module L159] — !strict
+- `ReplicatedStorage.Road.SnapUtil.spec` [Module L196] — !strict The road grid: a drawn road snaps its LENGTH along its own heading, so swinging it round
+- `ReplicatedStorage.Road.TrafficSignPlanner` [Module L282] — !strict TrafficSignPlanner -- where every traffic sign in the city stands, worked out from the road
+  - fns: TrafficSignPlanner.plan, TrafficSignPlanner.defaultOptions
+- `ReplicatedStorage.Road.TrafficViolations` [Module L151] — !strict TrafficViolations
+  - fns: TrafficViolations.isEnforced, TrafficViolations.isSecondaryOnly, TrafficViolations.score, TrafficViolations.cameraDetectionChance
+- `ReplicatedStorage.Road.VehicleCatalog` [Module L427] — !strict VehicleCatalog -- the 90 road vehicles the city spawns, as pure data. One Model per key
+  - fns: VehicleCatalog.get, VehicleCatalog.forClass, VehicleCatalog.forClassTier, VehicleCatalog.tierForLandValue, VehicleCatalog.pick, VehicleCatalog.pickAnyOfClass, VehicleCatalog.roll, VehicleCatalog.paintFor
+- `ReplicatedStorage.Road.VehicleTypes` [Module L57] — !strict VehicleTypes
+  - fns: VehicleTypes.tagFor, VehicleTypes.classOf, VehicleTypes.canPreempt
+- `ReplicatedStorage.Shared.CityCalendar` [Module L58] — !strict The city's calendar. ONE day/night cycle of TimeService is ONE calendar MONTH (the
+  - fns: CityCalendar.dateAt, CityCalendar.seasonForDay, CityCalendar.yearFraction
+- `ReplicatedStorage.Shared.CityCalendar.spec` [Module L45] — !strict Cycles land on the right month and season. No framework -- `require(script).run()` asserts.
+  - fns: spec.run
+- `ReplicatedStorage.Shared.ClientBootGate` [Module L62] — !strict ClientBootGate: the client half of the join gate (server half: PlayerLoadService).
+  - fns: ClientBootGate.markDone, ClientBootGate.isDone, ClientBootGate.await
+- `ReplicatedStorage.Shared.FreePlacement` [Module L32] — !strict FreePlacement
+  - fns: FreePlacement.setEnabled, FreePlacement.isEnabled
+- `ReplicatedStorage.Shared.GesturePath` [Module L119] — !strict GesturePath
+  - fns: GesturePath.row, GesturePath.controlPoints, GesturePath.curve
+- `ReplicatedStorage.Shared.GesturePath.spec` [Module L126] — !strict
+- `ReplicatedStorage.Shared.LOD` [Module L175] — !strict LOD: one detail ladder for every distance-scaled view in the game. Pure library --
+  - fns: LOD.pixelsPerStud, LOD.tierAt, LOD.toleranceStuds, LOD.simplifyIndices, LOD.simplify
+- `ReplicatedStorage.Shared.MaterialCatalog` [Module L44] — !strict MaterialCatalog
+  - fns: MaterialCatalog.get, MaterialCatalog.indexOf
+- `ReplicatedStorage.Shared.MaterialCatalog.spec` [Module L60] — !strict A saved prop stores its material as an INDEX into MaterialCatalog.order, so the list is
+- `ReplicatedStorage.Shared.ModelBaker` [Module L1319] — !strict ModelBaker -- turns any Model into the two cheap stand-ins a distance ladder needs:
+  - fns: ModelBaker.preload, ModelBaker.collect, ModelBaker.roles, ModelBaker.coarsen, ModelBaker.bakeMesh, ModelBaker.bakeImpostor, ModelBaker.viewIndexFor
+- `ReplicatedStorage.Shared.PlacementFit` [Module L508] — !strict PlacementFit -- THE "is this ground free?" test.
+  - fns: PlacementFit.cityRoot, PlacementFit.hits, PlacementFit.boxFree, PlacementFit.cornersFree, PlacementFit.roadsFolder, PlacementFit.setRoadSegments, PlacementFit.onRoad, PlacementFit.poleBlockedBy, PlacementFit.seatOccupied, PlacementFit.propsInRects, PlacementFit.lotPivot, PlacementFit.seatUnderPavement, PlacementFit.zonedBuildingsUnderPavement, PlacementFit.buildingAt, PlacementFit.propAt
+- `ReplicatedStorage.Shared.PlacementFit.PropsIndex.spec` [Module L83] — !strict
+  - fns: PlacementFit.cityRoot, model.IsA, model.GetAttribute, model.GetPivot
+- `ReplicatedStorage.Shared.PlacementFit.spec` [Module L149] — !strict A building may not stand in the road. Roads carry NO queryable geometry, so the box query
+- `ReplicatedStorage.Shared.PlacementGrid` [Module L77] — !strict PlacementGrid
+  - fns: PlacementGrid.setEnabled, PlacementGrid.isEnabled, PlacementGrid.setSize, PlacementGrid.getSize, PlacementGrid.step, PlacementGrid.snap, PlacementGrid.onChanged
+- `ReplicatedStorage.Shared.PlacementGrid.spec` [Module L50] — !strict The one grid: metres in, studs out, lines not cell centres, and Off still on the save's
+- `ReplicatedStorage.Shared.Quant` [Module L85] — !strict Quant
+  - fns: Quant.n, Quant.vec, Quant.yaw, Quant.packPivot, Quant.unpackPivot, Quant.snapCF, Quant.deep
+- `ReplicatedStorage.Shared.Quant.spec` [Module L57] — !strict
+- `ReplicatedStorage.Shared.ShapeCatalog` [Module L195] — !strict ShapeCatalog
+  - fns: ShapeCatalog.rankOf, ShapeCatalog.groupOf, ShapeCatalog.isHidden, ShapeCatalog.get
+- `ReplicatedStorage.Shared.ShapeCatalog.spec` [Module L101] — !strict The one thing that silently rots here: adding a shape to ShapeCatalog and forgetting to
+- `ReplicatedStorage.Shared.TextureAverages` [Module L352] — !strict TextureAverages -- the average colour of every image the world draws, precomputed.
+  - fns: TextureAverages.get, TextureAverages.over, TextureAverages.surface, TextureAverages.variant, TextureAverages.cutout
+- `ReplicatedStorage.Terrain.Heightmap` [Module L330] — !strict !native
+  - fns: Heightmap.new, Heightmap.getChunk, Heightmap.ensureChunk, Heightmap.markChunkDirty, Heightmap.markRenderDirty, Heightmap.getCorner, Heightmap.setCorner, Heightmap.setCornerNoDirty, Heightmap.getMaterial, Heightmap.setMaterial, Heightmap.getFlags, Heightmap.isLocked, Heightmap.setFlags, Heightmap.getTileCornersRaw, Heightmap.getTileSlope, Heightmap.getHeightAt, …(+7)
+- `ReplicatedStorage.Terrain.Heightmap.WriteThrough.spec` [Module L57] — !strict
+- `ReplicatedStorage.Terrain.Heightmap.spec` [Module L126] — !strict
+- `ReplicatedStorage.Terrain.RoadCrossSection` [Module L236] — !strict THE road cross-section: where the ground sits, at every lateral distance from a road's
+  - fns: RoadCrossSection.bedSurfaceY, RoadCrossSection.footprintHalf, RoadCrossSection.verticalModeFor, RoadCrossSection.edgeTopY, RoadCrossSection.wallInnerOffset, RoadCrossSection.wallStep, RoadCrossSection.wallNodeClear, RoadCrossSection.takesWalls
+- `ReplicatedStorage.Terrain.RoadCrossSection.spec` [Module L92] — !strict The vertical-mode decision. No framework -- `require(...).run()` asserts.
+  - fns: M.run
+- `ReplicatedStorage.Terrain.TerrainBrush` [Module L212] — !strict Pure brush application. Deterministic: same heightmap + stroke -> same result on
+  - fns: TerrainBrush.apply
+- `ReplicatedStorage.Terrain.TerrainBrush.spec` [Module L180] — !strict TerrainBrush contract. No framework -- `require(...).run()` asserts, against the real
+  - fns: M.run
+- `ReplicatedStorage.Terrain.TerrainBuildController` [Module L538] — !strict Client-only: builds workspace.Terrain LOCALLY from the seed + edited chunks the server
+  - fns: TerrainBuildController.build, TerrainBuildController.finishInBackground, TerrainBuildController.groundReadyAround, TerrainBuildController.farPassDone, TerrainBuildController.getSurfaceY, TerrainBuildController.getHeightmap
+- `ReplicatedStorage.Terrain.TerrainBuildController.Frustum.spec` [Module L31] — !strict
+- `ReplicatedStorage.Terrain.TerrainBuildController.StartupArea.spec` [Module L76] — !strict
+  - fns: TerrainBuildController.finishInBackground, env.run, env.buildAndPaint, env.report
+- `ReplicatedStorage.Terrain.TerrainBuildController.Stream.spec` [Module L100] — !strict
+  - fns: TerrainBuildController.build, e.num, TerrainStreamCodec.supported, TerrainStreamCodec.unpack
+- `ReplicatedStorage.Terrain.TerrainBuildController.spec` [Module L65] — !strict
+- `ReplicatedStorage.Terrain.TerrainConstants` [Module L181] — !strict Single source of every terrain magic number. Shared client+server, immutable.
+  - fns: TerrainConstants.rawToWorldY, TerrainConstants.worldYToRaw, TerrainConstants.cornerToWorld, TerrainConstants.worldToCorner
+- `ReplicatedStorage.Terrain.TerrainGenerator` [Module L247] — !strict !native
+  - fns: TerrainGenerator.generateChunk, TerrainGenerator.surfaceYAt, TerrainGenerator.generate
+- `ReplicatedStorage.Terrain.TerrainGenerator.spec` [Module L44] — !strict The base map is bare ground. The server reuses ONE heightmap for every city it loads,
+- `ReplicatedStorage.Terrain.TerrainLandform` [Module L452] — !strict Generator v3 ("algo 3"): landforms that read like a real map -- fractal coastlines, mountain
+  - fns: TerrainLandform.build, TerrainLandform.field, TerrainLandform.sample
+- `ReplicatedStorage.Terrain.TerrainMesh` [Module L629] — !strict Ground geometry for ONE heightmap chunk, as flat arrays. Pure library: no Instances, no
+  - fns: TerrainMesh.surfaceColor, TerrainMesh.strideErrors, TerrainMesh.blockStride, TerrainMesh.blockStrides, TerrainMesh.addSkirt, TerrainMesh.shoreCaps, TerrainMesh.buildChunk, TerrainMesh.mergeGeo
+- `ReplicatedStorage.Terrain.TerrainMesh.MergeOrigin.spec` [Module L54] — !strict
+- `ReplicatedStorage.Terrain.TerrainMesh.spec` [Module L445] — !strict TerrainMesh contract. No framework -- `require(...).run()` asserts, against the real
+  - fns: M.run
+- `ReplicatedStorage.Terrain.TerrainMeshView` [Module L1447] — !strict Client-only: the ground, as one MeshPart per heightmap chunk under workspace._Ground.
+  - fns: TerrainMeshView.buildChunk, TerrainMeshView.setSource, TerrainMeshView.setGroundCap, TerrainMeshView.pin, TerrainMeshView.request, TerrainMeshView.pending, TerrainMeshView.markDirty, TerrainMeshView.start, TerrainMeshView.stop, TerrainMeshView.setLoading, TerrainMeshView.setCatchUp, TerrainMeshView.isStartupVisible, TerrainMeshView.releaseStartupArea, TerrainMeshView.setStartupArea, TerrainMeshView.drawnAround, TerrainMeshView.editArea, …(+5)
+- `ReplicatedStorage.Terrain.TerrainMeshView.Frustum.spec` [Module L187] — !strict
+  - fns: cam:ViewportPointToRay, env.chunkDist, env.enqueue, e._groundCapChunk, e._groundCap
+- `ReplicatedStorage.Terrain.TerrainMeshView.MergedBatches.spec` [Module L167] — !strict
+  - fns: TerrainMeshView.reset, value.Destroy, value.ApplyMesh, env.bake, TerrainMeshView.buildChunk, f.installOld, f.onBake, a.ApplyMesh
+- `ReplicatedStorage.Terrain.TerrainMeshView.StartupArea.spec` [Module L118] — !strict
+  - fns: TerrainMeshView.reset, TerrainMeshView.stop, env.startupPlanes, env.startupContains, env.enqueueSuper, env.enqueueChunk, TerrainMesh.buildChunk, env.bake, env.onBake
+- `ReplicatedStorage.Terrain.TerrainPainter` [Module L253] — !strict Shared terrain painter: turns one Heightmap chunk into workspace.Terrain voxels.
+  - fns: TerrainPainter.paintChunk
+- `ReplicatedStorage.Terrain.TerrainPainter.spec` [Module L119] — !strict The water paint. No framework -- `run(TerrainPainter, Heightmap, Constants)` asserts.
+  - fns: t:WriteVoxels, M.run
+- `ReplicatedStorage.Terrain.TerrainStreamCodec` [Module L116] — !strict !native
+  - fns: TerrainStreamCodec.supported, TerrainStreamCodec.pack, TerrainStreamCodec.unpack
+- `ReplicatedStorage.Terrain.TerrainSurfaceTexture` [Module L125] — !strict The ground's surface grain: one tiling image, generated once at runtime.
+  - fns: TerrainSurfaceTexture.noise, TerrainSurfaceTexture.brightness, TerrainSurfaceTexture.tint, TerrainSurfaceTexture.image
+- `ReplicatedStorage.Terrain.TerrainSurfaceTexture.spec` [Module L55] — !strict The surface grain has to TILE. No framework -- `require(...).run()` asserts.
+  - fns: M.run
+- `ReplicatedStorage.Terrain.TerrainTypes` [Module L45] — !strict Shared terrain types. No runtime values beyond the empty table export.
+- `ReplicatedStorage.Terrain.WaterField` [Module L179] — !strict Water-field (shared): which below-sea ground actually holds water. Default is "all
+  - fns: WaterField.reset, WaterField.isDryCorner, WaterField.isDryAt, WaterField.classify, WaterField.drainSealed, WaterField.markDryKeys, WaterField.getDryKeys, WaterField.setDryKeys
+- `ReplicatedStorage.Transit.TransitTypes` [Module L389] — !strict TransitTypes
+  - fns: TransitTypes.trainForPlatform, TransitTypes.maxBusesFor, TransitTypes.getDepot, TransitTypes.getStop, TransitTypes.depotFootprintStuds, TransitTypes.depotGroundFootprint, TransitTypes.routeColor, TransitTypes.gatePoints, TransitTypes.getFreePlaced
+- `ReplicatedStorage.World.WorldThemeCatalog` [Module L252] — !strict WorldThemeCatalog
+  - fns: WorldThemeCatalog.get, WorldThemeCatalog.getOrDefault, WorldThemeCatalog.active, WorldThemeCatalog.isSelectable
+
+## ServerScriptService (168)
+
+- `ServerScriptService.Bootstrap.Bootstrap` [Server L854] — !strict
+  - fns: RequestNavPath.OnServerInvoke
+- `ServerScriptService.Services.Access.BadgeService` [Module L90] — !strict BadgeService
+  - fns: BadgeService.award, BadgeService.Init, BadgeService.Bind, BadgeService.Start
+- `ServerScriptService.Services.Access.CityTeleport` [Module L173] — !strict CityTeleport
+  - fns: CityTeleport._cachedCode, CityTeleport.enterCity, CityTeleport.enterAdminCopy, CityTeleport.returnToLobby, CityTeleport.Bind
+- `ServerScriptService.Services.Access.CityTeleport.spec` [Module L38] — !strict Reserved-server cache reuse. A wrong "yes" here hands out an access code minted for
+- `ServerScriptService.Services.Access.PlaceAccessService` [Module L742] — !strict PlaceAccessService
+  - fns: PlaceAccessService.invitedOwners, PlaceAccessService.grantVisitor, PlaceAccessService.applyEditRights, PlaceAccessService.roleOf, PlaceAccessService.setCityContext, PlaceAccessService.revokeVisitor, PlaceAccessService.getOwnerId, PlaceAccessService.ownAccess, PlaceAccessService.Init, PlaceAccessService.Bind, PlaceAccessService.Start
+- `ServerScriptService.Services.Access.PlaceAccessService.spec` [Module L148] — !strict
+- `ServerScriptService.Services.Access.PlayerDirectoryService` [Module L197] — !strict PlayerDirectoryService
+  - fns: PlayerDirectoryService.SetCityContext, PlayerDirectoryService.online, PlayerDirectoryService.Init, PlayerDirectoryService.Bind
+- `ServerScriptService.Services.Access.PlayerPresenceService` [Module L137] — !strict PlayerPresenceService
+  - fns: PlayerPresenceService.Init, PlayerPresenceService.Bind
+- `ServerScriptService.Services.Access.ReviewQueue` [Module L679] — !strict ReviewQueue
+  - fns: ReviewQueue.setRevocationSweeper, ReviewQueue.isReady, ReviewQueue.isDegraded, ReviewQueue.isRevoked, ReviewQueue.listPending, ReviewQueue.listPublished, ReviewQueue.pendingCount, ReviewQueue.listLog, ReviewQueue.listStore, ReviewQueue.blobFor, ReviewQueue.statusOf, ReviewQueue.statusesFor, ReviewQueue.submit, ReviewQueue.approve, ReviewQueue.reject, ReviewQueue.unpublish, …(+4)
+- `ServerScriptService.Services.Access.ReviewQueue.Shape` [Module L141] — !strict ReviewQueue.Shape
+  - fns: Shape.sanitize, Shape.sanitizeLog, Shape.clampReason, Shape.count, Shape.sortedRows, Shape.oldestId
+- `ServerScriptService.Services.Access.ReviewQueue.Shape.spec` [Module L134] — !strict The half of ReviewQueue that runs without a server. The submit / approve / reject paths
+- `ServerScriptService.Services.Access.StaffRoster` [Module L536] — !strict StaffRoster
+  - fns: StaffRoster.isReady, StaffRoster.isDegraded, StaffRoster.getOwnerId, StaffRoster.isOwner, StaffRoster.tierOf, StaffRoster.canApprove, StaffRoster.await, StaffRoster.nameOf, StaffRoster.list, StaffRoster.onChanged, StaffRoster.grant, StaffRoster.revoke, StaffRoster.Init, StaffRoster.Bind, StaffRoster.Start, remote.OnServerInvoke
+- `ServerScriptService.Services.Access.StaffUIService` [Module L134] — !strict StaffUIService
+  - fns: StaffUIService.Init, StaffUIService.Bind, StaffUIService.Start
+- `ServerScriptService.Services.Access.TesterService` [Module L95] — !strict TesterService
+  - fns: TesterService.isTester, TesterService.Init, TesterService.Bind, TesterService.Start
+- `ServerScriptService.Services.Access.VisitorList` [Module L117] — !strict VisitorList
+  - fns: VisitorList.key, VisitorList.forSlot, VisitorList.anySlot, VisitorList.set, VisitorList.invited
+- `ServerScriptService.Services.Access.VisitorList.spec` [Module L92] — !strict Access is per CITY now. The two failures that matter: a legacy account-wide grant
+- `ServerScriptService.Services.City.BuildingService` [Module L2092] — !strict
+  - fns: BuildingService.onBuildingRemoving, BuildingService.developPlot, BuildingService.getCatalog, BuildingService.upgradeGroup, BuildingService.downgradeGroup, BuildingService.setGroupFill, BuildingService.setOccupancy, BuildingService.setFamilyName, BuildingService.setSupplyInfo, BuildingService.abandonGroup, BuildingService.setPowered, BuildingService.setWatered, BuildingService.setDrained, BuildingService.setRoadless, BuildingService.getOccupiedHomeCount, BuildingService.getHomeCensus, …(+38)
+- `ServerScriptService.Services.City.BuildingService.CommitRollback.spec` [Module L130] — !strict
+  - fns: BuildingService.developPlot, env.fireBuildingRemoving, env.refreshIndustrialSource, env.flush, env.cleanup
+- `ServerScriptService.Services.City.BuildingService.ConstructionQueue` [Module L45] — !strict Deadlines in simulation time. No tasks or live server dependencies.
+  - fns: ConstructionQueue.new
+- `ServerScriptService.Services.City.BuildingService.ConstructionQueue.spec` [Module L24] — !strict
+- `ServerScriptService.Services.City.BuildingService.Performance.spec` [Module L42] — !strict
+  - fns: BuildingService.developPlot
+- `ServerScriptService.Services.City.BuildingService.Scheduler.spec` [Module L87] — !strict
+- `ServerScriptService.Services.City.BuildingService.spec` [Module L50] — !strict Household ladder check for BuildingService.householdCapFor. No framework: call
+- `ServerScriptService.Services.City.BuildingService.spec` [Module L20] — !strict
+  - fns: BuildingService.getParkSpots
+- `ServerScriptService.Services.City.CitySimConstants` [Module L271] — !strict
+- `ServerScriptService.Services.City.CityStatsService` [Module L493] — !strict
+  - fns: CityStatsService.setWorkforce, CityStatsService.getHappiness, CityStatsService.setCrimeStats, CityStatsService.setSicknessStats, CityStatsService.setDeathcareStats, CityStatsService.setPowerStats, CityStatsService.setWaterStats, CityStatsService.setParkingStats, CityStatsService.setTransitStats, CityStatsService.setBudgetStats, CityStatsService.tick, CityStatsService.getPopulation, CityStatsService.getDemand, CityStatsService.getMoveInDemand, CityStatsService.Init, CityStatsService.Bind, …(+1)
+- `ServerScriptService.Services.City.CityStatsService.spec` [Module L57] — !strict
+- `ServerScriptService.Services.City.Civic.CoverageService` [Module L225] — !strict
+  - fns: CoverageService.setSource, CoverageService.removeSource, CoverageService.getPollutionAt, CoverageService.getNoiseAt, CoverageService.setPowerService, CoverageService.setWaterService, CoverageService.getCoverageAt, CoverageService.getVersion, CoverageService.flush, CoverageService.Init, CoverageService.Bind, CoverageService.Start
+- `ServerScriptService.Services.City.Civic.CrimeService` [Module L228] — !strict
+  - fns: CrimeService.getIncidentCount, CrimeService.getCoverageFraction, CrimeService.clear, CrimeService.Init, CrimeService.Bind, CrimeService.Start
+- `ServerScriptService.Services.City.Civic.DeathcareService` [Module L238] — !strict
+  - fns: DeathcareService.getUnburiedCount, DeathcareService.getBuriedCount, DeathcareService.getGraveCapacity, DeathcareService.clear, DeathcareService.Init, DeathcareService.Bind, DeathcareService.Start
+- `ServerScriptService.Services.City.Civic.EducationService` [Module L426] — !strict EducationService
+  - fns: EducationService.setUnlockCheck, EducationService.setNatureClearance, EducationService.setTerritoryCheck, EducationService.placeFree, EducationService.getServiceCostTotal, EducationService.remove, EducationService.clear, EducationService.list, EducationService.getNearestSchool, EducationService.hasSchool, EducationService.getSchoolTier, EducationService.coversTier, EducationService.enterSchool, EducationService.leaveSchool, EducationService.setPupilDemand, EducationService.getStats, EducationService.serialize, …(+5)
+- `ServerScriptService.Services.City.Civic.EmergencyDispatch` [Module L234] — !strict
+  - fns: EmergencyDispatch.send, EmergencyDispatch.release, EmergencyDispatch.cancel, EmergencyDispatch.activeCount, EmergencyDispatch.nearestStation, EmergencyDispatch.clear, EmergencyDispatch.Init, EmergencyDispatch.Bind, EmergencyDispatch.Start
+- `ServerScriptService.Services.City.Civic.EmergencyService` [Module L516] — !strict EmergencyService
+  - fns: EmergencyService.setUnlockCheck, EmergencyService.setPowerService, EmergencyService.setRoadService, EmergencyService.setNatureClearance, EmergencyService.getUtilityUpkeep, EmergencyService.canSwitch, EmergencyService.setOff, EmergencyService.refreshRoadAccess, EmergencyService.setTerritoryCheck, EmergencyService.placeFree, EmergencyService.remove, EmergencyService.move, EmergencyService.clear, EmergencyService.list, EmergencyService.coversAt, EmergencyService.hasKind, EmergencyService.getStats, EmergencyService.getServiceCostTotal, EmergencyService.getWorkplaceViews, EmergencyService.getServiceCostByKind, …(+5)
+- `ServerScriptService.Services.City.Civic.SewageOutfall` [Module L69] — !strict SewageOutfall
+  - fns: SewageOutfall.lay
+- `ServerScriptService.Services.City.Civic.SicknessService` [Module L229] — !strict
+  - fns: SicknessService.isHouseholdSick, SicknessService.markRecovered, SicknessService.getSickFraction, SicknessService.getSickCount, SicknessService.clear, SicknessService.Init, SicknessService.Bind, SicknessService.Start
+- `ServerScriptService.Services.City.CreationPlaceService` [Module L412] — !strict CreationPlaceService
+  - fns: CreationPlaceService.setAssetResolver, CreationPlaceService.setReviewQueue, CreationPlaceService.place, CreationPlaceService.sweepRevoked, CreationPlaceService.remove, CreationPlaceService.move, CreationPlaceService.clear, CreationPlaceService.list, CreationPlaceService.serialize, CreationPlaceService.restore, CreationPlaceService.Init, CreationPlaceService.Bind, CreationPlaceService.Start
+- `ServerScriptService.Services.City.Economy.CityEconomyService` [Module L731] — !strict
+  - fns: CityEconomyService.setPowerService, CityEconomyService.setWaterService, CityEconomyService.setLandUpkeep, CityEconomyService.tick, CityEconomyService.getTreasury, CityEconomyService.getSupplyRatio, CityEconomyService.setTaxRates, CityEconomyService.getTaxRates, CityEconomyService.setZoneMaster, CityEconomyService.setTaxSubtypes, CityEconomyService.isBankrupt, CityEconomyService.setFundingBoost, CityEconomyService.getFunding, CityEconomyService.getFundingLevels, CityEconomyService.setFunding, CityEconomyService.addRetailIncome, CityEconomyService.getLoanInfo, …(+9)
+- `ServerScriptService.Services.City.Economy.CityEconomyService.spec` [Module L20] — !strict
+- `ServerScriptService.Services.City.Economy.SupplyService` [Module L1335] — !strict
+  - fns: SupplyService.productOf, SupplyService.getShelfStock, SupplyService.consumeStock, SupplyService.drainBusinessFlows, SupplyService.drainGoodsTrade, SupplyService.drainGoodsRevenue, SupplyService.getStats, SupplyService.ResetVehicles, SupplyService.clear, SupplyService.serialize, SupplyService.restore, SupplyService.Init, SupplyService.SetCitizenService, SupplyService.SetOutsideConnService, SupplyService.Bind, SupplyService.Start, t.startRoad
+- `ServerScriptService.Services.City.Economy.BusinessService` [Module L150] — !strict BusinessService -- every shop/factory's own books (sales, stock, wages); losing money -> Losing attr -> cuts back a level -> closes at level 1
+  - fns: BusinessService._step, BusinessService.getProfit, BusinessService.Init, BusinessService.Start
+- `ServerScriptService.Services.City.Economy.BusinessService.spec` [Module L60] — !strict The business contract: a loss-maker cuts back then closes; a business covering its wages is left alone.
+- `ServerScriptService.Services.City.Economy.SupplyService.spec` [Module L377] — !strict Isolated freight lifecycle regressions; never starts the city or touches persistence.
+  - fns: graph:HasEdges, graph:FindPath, graph:GetOutgoingEdgesFromNode, graph:NearestEdgeToward, driver.RoadGapClear, driver.DriveDirected, driver.ReleaseDirected, driver.LaneEntryPath, driver.GetLaneAnchor, follower.forget, follower.place, follower.getMotionLimits, buildings.listBuildings, driver.GetLivePose, env.nav, env.edgePoint, …(+7)
+- `ServerScriptService.Services.City.LandValueService` [Module L123] — !strict
+  - fns: LandValueService.getLandValueAt, LandValueService.evaluateBuilding, LandValueService.Init, LandValueService.Bind, LandValueService.Start
+- `ServerScriptService.Services.City.LotDressingConfig` [Module L252] — !strict Frozen tuning + palettes for LotDressingService. Realistic house/roof/door
+- `ServerScriptService.Services.City.LotDressingService` [Module L2465] — !strict LotDressingService
+  - fns: LotDressingService.dress, LotDressingService.settleLot, LotDressingService.groundChanged, LotDressingService.Init, LotDressingService.Bind, LotDressingService.Start
+- `ServerScriptService.Services.City.LotGroundMesh` [Module L509] — !strict LotGroundMesh -- a lot's paving as ONE mesh that lies on the ground and meets its road exactly: on
+  - fns: LotGroundMesh.edgesFromSpecs, LotGroundMesh.bounds, LotGroundMesh.build, LotGroundMesh.write, LotGroundMesh.read
+- `ServerScriptService.Services.City.LotGroundMesh.spec` [Module L362] — !strict A lot's paving must END where the road's drawn edge is -- at its height, a hair under it --
+- `ServerScriptService.Services.City.MapSeedService` [Module L583] — !strict What a brand-new map ARRIVES with: the preset highways picked on the create screen, and
+  - fns: MapSeedService.seedHighways, MapSeedService.seedNature, MapSeedService.seedStartJunction, MapSeedService.Init, MapSeedService.seed
+- `ServerScriptService.Services.City.MapSeedService.spec` [Module L25] — !strict
+  - fns: MapSeedService.seed
+- `ServerScriptService.Services.City.NameGen` [Module L76] — !strict NameGen
+  - fns: NameGen.firstName, NameGen.familyName, NameGen.fullName
+- `ServerScriptService.Services.City.NaturePlaceService` [Module L1074] — !strict NaturePlaceService
+  - fns: NaturePlaceService.serialize, NaturePlaceService.restore, NaturePlaceService.scatter, NaturePlaceService.clearUnderPavement, NaturePlaceService.clearInRects, NaturePlaceService.setTerritoryCheck, NaturePlaceService.setEditListener, NaturePlaceService.countProps, NaturePlaceService.Init, NaturePlaceService.Bind, NaturePlaceService.Start
+- `ServerScriptService.Services.City.OutsideConnectionService` [Module L270] — !strict Outside Connections: map-edge road links where the city meets the outside world.
+  - fns: OutsideConnectionService.rescan, OutsideConnectionService.Init, OutsideConnectionService.Bind, OutsideConnectionService.Start, OutsideConnectionService.get, OutsideConnectionService.list, OutsideConnectionService.idForNode, OutsideConnectionService.clearAll, OutsideConnectionService.seedDefaults, OutsideConnectionService.serialize, OutsideConnectionService.restore
+- `ServerScriptService.Services.City.ParkingService` [Module L748] — !strict ParkingService
+  - fns: ParkingService.reserveNearest, ParkingService.distanceToFree, ParkingService.priceAt, ParkingService.release, ParkingService.exists, ParkingService.claimAt, ParkingService.usable, ParkingService.onSpotsChanged, ParkingService.GetParkingStats, ParkingService.GetParkingDebug, ParkingService.Init, ParkingService.Bind, ParkingService.Start
+- `ServerScriptService.Services.City.ParkingService.spec` [Module L57] — !strict TestEZ-compatible contracts using real parking assets and isolated service state.
+- `ServerScriptService.Services.City.ParkingService.spec` [Module L206] — !strict The one rule a car park has to keep: a stall holds ONE car, and a driver whose own street
+- `ServerScriptService.Services.City.PlotService` [Module L1405] — !strict PlotService
+  - fns: PlotService.broadcastFull, PlotService.advanceRoadless, PlotService.getGroups, PlotService.clear, PlotService.serialize, PlotService.restore, PlotService.setUnlockCheck, PlotService.setNatureClearance, PlotService.Init, PlotService.Bind, PlotService.Start, RequestBuildingCatalog.OnServerInvoke
+- `ServerScriptService.Services.City.PlotService.BatchPlacement.spec` [Module L141] — !strict
+  - fns: env.toWire, env.onYield, PlotGeometry.planSpan, env.canEdit
+- `ServerScriptService.Services.City.PlotService.RestoreBudget.spec` [Module L67] — !strict
+  - fns: PlotService.restore, PlotService.broadcastFull, env.onYield
+- `ServerScriptService.Services.City.PlotService.spec` [Module L668] — !strict The save/load contract for buildings: a city reloads where it was PLACED, not where the
+- `ServerScriptService.Services.City.PowerService` [Module L1147] — !strict
+  - fns: PowerService.setSchools, PowerService.getRunningMonthly, PowerService.placeRun, PowerService.removePole, PowerService.clear, PowerService.rebuildNow, PowerService.isSuppliedAt, PowerService.hasPower, PowerService.getStats, PowerService.getTradeMonthly, PowerService.spacingBlockedAt, PowerService.snapTarget, PowerService.getPoleCount, PowerService.serialize, PowerService.restore, PowerService.markRoadsDirty, PowerService.isServicePowered, PowerService.Init, …(+2)
+- `ServerScriptService.Services.City.PowerService.spec` [Module L728] — !strict The electricity grid contract. The rule that matters most, and the one easiest to break
+- `ServerScriptService.Services.City.ProgressionService` [Module L497] — !strict
+  - fns: ProgressionService.getFundingBoost, ProgressionService.getTier, ProgressionService.isRoadAllowed, ProgressionService.isPlaceableAllowed, ProgressionService.isDensityAllowed, ProgressionService.setTerritoryService, ProgressionService.setBuildingService, ProgressionService.setNatureService, ProgressionService.tick, ProgressionService.serialize, ProgressionService.restore, ProgressionService.Init, ProgressionService.Bind, ProgressionService.Start
+- `ServerScriptService.Services.City.ServicePlacement` [Module L114] — !strict ServicePlacement
+  - fns: ServicePlacement.overNature, ServicePlacement.footprintRect, ServicePlacement.prepareFree, ServicePlacement.touchesWater
+- `ServerScriptService.Services.City.Simulation.CitizenActivityState` [Module L45] — !strict Compact resident activity records; only source facts, no saved routes or Instances.
+  - fns: CitizenActivityState.pack, CitizenActivityState.position, CitizenActivityState.apply
+- `ServerScriptService.Services.City.Simulation.CitizenActivityState.spec` [Module L40] — !strict
+- `ServerScriptService.Services.City.Simulation.CitizenJourneys` [Module L453] — !strict Executes resident journey legs; CitizenService remains the household state owner.
+  - fns: CitizenJourneys.new
+- `ServerScriptService.Services.City.Simulation.CitizenJourneys.spec` [Module L68] — !strict
+  - fns: f.start
+- `ServerScriptService.Services.City.Simulation.CitizenQueries` [Module L271] — !strict Read-only household rosters, location and outdoor presence. State remains owned by
+  - fns: CitizenQueries.new, queries.getFamilyInfo, queries.getWorkforceInfo, queries.getAdminPersonDebug, queries.getPersonWhereabouts, queries.getPresenceNear
+- `ServerScriptService.Services.City.Simulation.CitizenQueries.spec` [Module L59] — !strict
+- `ServerScriptService.Services.City.Simulation.CitizenSaveColumns` [Module L134] — !strict CitizenSaveColumns
+  - fns: CitizenSaveColumns.toColumns, CitizenSaveColumns.fromColumns
+- `ServerScriptService.Services.City.Simulation.CitizenSaveColumns.spec` [Module L81] — !strict
+- `ServerScriptService.Services.City.Simulation.CitizenService` [Module L3914] — !strict
+  - fns: CitizenService._svcViews, CitizenService.SetOutsideConnService, CitizenService.SetEmergencyService, Pipe.clearAt, Pipe.add, Cars.releaseRoadSlot, Cars.walk, Garage.stow, Garage.fetch, Garage.clear, Garage.home, Cars.waitingToPullOut, Cars.turnInNear, Cars.pinLane, CitizenService._svcCapacity, CitizenService.getPopulation, …(+53)
+- `ServerScriptService.Services.City.Simulation.CitizenService.spec` [Module L1545] — !strict
+  - fns: Cars.fetchWhenClear, Cars.drop, CitizenService.ResetVehicles, CitizenService.getStats, Trips.walk, CitizenService.Start, Cars.walk, Cars.give, Cars.sweepOrphans, Trips.pickShop, Cars.parkWalk, Pipe.resumeActivities, Cars.releaseRoadSlot, env.nav, env.done, env.retry, …(+25)
+- `ServerScriptService.Services.City.Simulation.CitizenTypes` [Module L68] — !strict
+- `ServerScriptService.Services.City.Simulation.FireService` [Module L268] — !strict
+  - fns: FireService.ignite, FireService.igniteRandom, FireService.getActiveFireCount, FireService.clear, FireService.Init, FireService.Bind, FireService.Start
+- `ServerScriptService.Services.City.Simulation.HouseholdNeeds` [Module L28] — !strict Household goods are consumed by residents and replenished only by real purchases.
+  - fns: HouseholdNeeds.restore, HouseholdNeeds.advance, HouseholdNeeds.wantsShopping, HouseholdNeeds.buy
+- `ServerScriptService.Services.City.Simulation.HouseholdNeeds.spec` [Module L55] — !strict
+- `ServerScriptService.Services.City.Simulation.ThroughTrafficService` [Module L770] — !strict
+  - fns: ThroughTrafficService.serialize, ThroughTrafficService.ResetVehicles, ThroughTrafficService.restore, ThroughTrafficService.getDemand, ThroughTrafficService.Init, ThroughTrafficService.Start
+- `ServerScriptService.Services.City.Simulation.ThroughTrafficService.spec` [Module L82] — !strict
+  - fns: driver.GetRestoreSeat, driver.RoadGapClear, driver.DriveDirected, driver.GetLivePose, driver.GetLaneAnchor, driver.ReleaseDirected, ThroughTrafficService.serialize, ThroughTrafficService.ResetVehicles
+- `ServerScriptService.Services.City.Simulation.TravelModeChoice` [Module L204] — !strict TravelModeChoice
+  - fns: TravelModeChoice.ownsCar, TravelModeChoice.ageGroup, TravelModeChoice.walkCost, TravelModeChoice.driveCost, TravelModeChoice.transitCost, TravelModeChoice.choose, TravelModeChoice.escorts
+- `ServerScriptService.Services.City.Simulation.TravelModeChoice.spec` [Module L132] — !strict
+- `ServerScriptService.Services.City.Simulation.ZoneSimService` [Module L188] — !strict
+  - fns: ZoneSimService.tick, ZoneSimService.Init, ZoneSimService.Bind, ZoneSimService.Start
+- `ServerScriptService.Services.City.TerritoryService` [Module L282] — !strict WHICH GROUND THE CITY OWNS, and the buying of more of it.
+  - fns: TerritoryService.isPointAllowed, TerritoryService.isBoxAllowed, TerritoryService.isSpanAllowed, TerritoryService.isOwnedTile, TerritoryService.ownedCount, TerritoryService.getMonthlyUpkeep, TerritoryService.startAt, TerritoryService.clearAll, TerritoryService.serialize, TerritoryService.restore, TerritoryService.Init, TerritoryService.Bind, TerritoryService.Start, TerritoryService.onProgressionChanged
+- `ServerScriptService.Services.City.TimeService` [Module L238] — !strict
+  - fns: TimeService.getDayFraction, TimeService.getDay, TimeService.getSeason, TimeService.previewSeason, TimeService.setClockTime, TimeService.serialize, TimeService.reset, TimeService.restore, TimeService.getPhase, TimeService.isWorkboundWindow, TimeService.isHomeboundWindow, TimeService.isDaylight, TimeService.Init, TimeService.Bind, TimeService.Start
+- `ServerScriptService.Services.City.WaterPipeService` [Module L692] — !strict WaterPipeService
+  - fns: WaterPipeService.hasSource, WaterPipeService.placeRun, WaterPipeService.removeSegment, WaterPipeService.clear, WaterPipeService.markDirty, WaterPipeService.rebuildNow, WaterPipeService.servedAt, WaterPipeService.serialize, WaterPipeService.restore, WaterPipeService.Init, WaterPipeService.Bind
+- `ServerScriptService.Services.City.WaterPipeService.spec` [Module L131] — !strict The pipe contract, sharpest rule first: the PIPE is the delivery. A tower with nothing
+- `ServerScriptService.Services.City.WaterService` [Module L299] — !strict
+  - fns: WaterService.setSchools, WaterService.getRunningMonthly, WaterService.rebuildNow, WaterService.isServedAt, WaterService.setUnlockCheck, WaterService.Init, WaterService.Start
+- `ServerScriptService.Services.City.WaterService.spec` [Module L207] — !strict The water contract. One pooled network, rationed cheapest demand first; the PIPE is the
+- `ServerScriptService.Services.City.WeatherService` [Module L172] — !strict WeatherService
+  - fns: WeatherService.getWeather, WeatherService.setWeather, WeatherService.Init, WeatherService.Start
+- `ServerScriptService.Services.Data.BlobCodec` [Module L90] — !strict BlobCodec
+  - fns: BlobCodec.pack, BlobCodec.unpack
+- `ServerScriptService.Services.Data.BlobCodec.spec` [Module L32] — !strict A save blob must come back exactly: buffers anywhere in it (terrain, nature) as the same
+- `ServerScriptService.Services.Data.BlueprintStore` [Module L222] — !strict BlueprintStore
+  - fns: BlueprintStore.Init, BlueprintStore.save, BlueprintStore.get, BlueprintStore.list, BlueprintStore.owns, BlueprintStore.remove
+- `ServerScriptService.Services.Data.CitySerializer` [Module L436] — !strict Collects the whole city into one DataStore-safe blob and rebuilds it.
+  - fns: CitySerializer.Init, CitySerializer.SetTerritoryService, CitySerializer.SetBusDispatchService, CitySerializer.serialize, CitySerializer.serializePhysical, CitySerializer.restore
+- `ServerScriptService.Services.Data.CitySerializer.spec` [Module L36] — !strict
+- `ServerScriptService.Services.Data.CitySlotService` [Module L2908] — !strict Owns city save slots: the per-player slot index + slot blobs in DataStore,
+  - fns: CitySlotService.isSessionReady, CitySlotService.saveSoon, CitySlotService.standingCity, CitySlotService.saveLoadedCityAsTemplate, CitySlotService.DebugSaveStats, CitySlotService.Init, CitySlotService.InitLobby, CitySlotService.SetPlayerStatsService, CitySlotService.SetCityTeleport, CitySlotService.SetPlaceAccessService, CitySlotService.SetPlayerDataStore, CitySlotService.SetMapSeedService, CitySlotService.SetTerritoryService, CitySlotService.Bind, CitySlotService.Start
+- `ServerScriptService.Services.Data.CitySlotService.spec` [Module L202] — !strict
+  - fns: env.writeIndex
+- `ServerScriptService.Services.Data.MapTemplateService` [Module L103] — !strict MapTemplateService
+  - fns: MapTemplateService.Init, MapTemplateService.get, MapTemplateService.save
+- `ServerScriptService.Services.Data.NumberPack` [Module L77] — !strict NumberPack
+  - fns: NumberPack.pack, NumberPack.unpack
+- `ServerScriptService.Services.Data.NumberPack.spec` [Module L24] — !strict Packed rows must come back exactly, and anything the packer cannot hold exactly must be
+- `ServerScriptService.Services.Data.PlayerDataStore` [Module L385] — !strict
+  - fns: PlayerDataStore.Init, PlayerDataStore.Load, PlayerDataStore.SaveNow, PlayerDataStore.Flush, PlayerDataStore.Bind, PlayerDataStore.GetField, PlayerDataStore.SetField, PlayerDataStore.PeekField, PlayerDataStore.RegisterProvider
+- `ServerScriptService.Services.Data.PlayerLoadService` [Module L156] — !strict PlayerLoadService
+  - fns: PlayerLoadService.isReady, PlayerLoadService.Init, PlayerLoadService.SetCitySlotService, PlayerLoadService.Bind
+- `ServerScriptService.Services.Data.PlayerSettingsService` [Module L153] — !strict Owns the per-player game-settings field ("settings") in PlayerDataStore's
+  - fns: PlayerSettingsService.Init, PlayerSettingsService.Bind, RequestPlayerSettings.OnServerInvoke
+- `ServerScriptService.Services.Data.PlayerStatsService` [Module L174] — !strict PlayerStatsService
+  - fns: PlayerStatsService.Init, PlayerStatsService.bump, PlayerStatsService.get, PlayerStatsService.Bind, RequestPlayerStats.OnServerInvoke
+- `ServerScriptService.Services.Debug.AdminService` [Module L729] — !strict AdminService
+  - fns: AdminService.Init, AdminService.Bind, AdminService.Start, remote.OnServerInvoke, routes.OnServerInvoke, npcSpeeds.OnServerInvoke, addMoney.OnServerInvoke, spawnTraffic.OnServerInvoke, cityAction.OnServerInvoke, inspect.OnServerInvoke, requestLauncherPos.OnServerInvoke
+- `ServerScriptService.Services.Debug.DebugService` [Module L258] — !strict
+  - fns: DebugService.Init, DebugService.Bind, DebugService.Start
+- `ServerScriptService.Services.Debug.DeveloperService` [Module L575] — !strict DeveloperService
+  - fns: DeveloperService.BuildReport, DeveloperService.BuildGeometry, DeveloperService.SetAgentService, DeveloperService.Init, DeveloperService.SetOutsideConnService, DeveloperService.SetCitySlotService, DeveloperService.Bind, DeveloperService.Start, report.OnServerInvoke, geometry.OnServerInvoke
+- `ServerScriptService.Services.Debug.TrafficBenchmark` [Module L250] — !strict TrafficBenchmark
+  - fns: TrafficBenchmark.Run
+- `ServerScriptService.Services.Editor.EditorService` [Module L945] — !strict EditorService
+  - fns: EditorService.resolveAsset, EditorService.Init, EditorService.Bind, EditorService.Start, RequestEditorData.OnServerInvoke
+- `ServerScriptService.Services.NPC.CitizenAgentService` [Module L398] — !strict
+  - fns: CitizenAgentService.adopt, CitizenAgentService.adoptRoute, CitizenAgentService.release, CitizenAgentService.getPosition, CitizenAgentService.isAgent, CitizenAgentService.getDebug, CitizenAgentService.getStats, CitizenAgentService.debugSnapshot, CitizenAgentService.clear, CitizenAgentService.Init, CitizenAgentService.Bind, CitizenAgentService.Start, CitizenAgentService.Stop
+- `ServerScriptService.Services.NPC.EmergencyVehicleFactory` [Module L242] — !strict EmergencyVehicleFactory
+  - fns: EmergencyVehicleFactory.kindForDomain, EmergencyVehicleFactory.build, EmergencyVehicleFactory.startSirens
+- `ServerScriptService.Services.NPC.NPCDriverService` [Module L5478] — !strict
+  - fns: Gridlock.stillAhead, Gridlock.conflictEnd, Gridlock.hasCleared, Gridlock.timeToCover, Gridlock.crossTime, RingRules.passes, Gridlock.wanderOn, Gridlock.detour, Gridlock.ringLap, NPCDriverService.DriveDirected, NPCDriverService.SpawnTestCarsNear, NPCDriverService.RouteDrivable, NPCDriverService.ReleaseDirected, NPCDriverService.ResetAll, NPCDriverService.IsDirected, NPCDriverService.IsOnRoad, …(+26)
+- `ServerScriptService.Services.NPC.NPCDriverService.IntegrationFixture` [Module L90] — !strict Verified in Studio Edit against current source; see evidence/final-stress-results.json.
+  - fns: tags:HasTag, tags:AddTag, tags:RemoveTag, world:GetAttribute, world:FindFirstChild, fakeGame:GetService, fixture.car, fixture.destroy
+- `ServerScriptService.Services.NPC.NPCDriverService.spec` [Module L1593] — !strict TestEZ contract scenarios. The fresh-source fixture never starts the city or writes a save.
+  - fns: NPCDriverService.Start, graph:GetEdge, graph:GetEdges, graph:HasEdges, graph:GetEdgesForSegment, graph:Version, graph:GetLaneChangeWindow, graph:GetConnectionSetbacks, graph:GetConnectionPoints, graph:NearestEdge, graph:FindPath, graph:BookRoute, graph:ReleaseBooking, graph:EstimatePathCost, follower.cumOf, follower.getCum, …(+36)
+- `ServerScriptService.Services.NPC.NPCWalkingService` [Module L1464] — !strict
+  - fns: NPCWalkingService.spawnTestWalker, NPCWalkingService.spawnCommuter, NPCWalkingService.despawnCommuter, NPCWalkingService.getCommuterRoot, NPCWalkingService.getCommuterPosition, NPCWalkingService.GetCommuterDebug, NPCWalkingService.GetDebugSnapshot, NPCWalkingService.walkerHeadroom, NPCWalkingService.bodyCount, NPCWalkingService.alias, NPCWalkingService.SetAgentService, NPCWalkingService.Init, NPCWalkingService.SetRoadService, NPCWalkingService.Bind, NPCWalkingService.Start, NPCWalkingService.isBuilt, …(+10)
+- `ServerScriptService.Services.NPC.NPCWalkingService.spec` [Module L125] — !strict
+  - fns: NPCWalkingService.spawnCommuter, NPCWalkingService.testNodes, h.destroy
+- `ServerScriptService.Services.NPC.VehicleFactory` [Module L263] — !strict VehicleFactory
+  - fns: VehicleFactory.build
+- `ServerScriptService.Services.Road.RoadDeadEndService` [Module L123] — !strict RoadDeadEndService
+  - fns: RoadDeadEndService.sync, RoadDeadEndService.Init, RoadDeadEndService.Bind
+- `ServerScriptService.Services.Road.RoadHistoryService` [Module L206] — !strict RoadHistoryService
+  - fns: RoadHistoryService.init, RoadHistoryService.capture, RoadHistoryService.push, RoadHistoryService.clear, RoadHistoryService.undo, RoadHistoryService.redo
+- `ServerScriptService.Services.Road.RoadHistoryService.spec` [Module L70] — !strict
+- `ServerScriptService.Services.Road.RoadReplicationService` [Module L950] — !strict RoadReplicationService
+  - fns: RoadReplicationService.isEditIdle, RoadReplicationService.broadcastNodes, RoadReplicationService.queueNodeDelta, RoadReplicationService.queueSegDelta, RoadReplicationService.pendingChangedSegmentIds, RoadReplicationService.pendingChangedNodeIds, RoadReplicationService.broadcastTopologyDeltas, RoadReplicationService.broadcastTurnPermissions, RoadReplicationService.broadcastLanePathsFor, RoadReplicationService.broadcastLanePaths, RoadReplicationService.broadcastPlacementCharged, RoadReplicationService.broadcastLaneChanges, RoadReplicationService.queueIntersectionBroadcast, RoadReplicationService.init, RoadReplicationService.bind, _roadTrafficRemote.OnServerInvoke, …(+1)
+- `ServerScriptService.Services.Road.RoadReplicationService.spec` [Module L182] — !strict
+  - fns: RoadReplicationService.bind, _roads.placeFromRequest, env.canPlayerEditRoads, env.validSmallString, _roads.removeSegmentFromRequest
+- `ServerScriptService.Services.Road.RoadSceneryService` [Module L324] — !strict RoadSceneryService
+  - fns: RoadSceneryService.Step, RoadSceneryService.ScanNow, RoadSceneryService.GetLook, RoadSceneryService.Init, RoadSceneryService.Bind, RoadSceneryService.Start
+- `ServerScriptService.Services.Road.RoadSerializer` [Module L177] — !strict RoadSerializer
+  - fns: RoadSerializer.serialize, RoadSerializer.deserialize
+- `ServerScriptService.Services.Road.RoadSerializer.spec` [Module L54] — !strict Segment ids are load-bearing: plot groups persist the id of the road they front, so an
+- `ServerScriptService.Services.Road.RoadService` [Module L3049] — !strict
+  - fns: RoadService.placeFromRequest, RoadService.setEconomyService, RoadService.setTerritoryCheck, RoadService.setUnlockCheck, RoadService.setBuildingClearance, RoadService.setNatureClearance, RoadService.serializeRoads, RoadService.serializeLaneConnections, RoadService.restoreLaneConnections, RoadService.waitForRender, RoadService.waitForPendingEdits, RoadService.restoreRoads, RoadService.verifyIntegrity, RoadService.getTotalRoadLengthMeters, RoadService.getMonthlyRoadUpkeep, RoadService.placeSegment, …(+33)
+- `ServerScriptService.Services.Road.RoadService.HistoryWarm.spec` [Module L42] — !strict
+- `ServerScriptService.Services.Road.RoadService.PendingEdits.spec` [Module L38] — !strict
+  - fns: task.wait
+- `ServerScriptService.Services.Road.RoadTurnPermissionStore` [Module L345] — !strict RoadTurnPermissionStore
+  - fns: RoadTurnPermissionStore.init, RoadTurnPermissionStore.getOrInit, RoadTurnPermissionStore.invalidate, RoadTurnPermissionStore.permissions, RoadTurnPermissionStore.laneChangeRules, RoadTurnPermissionStore.clearLaneRulesForSegment, RoadTurnPermissionStore.isLaneEditable, RoadTurnPermissionStore.dropStale, RoadTurnPermissionStore.setTurnPermission, RoadTurnPermissionStore.setLaneTurnPermission, RoadTurnPermissionStore.setConnectionHandle, RoadTurnPermissionStore.setConnection, RoadTurnPermissionStore.resetConnections, RoadTurnPermissionStore.setLaneChangeConnection, RoadTurnPermissionStore.serialize, RoadTurnPermissionStore.restore
+- `ServerScriptService.Services.Terrain.TerrainDataService` [Module L449] — !strict Owns the authoritative terrain heightmap (the single source of truth for shape).
+  - fns: TerrainDataService.Init, TerrainDataService.getClientEditedKeys, TerrainDataService.beginCityLoad, TerrainDataService.endCityLoad, TerrainDataService.Bind, TerrainDataService.Start, TerrainDataService.getHeightmap, TerrainDataService.getOverlayLedger, TerrainDataService.isDryAt, TerrainDataService.classifyWaterEdit, TerrainDataService.markDryCornerKeys, TerrainDataService.getHeightAt, TerrainDataService.getSurfaceY, TerrainDataService.getNaturalSurfaceY, TerrainDataService.getSlopeAt, TerrainDataService.getTileSlope, …(+10)
+- `ServerScriptService.Services.Terrain.TerrainDataService.Stream.spec` [Module L211] — !strict
+  - fns: hm:dirtyKeys, hm:getChunk, storage:WaitForChild, e.step, e.finish, e.count, e.onPack, changed.onPack
+- `ServerScriptService.Services.Terrain.TerrainEditService` [Module L129] — !strict Network boundary for terrain editing. Validates and rate-limits incoming brush
+  - fns: TerrainEditService.setTerritoryCheck, TerrainEditService.Init, TerrainEditService.Bind, TerrainEditService.Start
+- `ServerScriptService.Services.Terrain.TerrainGradeService` [Module L558] — !strict !native
+  - fns: TerrainGradeService.setLoading, TerrainGradeService.setNodeInfo, TerrainGradeService.gradeSegment, TerrainGradeService.gradeConnector, TerrainGradeService.ungradeConnector, TerrainGradeService.ungradeSegmentId, TerrainGradeService.ungradeSegment
+- `ServerScriptService.Services.Terrain.TerrainGradeService.LoadingBudget.spec` [Module L55] — !strict
+- `ServerScriptService.Services.Terrain.TerrainGradeService.Raster.spec` [Module L84] — !strict
+- `ServerScriptService.Services.Terrain.TerrainGradeService.spec` [Module L199] — !strict The road CROSS-SECTION: what the ground does across a road's footprint. No framework:
+- `ServerScriptService.Services.Terrain.TerrainOverlayLedger` [Module L286] — !strict !native
+  - fns: TerrainOverlayLedger.new, TerrainOverlayLedger._apply, TerrainOverlayLedger.isOwned, TerrainOverlayLedger.beginOwner, TerrainOverlayLedger.naturalRaw, TerrainOverlayLedger.lockedByOtherKind, TerrainOverlayLedger.otherKindLockRank, TerrainOverlayLedger.targetForOwnerKind, TerrainOverlayLedger.write, TerrainOverlayLedger.release, TerrainOverlayLedger.withNaturalHeightmap, TerrainOverlayLedger.clear
+- `ServerScriptService.Services.Terrain.TerrainPadService` [Module L260] — !strict TerrainPadService
+  - fns: TerrainPadService.padFootprint, TerrainPadService.unpadFootprint, TerrainPadService.getStage
+- `ServerScriptService.Services.Terrain.TerrainPadService.RoadLookup.spec` [Module L150] — !strict
+- `ServerScriptService.Services.Terrain.TerrainPadService.spec` [Module L101] — !strict Lot ground: a building stands on flat ground, a house's yard keeps the lie of the land, a
+- `ServerScriptService.Services.Terrain.TerrainPersistence` [Module L229] — !strict !native
+  - fns: TerrainPersistence.usableTemplate, TerrainPersistence.serialize, TerrainPersistence.deserialize, TerrainPersistence.packDryKeys, TerrainPersistence.unpackDryKeys
+- `ServerScriptService.Services.Terrain.TerrainPersistence.spec` [Module L70] — !strict Terrain saves must restore bit for bit: every height, material and flag. The encoder
+- `ServerScriptService.Services.Terrain.TerrainRenderer` [Module L203] — !strict Server-side terrain painting for INCREMENTAL edits made after a city is loaded
+  - fns: TerrainRenderer.Init, TerrainRenderer.Bind, TerrainRenderer.Start, TerrainRenderer.enableEditPainting, TerrainRenderer.pauseEditPainting, TerrainRenderer.discardPending, TerrainRenderer.flushAllDirty, TerrainRenderer.renderAllAndWait
+- `ServerScriptService.Services.Traffic.IntersectionDetector` [Module L248] — !strict IntersectionDetector
+  - fns: IntersectionDetector.detect
+- `ServerScriptService.Services.Traffic.IntersectionDetector.spec` [Module L132] — !strict Signal poles stand on the kerb the driving side puts them on, and the mast arm
+- `ServerScriptService.Services.Traffic.SignalCoordinator` [Module L379] — !strict SignalCoordinator
+  - fns: SignalCoordinator.buildSplitPlan, SignalCoordinator.minGreenFor, SignalCoordinator.sampleAt, SignalCoordinator.rotateToCoordPhase, SignalCoordinator.offsetError, SignalCoordinator.orderCorridor, SignalCoordinator.solveOffsets, SignalCoordinator.applyAutoOffsets, SignalCoordinator.criticalCycle, SignalCoordinator.spacingAdvice
+- `ServerScriptService.Services.Traffic.SignalCoordinator.spec` [Module L43] — !strict
+- `ServerScriptService.Services.Traffic.SignalPhaseBuilder` [Module L300] — !strict SignalPhaseBuilder
+  - fns: SignalPhaseBuilder.build
+- `ServerScriptService.Services.Traffic.SignalPhaseBuilder.spec` [Module L60] — !strict
+- `ServerScriptService.Services.Traffic.SignalPlanStore` [Module L540] — !strict SignalPlanStore
+  - fns: SignalPlanStore.onChanged, SignalPlanStore.rawPlan, SignalPlanStore.planFor, SignalPlanStore.setPlan, SignalPlanStore.setControl, SignalPlanStore.setPriority, SignalPlanStore.clearPlan, SignalPlanStore.invalidateArms, SignalPlanStore.allPlans, SignalPlanStore.group, SignalPlanStore.allGroups, SignalPlanStore.groupOf, SignalPlanStore.createGroup, SignalPlanStore.setGroupSettings, SignalPlanStore.addToGroup, SignalPlanStore.removeFromGroup, …(+7)
+- `ServerScriptService.Services.Traffic.SignalReplicationService` [Module L338] — !strict SignalReplicationService
+  - fns: SignalReplicationService.Init, SignalReplicationService.Bind
+- `ServerScriptService.Services.Traffic.TrafficConfig` [Module L81] — !strict TrafficConfig
+- `ServerScriptService.Services.Traffic.TrafficLightPlacer` [Module L244] — !strict TrafficLightPlacer
+  - fns: TrafficLightPlacer.Init, TrafficLightPlacer.SyncNode, TrafficLightPlacer.RemoveNode, TrafficLightPlacer.SetArmColor, TrafficLightPlacer.Clear
+- `ServerScriptService.Services.Traffic.TrafficSignalService` [Module L1033] — !strict
+  - fns: TrafficSignalService.CanGo, TrafficSignalService.HasSignal, TrafficSignalService.IsYellow, TrafficSignalService.IsApproachYellow, TrafficSignalService.GetPhase, TrafficSignalService.IsPedWalk, TrafficSignalService.SetQueueProvider, TrafficSignalService.RequestEmergencyPreemption, TrafficSignalService.BuildValidateContext, TrafficSignalService.GetNodeEditorSnapshot, TrafficSignalService.GetSignalNodes, TrafficSignalService.GetDebugSnapshot, TrafficSignalService.Init, TrafficSignalService.Bind, TrafficSignalService.Start
+- `ServerScriptService.Services.Traffic.TrafficSignalService.TestFixture` [Module L155] — !strict Isolated test dependency: fresh controller source, deterministic clock, no live city writes.
+- `ServerScriptService.Services.Traffic.TrafficSignalService.spec` [Module L208] — !strict TestEZ contracts run in Edit through the fresh-source harness.
+- `ServerScriptService.Services.Transit.BusDispatchService` [Module L831] — !strict
+  - fns: BusDispatchService.ResetVehicles, BusDispatchService.clear, BusDispatchService.serialize, BusDispatchService.restore, BusDispatchService.Init, BusDispatchService.Bind, BusDispatchService.Start
+- `ServerScriptService.Services.Transit.TrainBuildingModel` [Module L254] — !strict TrainBuildingModel
+  - fns: TrainBuildingModel.buildDepot, TrainBuildingModel.buildYard, TrainBuildingModel.buildStation
+- `ServerScriptService.Services.Transit.TrainDispatchService` [Module L944] — !strict
+  - fns: TrainDispatchService.clear, TrainDispatchService.Init, TrainDispatchService.Bind, TrainDispatchService.Start
+- `ServerScriptService.Services.Transit.TrainDispatchService.spec` [Module L71] — !strict The signalling contract, on the real rail nav graph: a single (Two-Way) track is held by
+- `ServerScriptService.Services.Transit.TransitBuildingModel` [Module L349] — !strict @deprecated: use TransitKitModel instead (the Blender transit kit, 2026-09-30). Nothing requires this
+  - fns: TransitBuildingModel.buildDepot, TransitBuildingModel.buildStop, TransitBuildingModel.buildStation
+- `ServerScriptService.Services.Transit.TransitKitModel` [Module L164] — !strict TransitKitModel
+  - fns: TransitKitModel.has, TransitKitModel.defaultLayout, TransitKitModel.layoutCount, TransitKitModel.gateSpans, TransitKitModel.layoutInfo, TransitKitModel.spawn, TransitKitModel.bays, TransitKitModel.axles, TransitKitModel.arc, TransitKitModel.yardPose
+- `ServerScriptService.Services.Transit.TransitService` [Module L2163] — !strict
+  - fns: TransitService.setUnlockCheck, TransitService.setTerritoryCheck, TransitService.setNatureClearance, TransitService.placeDepot, TransitService.setDepotLayout, TransitService.removeDepot, TransitService.placeStop, TransitService.removeStop, TransitService.removeStopsForSegment, TransitService._recomputeTail, TransitService._recomputeRoute, TransitService.getBusAllowance, TransitService.getBusesAssigned, TransitService.getTrainsAssigned, TransitService.getTrainsRunning, TransitService.getTrainAllowance, …(+48)
+- `ServerScriptService.Services.Transit.TransitService.spec` [Module L28] — !strict
+- `ServerScriptService.Services.Util.PathFollower` [Module L866] — !strict
+  - fns: PathFollower.setCameraPos, PathFollower.clearPlayer, PathFollower.forget, PathFollower.isInRange, PathFollower.seedProximity, PathFollower.getClearAhead, PathFollower.getSpeedFactor, PathFollower.getForwardClearance, PathFollower.getMotionLimits, PathFollower.anyPlayerNear, PathFollower.nearestPlayerDistSq, PathFollower.anyCarApproaching, PathFollower.isRegistered, PathFollower.anyVehicleWithin, PathFollower.streamPose, PathFollower.keepalive, …(+6)
+- `ServerScriptService.Services.Util.PathFollower.spec` [Module L217] — !strict
+  - fns: PathFollower.streamPose
+- `ServerScriptService.Services.Util.Telemetry` [Module L51] — !strict Telemetry
+  - fns: Telemetry.funnelStep, Telemetry.milestone, Telemetry.custom
+- `ServerScriptService.Tests.DrawCallProbe` [Module L155] — !strict DrawCallProbe -- answers the one question the whole proxy design is built on and that
+  - fns: DrawCallProbe.run
+- `ServerScriptService.Tests.LoadStressTest` [Module L235] — !nonstrict LoadStressTest -- builds a BIG city through the game's own restore path and times loading it.
+  - fns: LoadStressTest.run
+- `ServerScriptService.Tests.PropLODReport` [Module L163] — !nonstrict PropLODReport -- shows the LOD ladder every street prop will ACTUALLY ride.
+- `ServerScriptService.Tests.SpecRunner` [Module L156] — !nonstrict SpecRunner -- runs every *.spec ModuleScript in the place.
+  - fns: SpecRunner.run, m.equal, m.ok, m.near, m.a, m.throw, m.match
+
+## ServerStorage (32)
+
+- `ServerStorage.Authoring.CommercialLowSetup` [Module L304] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported low-commercial kit
+  - fns: CommercialLowSetup.run
+- `ServerStorage.Authoring.CommercialV2Setup` [Module L351] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported commercial kit v2
+  - fns: CommercialV2Setup.run
+- `ServerStorage.Authoring.HouseV2Setup` [Module L332] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported house kit v2 (Workspace.RH_W3..RH_W5,
+  - fns: HouseV2Setup.run
+- `ServerStorage.Authoring.IndustrialSetup` [Module L443] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported industrial kit
+  - fns: IndustrialSetup.run, IndustrialSetup.props
+- `ServerStorage.Authoring.MidRiseKitSetup` [Module L241] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported MidRiseKit FBXs
+  - fns: MidRiseKitSetup.run
+- `ServerStorage.Authoring.MidRiseKitSetup.Manifest` [Module L5] — !strict Generated from Models/kits/_manifests/midrise_manifest.json (trimmed). Studs, Blender axes: x, y = street, z = up.
+- `ServerStorage.Authoring.MidRiseV2Setup` [Module L446] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported mid-rise v2 kit (Workspace.RM_W2..RM_W5,
+  - fns: MidRiseV2Setup.run, MidRiseV2Setup.props
+- `ServerStorage.Authoring.PowerTemplateSetup` [Module L249] — !strict Edit-time authoring tool (NOT runtime). Builds the power utilities' service templates
+  - fns: PowerTemplateSetup.run
+- `ServerStorage.Authoring.PropKitSetup` [Module L357] — !strict Edit-time authoring tool (NOT runtime). Files the 3D-Imported prop kits -- a whole-kit bundle
+  - fns: PropKitSetup.fromSingle, PropKitSetup.run, PropKitSetup.retire
+- `ServerStorage.Authoring.SimpleBuildingBuilder` [Module L191] — !strict Edit-time authoring tool (NOT runtime). Generates ONE simple variant per size for
+  - fns: SimpleBuildingBuilder.build
+- `ServerStorage.Authoring.TransitSetup` [Module L477] — !strict Edit-time authoring tool (NOT runtime). Turns the 3D-Imported transit kit (Workspace.TR_<Key>, one
+  - fns: TransitSetup.ghosts, TransitSetup.driveLook, TransitSetup.walkLook, TransitSetup.run
+- `ServerStorage.Authoring.WaterTemplateSetup` [Module L324] — !strict Edit-time authoring tool (NOT runtime). Builds the water utilities' service templates
+  - fns: WaterTemplateSetup.run
+- `ServerStorage.PropsRetired.BuildingProps.ACUnits.ACUnitCatalog` [Module L253] — !strict ACUnitCatalog -- the exterior HVAC kit that hangs on the side of a city building:
+  - fns: ACUnitCatalog.get, ACUnitCatalog.forClass
+- `ServerStorage.PropsRetired.BuildingProps.ACUnits.ACUnitCatalog.spec` [Module L297] — !nonstrict ACUnitCatalog.spec -- every exterior AC prop, checked against the LOD ladder it will
+- `ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration` [Module L270] — !strict generationId: 3803558c-2cf8-4d1b-9b14-69b361e1abac
+  - fns: RetractableAwning.OnGenerate
+- `ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.ConstructiveSolidGeometry` [Module L264]
+  - fns: ConstructiveSolidGeometry.union, ConstructiveSolidGeometry.intersect, ConstructiveSolidGeometry.subtract
+- `ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.GeometryPrimitives` [Module L2888]
+  - fns: _cache.getUnitHemisphere, _cache.getUnitHollowCylinder, _cache.getUnitHollowHemisphere, _cache.getUnitTrianglePrism, GeometryPrimitives.strutFromTwoPoints, GeometryPrimitives.axisAlignedBlockFromCorners, GeometryPrimitives.cylinder, GeometryPrimitives.hollowCylinder, GeometryPrimitives.sphere, GeometryPrimitives.hemisphere, GeometryPrimitives.hollowHemisphere, GeometryPrimitives.triangularPrismFromThreePoints, GeometryPrimitives.ramp, GeometryPrimitives.model, GeometryPrimitives.quadFromFourPoints, _cache.getUnitCone, …(+15)
+- `ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.MathUtils` [Module L185]
+  - fns: MathUtils.lerp, MathUtils.lerpVector3, MathUtils.lerpColor, MathUtils.bezier, MathUtils.quadraticBezier, MathUtils.polarToCartesian, MathUtils.sampleBezierPoints, MathUtils.linearArray, MathUtils.radialArray, MathUtils.radialArrayConnected
+- `ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.SmartObject` [Module L58]
+  - fns: SmartObject.getAttribute
+- `ServerStorage.PropsRetired.PropCatalog.PropCatalog` [Module L459] — !strict Shared street-prop catalog: placeable waste containers and seating. Templates live beside
+  - fns: PropCatalog.get
+- `ServerStorage.PropsRetired.PropCatalog.PropCatalog.spec` [Module L258] — !nonstrict PropCatalog.spec -- every street prop, checked against the LOD ladder it will actually
+- `ServerStorage.StaffUI.StaffTools.AdminController` [Module L3641] — !strict AdminController
+  - fns: AdminController.SetVisible, AdminController.Start, AdminController.Cleanup, _tabOpened.Access, _tabOpened.Review
+- `ServerStorage.StaffUI.StaffTools.BadAppleOutline` [Module L169] — !strict BadAppleOutline -- turns a frame's silhouette into the road runs a player would draw.
+  - fns: BadAppleOutline.trace
+- `ServerStorage.StaffUI.StaffTools.BadAppleRoadTile` [Module L279] — !strict BadAppleRoadTile -- bakes ONE real road stub that BadAppleShow clones to draw with.
+  - fns: BadAppleRoadTile.build
+- `ServerStorage.StaffUI.StaffTools.BadAppleShow` [Module L755] — !strict BadAppleShow -- takes you to an empty grass field and plays Bad Apple by PLACING ROADS.
+  - fns: BadAppleShow.IsPlaying, BadAppleShow.Stop, BadAppleShow.Start, BadAppleShow.Toggle
+- `ServerStorage.StaffUI.StaffTools.CameraSpline` [Module L122] — !strict CameraSpline -- the path maths behind CinematicCamera, pure so it can be spec'd.
+  - fns: CameraSpline.build, CameraSpline.sample
+- `ServerStorage.StaffUI.StaffTools.CameraSpline.spec` [Module L46] — !strict CameraSpline spec: constant speed along uneven keys, endpoints exact, pans and stills safe.
+- `ServerStorage.StaffUI.StaffTools.CinematicCamera` [Module L660] — !strict CinematicCamera -- CS2-style keyframed camera for trailers and showcase shots.
+  - fns: CinematicCamera.Stop, CinematicCamera.IsPlaying, CinematicCamera.Play, CinematicCamera.Pose, CinematicCamera.GoToSpot, CinematicCamera.Start, CinematicCamera.Cleanup
+- `ServerStorage.StaffUI.StaffTools.DeveloperController` [Module L2246] — !strict DeveloperController
+  - fns: DeveloperController._scanScene, DeveloperController.SetVisible, DeveloperController.Start, DeveloperController.Cleanup
+- `ServerStorage.StaffUI.StaffTools.StaffBoot` [Local L66] — !strict StaffBoot
+- `ServerStorage.StaffUI.StaffTools.TrailerShots` [Module L40] — !strict TrailerShots -- the beta trailer reel CinematicCamera plays (Home, or Admin > Tools > Trailer)
+- `ServerStorage.StaffUI.StaffTools.UIOverlapAudit` [Module L207] — !strict Finds HUD surfaces that collide or run off the screen -- at every screen size, from a
+  - fns: UIOverlapAudit.run
+
+## StarterPlayer (163)
+
+- `StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap` [Local L379] — !strict
+- `StarterPlayer.StarterPlayerScripts.Controllers.BottomBarController` [Module L1441] — !strict BUILD SECTIONS + THE BUILD DOCK.
+  - fns: BottomBarController.CloseSection, BottomBarController.OpenSection, BottomBarController.GetActiveSection, BottomBarController.IsBulldozeActive, BottomBarController.IsPaintActive, BottomBarController.Start, _svcPages.Civic, _svcPages.Utilities, _svcPages.Transit, e.onClick
+- `StarterPlayer.StarterPlayerScripts.Controllers.BuildRail` [Module L508] — !strict BuildRail
+  - fns: BuildRail.Mount, BuildRail.sync, BuildRail.closeFlyouts
+- `StarterPlayer.StarterPlayerScripts.Controllers.BulldozeController` [Module L890] — !strict Top-level bulldoze tool with its own dock page. Pick a delete mode from the tabs:
+  - fns: BulldozeController.setMode, BulldozeController.getMode, BulldozeController.setStateListener, BulldozeController.setEnabled, BulldozeController.isEnabled, BulldozeController.InitPanel, BulldozeController.Init, BulldozeController.Bind, BulldozeController.Unbind, BulldozeController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.ColorPanel` [Module L678] — !strict ColorPanel
+  - fns: ColorPanel.cellColor, ColorPanel.current, ColorPanel.sync, ColorPanel.open, ColorPanel.close, ColorPanel.isOpen, ColorPanel.toggle
+- `StarterPlayer.StarterPlayerScripts.Controllers.CoverageOverlay` [Module L613] — !strict CoverageOverlay
+  - fns: CoverageOverlay.ringColor, CoverageOverlay.makeDisc, CoverageOverlay.discTo, CoverageOverlay.refresh, CoverageOverlay.washCity, CoverageOverlay.maybeRefresh, CoverageOverlay.show, CoverageOverlay.clear, CoverageOverlay.originalColor, CoverageOverlay.activeKind, CoverageOverlay.activeStyle
+- `StarterPlayer.StarterPlayerScripts.Controllers.CoverageOverlay_live` [Module L493] — !strict CoverageOverlay
+  - fns: CoverageOverlay.ringColor, CoverageOverlay.makeDisc, CoverageOverlay.discTo, CoverageOverlay.refresh, CoverageOverlay.maybeRefresh, CoverageOverlay.show, CoverageOverlay.clear, CoverageOverlay.originalColor, CoverageOverlay.activeKind, CoverageOverlay.activeStyle
+- `StarterPlayer.StarterPlayerScripts.Controllers.CreationPlacementController` [Module L255] — !strict CreationPlacementController
+  - fns: CreationPlacementController.fetchList, CreationPlacementController.setCreation, CreationPlacementController.getCreation, CreationPlacementController.forget, CreationPlacementController.setStateListener, CreationPlacementController.setEnabled, CreationPlacementController.isEnabled, CreationPlacementController.Init, CreationPlacementController.Bind, CreationPlacementController.Start, CreationPlacementController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.DeleteHoverController` [Module L409] — !strict
+  - fns: DeleteHoverController.FindBuildingFromInstance, DeleteHoverController.ShowBuildingSelection, DeleteHoverController.ClearBuildingSelection, DeleteHoverController.ShowBuilding, DeleteHoverController.ShowRoadSegment, DeleteHoverController.ShowRoadSelection, DeleteHoverController.ClearRoad, DeleteHoverController.ClearBuilding, DeleteHoverController.Clear, DeleteHoverController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.EditorController` [Module L1628] — !strict EditorController
+  - fns: EditorController.Start
+- `StarterPlayer.StarterPlayerScripts.Controllers.EditorGizmos` [Module L1243] — !strict EditorGizmos
+  - fns: EditorGizmos.presetsFor, EditorGizmos.getStep, EditorGizmos.snapLen, EditorGizmos.snapSize, EditorGizmos.snapDeg, EditorGizmos.setSnapPreset, EditorGizmos.getSnapPreset, EditorGizmos.setCustomStep, EditorGizmos.getCustomStep, EditorGizmos.toMetres, EditorGizmos.toStuds, EditorGizmos.stepLabel, EditorGizmos.presetLabel, EditorGizmos.setSpace, EditorGizmos.getSpace, EditorGizmos.setAbsoluteGrid, …(+20)
+- `StarterPlayer.StarterPlayerScripts.Controllers.EditorGizmos.spec` [Module L284] — !strict The snap model and the gizmo's ownership handoff. Both are pure state, and both are the
+- `StarterPlayer.StarterPlayerScripts.Controllers.EmergencyPlacementController` [Module L241] — !strict EmergencyPlacementController
+  - fns: EmergencyPlacementController.setEnabled, EmergencyPlacementController.isEnabled, EmergencyPlacementController.setServiceType, EmergencyPlacementController.getServiceType, EmergencyPlacementController.Init, EmergencyPlacementController.Bind, EmergencyPlacementController.Start, EmergencyPlacementController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.GhostPlacement` [Module L310] — !strict GhostPlacement -- THE free-placement tool. A ghost rides the cursor, turns green where
+  - fns: GhostPlacement.new, GhostPlacement.destroyGhost, GhostPlacement.ensureGhost, GhostPlacement.setKey, GhostPlacement.getKey, GhostPlacement.setEnabled, GhostPlacement.isEnabled, GhostPlacement.rotate, GhostPlacement.rotateBy, GhostPlacement.fits, GhostPlacement.update, GhostPlacement.visibleGhost, GhostPlacement.validPivot, GhostPlacement.tryPlace, GhostPlacement.destroy
+- `StarterPlayer.StarterPlayerScripts.Controllers.GridPicker` [Module L76] — !strict GridPicker
+  - fns: GridPicker.new
+- `StarterPlayer.StarterPlayerScripts.Controllers.HeatmapController` [Module L160] — !strict INFO VIEWS: the bottom-left column. Pick a service to paint the whole city
+  - fns: HeatmapController.Start, HeatmapController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.JunctionLightTool` [Module L253] — !strict JunctionLightTool -- the Roads panel's Traffic Light card. While it is armed, the junction
+  - fns: JunctionLightTool.setEnabled, JunctionLightTool.isEnabled
+- `StarterPlayer.StarterPlayerScripts.Controllers.LaneConnectorTool` [Module L991] — !strict LaneConnectorTool -- the Traffic tab's Lane Connector card.
+  - fns: LaneConnectorTool.setEnabled, LaneConnectorTool.isEnabled, LaneConnectorTool.mountControls, LaneConnectorTool.drawCardArt
+- `StarterPlayer.StarterPlayerScripts.Controllers.NatureFreePlaceMode` [Module L158] — !strict @deprecated: use NaturePlacementController's Single gesture with FreePlacement on instead.
+  - fns: NatureFreePlaceMode.setPickKey, NatureFreePlaceMode.setEnabled, NatureFreePlaceMode.isEnabled, NatureFreePlaceMode.Init, NatureFreePlaceMode.Bind
+- `StarterPlayer.StarterPlayerScripts.Controllers.NatureGizmo` [Module L260] — !strict NatureGizmo
+  - fns: NatureGizmo.itemFor, NatureGizmo.applyTo, NatureGizmo.setColor, NatureGizmo.setMaterial, NatureGizmo.setTransparency, NatureGizmo.setCollide, NatureGizmo.getMaterial, NatureGizmo.collides, NatureGizmo.focus, NatureGizmo.pushTransform, NatureGizmo.attach, NatureGizmo.detach, NatureGizmo.setChangedListener, NatureGizmo.current, NatureGizmo.isBusy, NatureGizmo.editState, …(+1)
+- `StarterPlayer.StarterPlayerScripts.Controllers.NaturePlacementController` [Module L1729] — !strict NaturePlacementController
+  - fns: NaturePlacementController.setEnabled, NaturePlacementController.isEnabled, NaturePlacementController.setMode, NaturePlacementController.getMode, NaturePlacementController.setSpacing, NaturePlacementController.getSpacing, NaturePlacementController.setBrushRadius, NaturePlacementController.getBrushRadius, NaturePlacementController.setPlaceScale, NaturePlacementController.getPlaceScale, NaturePlacementController.setStack, NaturePlacementController.isStacking, NaturePlacementController.setPrecise, NaturePlacementController.isParked, NaturePlacementController.isPrecise, NaturePlacementController.setPlaceColor, …(+25)
+- `StarterPlayer.StarterPlayerScripts.Controllers.NatureSelection` [Module L1052] — !strict NatureSelection
+  - fns: NatureSelection.rectOf, NatureSelection.lookOf, NatureSelection.stampOf, NatureSelection.pickUp, NatureSelection.current, NatureSelection.clear, NatureSelection.Start, NatureSelection.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.NatureSelection.spec` [Module L130] — !strict What a CUT or a COPY hands back to the placement tool, and the capture box's rectangle.
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController` [Module L1154] — !strict PlotController
+  - fns: PlotController.Init, PlotController.Bind, PlotController.setEnabled, PlotController.isEnabled, PlotController.setActiveZone, PlotController.getLastZone, PlotController.setWidthBlocks, PlotController.getWidthBlocks, PlotController.setDepthBlocks, PlotController.getDepthBlocks, PlotController.setMaxFloors, PlotController.getMaxFloors, PlotController.setTier, PlotController.getTier, PlotController.setCoverage, PlotController.getCoverage, …(+13)
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PlanningBudget.spec` [Module L64] — !strict
+  - fns: env.breathePreview
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PreviewCleanup.spec` [Module L58] — !strict
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PreviewInputs.spec` [Module L103] — !strict
+  - fns: env.breathePreview, connection.Disconnect, env.previewInputs, env.samePreviewInputs, env.updateHoverStamp, env.refreshDoomed
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController.SeatIndex` [Module L38] — !strict Exact overlap checks restricted to neighbouring preview seats.
+  - fns: SeatIndex.new
+- `StarterPlayer.StarterPlayerScripts.Controllers.PlotController.SeatIndex.spec` [Module L20] — !strict
+- `StarterPlayer.StarterPlayerScripts.Controllers.PowerLineController` [Module L320] — !strict PowerLineController
+  - fns: PowerLineController.setEnabled, PowerLineController.isEnabled, PowerLineController.Init, PowerLineController.Bind, PowerLineController.Start, PowerLineController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.PreciseBuildPanel` [Module L528] — !strict @deprecated: use Controllers.BuildRail instead.
+  - fns: PreciseBuildPanel.sync, PreciseBuildPanel.Bind
+- `StarterPlayer.StarterPlayerScripts.Controllers.PropPaintTool` [Module L199] — !strict PropPaintTool
+  - fns: PropPaintTool.openColour, PropPaintTool.setMode, PropPaintTool.getMode, PropPaintTool.setStateListener, PropPaintTool.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadDockPanel` [Module L1366] — !strict The Roads page of the shared build dock (bottom-right). Owns everything about
+  - fns: RoadDockPanel.Init, RoadDockPanel.Show, RoadDockPanel.Activate, RoadDockPanel.Deactivate, RoadDockPanel.Refresh
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadGhostPreviewController` [Module L1771] — !strict RoadGhostPreviewController
+  - fns: RoadGhostPreviewController.positionIndicator, RoadGhostPreviewController.showRoundabout, RoadGhostPreviewController.hideRoundabout, RoadGhostPreviewController.hideIndicator, RoadGhostPreviewController.clear, RoadGhostPreviewController.clearCurveVisuals, RoadGhostPreviewController.hidePlacementVisuals, RoadGhostPreviewController.hideAll, RoadGhostPreviewController.update, RoadGhostPreviewController.getFolder, RoadGhostPreviewController.Init, RoadGhostPreviewController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadMoveController` [Module L2124] — !strict Move tool (CS2 "Move It" style) -- select, drag and reshape the city.
+  - fns: RoadMoveController.setStateListener, RoadMoveController.setEnabled, RoadMoveController.isEnabled, RoadMoveController.InitDock, RoadMoveController.Init, RoadMoveController.Bind, RoadMoveController.Unbind, RoadMoveController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementController` [Module L1231] — !strict
+  - fns: RoadPlacementController.setStateListener, RoadPlacementController.getPhase, RoadPlacementController.getMode, RoadPlacementController.getRoadType, RoadPlacementController.isRoadTypeSelected, RoadPlacementController.setRoadType, RoadPlacementController.clearRoadTypeSelection, RoadPlacementController.getRoundaboutSize, RoadPlacementController.cycleRoundaboutSize, RoadPlacementController.getRoundaboutPreset, RoadPlacementController.cycleRoundaboutPreset, RoadPlacementController.cancel, RoadPlacementController.setRoadSnapEnabled, RoadPlacementController.isRoadSnapEnabled, RoadPlacementController.setLaneSnapEnabled, RoadPlacementController.isLaneSnapEnabled, …(+37)
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementController.spec` [Module L42] — !strict
+- `StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper` [Module L1045] — !strict RoadPlacementSnapper
+  - fns: RoadPlacementSnapper.invalidateCaches, RoadPlacementSnapper.setNodesFull, RoadPlacementSnapper.applyNodeDelta, RoadPlacementSnapper.setSegmentsFull, RoadPlacementSnapper.applySegmentDelta, RoadPlacementSnapper.applyIntersectionsPayload, RoadPlacementSnapper.validate, RoadPlacementSnapper.exitTangent, RoadPlacementSnapper.controlPoints, RoadPlacementSnapper.allSegmentIds, RoadPlacementSnapper.continuationDirAt, RoadPlacementSnapper.getHeadingInfo, RoadPlacementSnapper.nearestSegmentId, RoadPlacementSnapper.segmentUnderPoint, RoadPlacementSnapper.nearestNodeId, RoadPlacementSnapper.getNodePos, …(+8)
+- `StarterPlayer.StarterPlayerScripts.Controllers.SchoolPlacementController` [Module L106] — !strict SchoolPlacementController
+  - fns: SchoolPlacementController.setEnabled, SchoolPlacementController.isEnabled, SchoolPlacementController.setSchoolType, SchoolPlacementController.getSchoolType, SchoolPlacementController.rotate, SchoolPlacementController.Init, SchoolPlacementController.Bind, SchoolPlacementController.Start, SchoolPlacementController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.SeasonController` [Module L133] — !strict SeasonController
+  - fns: SeasonController.getSeason, SeasonController.Start
+- `StarterPlayer.StarterPlayerScripts.Controllers.TerrainEditController` [Module L427] — !strict Client terrain sculpting tool. Toggle with T. While enabled, hold LMB and drag
+  - fns: TerrainEditController.setEnabled, TerrainEditController.isEnabled, TerrainEditController.setOp, TerrainEditController.setRadius, TerrainEditController.cycleMaterial, TerrainEditController.getOp, TerrainEditController.getRadius, TerrainEditController.getRadiusBounds, TerrainEditController.getMaterialNames, TerrainEditController.getMaterialIndex, TerrainEditController.setMaterialIndex, TerrainEditController.setHudEnabled, TerrainEditController.setStrokeListener, TerrainEditController.Init, TerrainEditController.Bind, TerrainEditController.Unbind
+- `StarterPlayer.StarterPlayerScripts.Controllers.TerrainPanelController` [Module L1232] — !strict Terrain tools on the shared build dock (bottom-right), same bones as the
+  - fns: TerrainPanelController.InitDock, TerrainPanelController.setStateListener, TerrainPanelController.IsOpen, TerrainPanelController.IsBuildOpen, TerrainPanelController.OpenBuild, TerrainPanelController.ToggleBuild, TerrainPanelController.ShowNatureAsset, TerrainPanelController.Open, TerrainPanelController.Close, TerrainPanelController.Toggle, TerrainPanelController.Start
+- `StarterPlayer.StarterPlayerScripts.Controllers.TerritoryController` [Module L621] — !strict THE TILE VIEW: the 16x16 land grid the map is bought with. Cities: Skylines 2's map tile
+  - fns: TerritoryController.isEnabled, TerritoryController.setEnabled, TerritoryController.Toggle, TerritoryController.Init, TerritoryController.Bind, TerritoryController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.ToolRail` [Module L359] — !strict TOOL RAIL: the bottom-centre capsule of build tools.
+  - fns: ToolRail.build, ToolRail.reveal, ToolRail.setSelected, ToolRail.clearSelection, ToolRail.isSelected, ToolRail.getRoot, ToolRail.heightWithMargin, ToolRail.bottomInset, ToolRail.Destroy
+- `StarterPlayer.StarterPlayerScripts.Controllers.ToolStripController` [Module L666] — !strict Contextual tool options strip above the bottom bar. Shows the row for the
+  - fns: ToolStripController.Refresh, ToolStripController.SetErasing, ToolStripController.IsErasing, ToolStripController.Init, ToolStripController.SetBottomOffset, ToolStripController.SetSection, ToolStripController.GetSection, ToolStripController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.TransitPlacementController` [Module L792] — !strict TransitPlacementController
+  - fns: TransitPlacementController.setTool, TransitPlacementController.getTool, TransitPlacementController.setEnabled, TransitPlacementController.isEnabled, TransitPlacementController.Init, TransitPlacementController.Bind, TransitPlacementController.Start, TransitPlacementController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Controllers.UndergroundView` [Module L170] — !strict UndergroundView -- the x-ray view, shared by every tool that works below the ground.
+  - fns: UndergroundView.setActive, UndergroundView.isActive
+- `StarterPlayer.StarterPlayerScripts.Controllers.PipeView` [Module L420] — !strict PipeView -- the water view (CS2 look): ONE sepia ColorCorrection, glowing mains via Highlights, junction joins + dips, service lines, orange buildings short of water
+  - fns: PipeView.roadSide, PipeView.folder, PipeView.isActive, PipeView.refreshNow, PipeView.setActive
+- `StarterPlayer.StarterPlayerScripts.Controllers.WaterPipeController` [Module L651] — !strict WaterPipeController
+  - fns: WaterPipeController.showPipes, WaterPipeController.setPipeKind, WaterPipeController.setMode, WaterPipeController.getMode, WaterPipeController.setAngleSnapEnabled, WaterPipeController.isAngleSnapEnabled, WaterPipeController.setStateListener, WaterPipeController.setEnabled, WaterPipeController.isEnabled, WaterPipeController.Init, WaterPipeController.Bind, WaterPipeController.Start, WaterPipeController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.Core.AutoSave` [Module L78] — !strict Client-driven city autosave. While a city is loaded (UIEvents.GameEntered ..
+  - fns: AutoSave.Start
+- `StarterPlayer.StarterPlayerScripts.Core.CacheSync` [Module L57] — !strict
+  - fns: CacheSync.Start
+- `StarterPlayer.StarterPlayerScripts.Core.CursorRay` [Module L457] — !strict CursorRay -- THE picking system. Every "what is under the cursor?" question in the game
+  - fns: CursorRay.position, CursorRay.ray, CursorRay.raycast, CursorRay.terrainRay, CursorRay.studsPerPixel, CursorRay.pickRadius, CursorRay.cityFolder, CursorRay.groundHit, CursorRay.ground, CursorRay.terrainY, CursorRay.terrainPoint, CursorRay.surfaceYAt, CursorRay.hitIn, CursorRay.modelIn, CursorRay.modelUnderRay, CursorRay.nearestPivot, …(+1)
+- `StarterPlayer.StarterPlayerScripts.Core.CursorRay.spec` [Module L74] — !strict The ground march. No framework -- `require(...).run()` asserts.
+  - fns: M.field, M.run
+- `StarterPlayer.StarterPlayerScripts.Core.DeviceProfile` [Module L158] — !strict DeviceProfile -- one guess at what this machine can draw, made once at boot from signals
+  - fns: DeviceProfile.detect, DeviceProfile.get
+- `StarterPlayer.StarterPlayerScripts.Core.FreeCamController` [Module L586] — !strict Free-fly RTS camera. Owns the scriptable camera, and exposes a small API the rest
+  - fns: FreeCamController.focusOn, FreeCamController.goToCityCentre, FreeCamController.followPart, FreeCamController.stopFollow, FreeCamController.isFollowing, FreeCamController.setSuspended, FreeCamController.isSuspended, FreeCamController.setOverviewMode, FreeCamController.getCameraState, FreeCamController.glideTo, FreeCamController.setCameraState, FreeCamController.Start
+- `StarterPlayer.StarterPlayerScripts.Core.RenderPressure` [Module L250] — !strict RenderPressure -- one number describing how hard this client is currently struggling, read
+  - fns: RenderPressure.setPreset, RenderPressure.level, RenderPressure.detail, RenderPressure.lerp, RenderPressure.lerpInt, RenderPressure.frameMs, RenderPressure.memoryMb, RenderPressure.memoryTight, RenderPressure.memoryCritical, RenderPressure.stats, RenderPressure.Start
+- `StarterPlayer.StarterPlayerScripts.Core.Settings` [Module L683] — !strict Client game settings: one store for option values and keybinds. Settings
+  - fns: Settings.get, Settings.defaults, Settings.bindDefaults, Settings.set, Settings.presetKeys, Settings.presetNames, Settings.applyPreset, Settings.onChanged, Settings.actions, Settings.getBind, Settings.bindsEqual, Settings.isDown, Settings.isActionDown, Settings.setBindsLocked, Settings.bindsLocked, Settings.pressed, …(+19)
+- `StarterPlayer.StarterPlayerScripts.Core.Settings.spec` [Module L63] — !strict The bind lock. No framework -- `run(Settings)` asserts.
+  - fns: M.run
+- `StarterPlayer.StarterPlayerScripts.Core.SettingsClient` [Module L369] — !strict Applies Core.Settings to the engine (lighting, terrain water, HUD scale)
+  - fns: SettingsClient.setHold, SettingsClient.flush, SettingsClient.Start
+- `StarterPlayer.StarterPlayerScripts.Core.SoundFX` [Module L97] — !strict SoundFX
+  - fns: SoundFX.play, SoundFX.wireButtons
+- `StarterPlayer.StarterPlayerScripts.Core.TransitClient` [Module L773] — !strict TransitClient
+  - fns: TransitClient.getSnapshot, TransitClient.getActiveRouteData, TransitClient.setRouteStatus, TransitClient.onChanged, TransitClient.setActiveRoute, TransitClient.setMode, TransitClient.setStopClickHandler, TransitClient.setRouteHint, TransitClient.getActiveRoute, TransitClient.getStopPos, TransitClient.setDragPreview, TransitClient.nearestStopId, TransitClient.stopIdAtScreen, TransitClient.Start
+- `StarterPlayer.StarterPlayerScripts.Core.UiScratch` [Module L59] — !strict UiScratch -- Workspace._UI, the client's world-space scratch root.
+  - fns: UiScratch.peek, UiScratch.root, UiScratch.folder, UiScratch.clear
+- `StarterPlayer.StarterPlayerScripts.Debug.IconDiag` [Local L270] — !nonstrict Per-client icon report. Press F8 in game to show it, F8 again to hide.
+- `StarterPlayer.StarterPlayerScripts.Debug.TrafficBenchClient` [Local L36] — !strict LocalScript -> StarterPlayerScripts/Debug
+- `StarterPlayer.StarterPlayerScripts.HUD.BankruptcyController` [Module L179] — !strict BankruptcyController
+  - fns: BankruptcyController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController` [Module L1648] — !strict Hover any building to highlight it + see a quick preview; click to open the
+  - fns: BuildingInfoController.Close, BuildingInfoController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.CityStatsController` [Module L91] — !strict
+  - fns: CityStatsController.GetFactors, CityStatsController.SetGauges, CityStatsController.Start, CityStatsController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.HUD.CityVitalsPanel` [Module L541] — !strict CITY VITALS: treasury, citizens and R/C/I demand, top right.
+  - fns: CityVitalsPanel.Start, CityVitalsPanel.Cleanup
+- `StarterPlayer.StarterPlayerScripts.HUD.DashboardController` [Module L779] — !strict City dashboard: a slide-in side panel with Overview / Economy / Population
+  - fns: DashboardController.Open, DashboardController.Close, DashboardController.Toggle, DashboardController.IsOpen, DashboardController.Start, _set.ovPop, _set.ovJobs, _set.ovTreasury, _set.ovNet, _set.ovDemand, _set.ecTreasury, _set.ecTax, _set.ecFunding, _set.ecBreakdown, _set.ecOutput, _set.ecNeed, …(+6)
+- `StarterPlayer.StarterPlayerScripts.HUD.EconomyPanelController` [Module L796] — !strict EconomyPanelController
+  - fns: EconomyPanelController.Open, EconomyPanelController.Close, EconomyPanelController.Toggle, EconomyPanelController.IsOpen, EconomyPanelController.Start, _set.budget, _set.taxTotal, _set.services, _set.loans, _set.production, _set.summary
+- `StarterPlayer.StarterPlayerScripts.HUD.ElectricityPanelController` [Module L330] — !strict ElectricityPanelController
+  - fns: ElectricityPanelController.Open, ElectricityPanelController.Close, ElectricityPanelController.Toggle, ElectricityPanelController.IsOpen, ElectricityPanelController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.FloatingCostEffect` [Module L94] — !strict FloatingCostEffect
+  - fns: FloatingCostEffect.spawn, FloatingCostEffect.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.GameMenuController` [Module L241] — !strict THE IN-GAME MENU: save, settings, resume, quit to main menu.
+  - fns: GameMenuController.IsOpen, GameMenuController.Open, GameMenuController.Close, GameMenuController.Toggle, GameMenuController.Start, GameMenuController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.HUD.NotificationController` [Module L280] — !strict Toast notifications. A self-contained stack of transient messages for city
+  - fns: NotificationController.Notify, NotificationController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.PlacementCostHud` [Module L99] — !strict PlacementCostHud
+  - fns: PlacementCostHud.showCost, PlacementCostHud.hide
+- `StarterPlayer.StarterPlayerScripts.HUD.PlayerHubController` [Module L989] — !strict PLAYER HUB: the player's own panel -- profile, city vitals, economy and quick
+  - fns: PlayerHubController.IsOpen, PlayerHubController.Open, PlayerHubController.Close, PlayerHubController.Toggle, PlayerHubController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.ProgressionController` [Module L675] — !strict City Hall: the progression page, built on MenuScreenView so it reads exactly like the
+  - fns: ProgressionController.refresh, ProgressionController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.RadioController` [Module L510] — !strict RadioController
+  - fns: RadioController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.RoadInfoController` [Module L463] — !strict RoadInfoController
+  - fns: RoadInfoController.Close, RoadInfoController.IsOpen, RoadInfoController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.TopLeftCluster` [Module L477] — !strict TOP-LEFT CLUSTER: one glass capsule holding everything docked in the Roblox
+  - fns: TopLeftCluster.Start, TopLeftCluster.Cleanup
+- `StarterPlayer.StarterPlayerScripts.HUD.TransitInfoController` [Module L549] — !strict TransitInfoController
+  - fns: TransitInfoController.Close, TransitInfoController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.TransportOverviewController` [Module L849] — !strict TransportOverviewController
+  - fns: TransportOverviewController.Open, TransportOverviewController.Close, TransportOverviewController.Toggle, TransportOverviewController.IsOpen, TransportOverviewController.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.UtilityGauges` [Module L226] — !strict UtilityGauges -- info button + power/water/sewage spare-capacity rings under the top-left cluster (SyncCityStats)
+  - fns: UtilityGauges.Start
+- `StarterPlayer.StarterPlayerScripts.HUD.WaterPanelController` [Module L333] — !strict WaterPanelController
+  - fns: WaterPanelController.Open, WaterPanelController.Close, WaterPanelController.Toggle, WaterPanelController.IsOpen, WaterPanelController.Start
+- `StarterPlayer.StarterPlayerScripts.SeasonTintClient` [Local L421] — !strict LocalScript -> StarterPlayerScripts
+- `StarterPlayer.StarterPlayerScripts.UI.Format` [Module L70] — !strict Number, money and duration strings for the whole client UI.
+  - fns: Format.int, Format.money, Format.signed, Format.signedMoney, Format.duration, Format.compact
+- `StarterPlayer.StarterPlayerScripts.UI.Format.spec` [Module L44] — !strict One runnable check per branch that can actually be wrong: the thousands loop,
+- `StarterPlayer.StarterPlayerScripts.UI.HubTheme` [Module L70] — !strict Player Hub identity: an azure skin layered over the shared Theme.
+  - fns: HubTheme.glass
+- `StarterPlayer.StarterPlayerScripts.UI.HudScale` [Module L71] — !strict One global UIScale for the whole in-game HUD (CityUI). The HUD is designed
+  - fns: HudScale.attach, HudScale.exempt, HudScale.setUserScale, HudScale.get
+- `StarterPlayer.StarterPlayerScripts.UI.Icons` [Module L220] — !strict Central icon registry. ONE place to define every button icon in the UI.
+  - fns: Icons.get, Icons.allImageIds
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.BuildCard` [Module L290] — !strict Build cards: the option tiles every build dock shows -- a road type, a zone
+  - fns: BuildCard.setTier, BuildCard.getTier, BuildCard.setUnlocked
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Button` [Module L190] — !strict Factory for every standard text button. Visual states (hover, press,
+  - fns: Button.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Divider` [Module L25] — !strict 1px separator line for toolbars and panels.
+  - fns: Divider.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Dock` [Module L748] — !strict Unified build dock: ONE panel every build tool shares, centred above the tool
+  - fns: Dock.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.DockWindow` [Module L565] — !strict DockWindow: Roblox-Studio-style dockable window system.
+  - fns: DockWindow.newHost
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Dropdown` [Module L230] — !strict Bordered value box that drops a pick list. The list is parented to the host
+  - fns: Dropdown.new, self.Set
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Frost` [Module L506] — !strict Kit.Frost
+  - fns: Frost.attach
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Glass` [Module L158] — !strict Panel chrome: flat dark translucent bg, hairline stroke, soft top sheen, and
+  - fns: Glass.setUserTransparency, Glass.apply
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.IconButton` [Module L257] — !strict Square icon button. Icon is a child ImageLabel tinted via ImageColor3 so
+  - fns: IconButton.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Modal` [Module L248] — !strict Centered modal dialog over a dimmed scrim. Fade + slight scale-in per
+  - fns: Modal.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Panel` [Module L81] — !strict Rounded dark container. The standard chrome for every HUD surface.
+  - fns: Panel.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Popover` [Module L168] — !strict Floating panel anchored above a button (e.g. "Snap" options). Fades per
+  - fns: Popover.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Slider` [Module L135] — !strict Capsule slider: track + accent fill + round knob + percent readout.
+  - fns: Slider.new, self.Set
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Tab` [Module L114] — !strict Tab for switching content within a panel.
+  - fns: Tab.new
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Toggle` [Module L104] — !strict Capsule on/off switch: a knob that slides and turns green (on) / red (off),
+  - fns: Toggle.new, self.Set
+- `StarterPlayer.StarterPlayerScripts.UI.Kit.Tooltip` [Module L132] — !strict Shared hover tooltip. One floating label for the whole client, shown after
+  - fns: Tooltip.attach
+- `StarterPlayer.StarterPlayerScripts.UI.Locale` [Module L756] — !strict UI.Locale
+  - fns: Locale.applyTo, Locale.apply, Locale.options, Locale.get, Locale.has, Locale.setLanguage, Locale.Start
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.MainMenuController` [Module L2887] — !strict
+  - fns: MainMenuController.Start
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.MainMenuController.spec` [Module L170] — !strict
+  - fns: e.visibleGroundRadius, e.createGameLoadingScreen, e.showErrorModal, e.getMenuFadeOverlay, e.setMenuPanelVisible, e.refreshSlotIndex, e.enterGame, e.enterCityNow, e.warn, e.cancelAdminCityLoad, e.clearAdminLoadingScreen, TerrainBuildController.build, task.spawn, gui.WaitForChild, gui.Destroy
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.MenuReel` [Module L337] — !strict The main menu's moving backdrop: the city flythroughs in CLIPS, played one after
+  - fns: MenuReel.mount
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogBuilder` [Module L238] — !strict The authoring API behind UpdateLogData. Edit the CONTENT in UpdateLogData;
+  - fns: self.group, self.added, self.changed, self.fixed, self.latest, Builder.version, Builder.section, Builder.compile
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogData` [Module L105] — !strict ============================================================================
+- `StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogsPanel` [Module L695] — !strict UPDATE LOGS / CREDITS: a full-screen page off the main menu. Two tabs sharing
+  - fns: UpdateLogsPanel.Open, UpdateLogsPanel.Close, UpdateLogsPanel.IsOpen
+- `StarterPlayer.StarterPlayerScripts.UI.PanelSlots` [Module L66] — !strict Mutual exclusion for panels that occupy the same screen real estate.
+  - fns: PanelSlots.claim, PanelSlots.release, PanelSlots.holders
+- `StarterPlayer.StarterPlayerScripts.UI.PerfOverlay` [Module L99] — !strict Frame-rate readout, driven by the "showFps" setting.
+  - fns: PerfOverlay.Start
+- `StarterPlayer.StarterPlayerScripts.UI.SettingsPanel` [Module L2513] — !strict SETTINGS -- "Control Room": the full-screen options page. A numbered section
+  - fns: SettingsPanel.Open, SettingsPanel.Close, SettingsPanel.IsOpen
+- `StarterPlayer.StarterPlayerScripts.UI.Theme` [Module L153] — !strict Single source of truth for UI colors, typography, spacing, and motion.
+- `StarterPlayer.StarterPlayerScripts.UI.TopbarDock` [Module L50] — !strict The Roblox topbar band, expressed in a ScreenGui's own coordinate space.
+  - fns: TopbarDock.slot, TopbarDock.bind
+- `StarterPlayer.StarterPlayerScripts.UI.UITween` [Module L66] — !strict The one tween helper. All UI animation goes through here so timings stay
+  - fns: UITween.to, UITween.cancelAll
+- `StarterPlayer.StarterPlayerScripts.UI.UIVisibility` [Local L208] — !strict UIVisibility -- hides every piece of on-screen UI, for screenshots and recording.
+- `StarterPlayer.StarterPlayerScripts.UICreation.EditorView` [Module L605] — !strict EditorView: builds the Creation Editor's Roblox-Studio-style UI. Pure
+  - fns: EditorView.build
+- `StarterPlayer.StarterPlayerScripts.UICreation.MainMenuView` [Module L1715] — !strict MainMenuView: builds the Main Menu ScreenGui tree + reusable menu panels (e.g. the
+  - fns: MainMenuView.build, MainMenuView.buildContentHub
+- `StarterPlayer.StarterPlayerScripts.UICreation.MenuScreenView` [Module L893] — !strict MenuScreenView: the full-screen menu page behind New Game and Load Game. Two frosted
+  - fns: MenuScreenView.backChip, MenuScreenView.header, MenuScreenView.screen, MenuScreenView.pills, MenuScreenView.actionButton, MenuScreenView.caption, MenuScreenView.statRow, MenuScreenView.hero, MenuScreenView.toggleRow, MenuScreenView.card, MenuScreenView.note, MenuScreenView.textField, MenuScreenView.scroller, MenuScreenView.emptyState, MenuScreenView.eyebrow, MenuScreenView.factGrid, …(+3)
+- `StarterPlayer.StarterPlayerScripts.WeatherClient` [Local L129] — !strict LocalScript -> StarterPlayerScripts
+- `StarterPlayer.StarterPlayerScripts.World.AmbienceController` [Module L193] — !strict AmbienceController
+  - fns: AmbienceController.Start
+- `StarterPlayer.StarterPlayerScripts.World.AmbientCityView` [Module L368] — !strict AmbientCityView (client)
+  - fns: AmbientCityView.Start
+- `StarterPlayer.StarterPlayerScripts.World.AssetLODView` [Module L810] — !strict AssetLODView -- client LOD for everything under workspace._City except Roads (RoadMeshView
+  - fns: AssetLODView.setHoldPredicate, AssetLODView.setSuspended, AssetLODView.setCityLoaded, AssetLODView.Start
+- `StarterPlayer.StarterPlayerScripts.World.CitizenAvatarView` [Module L242] — !strict CitizenAvatarView (client)
+  - fns: CitizenAvatarView.Start, CitizenAvatarView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.CitizenPresenceView` [Module L224] — !strict
+  - fns: CitizenPresenceView.Start, CitizenPresenceView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.ConstructionViewController` [Module L68] — !strict Static construction footprints until the crane is redesigned. The server owns the
+  - fns: ConstructionViewController.Start, ConstructionViewController.Cleanup
+- `StarterPlayer.StarterPlayerScripts.World.ConstructionViewController.spec` [Module L50] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.FireView` [Module L93] — !strict FireView
+  - fns: FireView.Start
+- `StarterPlayer.StarterPlayerScripts.World.NPCDriverView` [Module L830] — !strict
+  - fns: NPCDriverView.Start, NPCDriverView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.NPCDriverView.spec` [Module L40] — !strict
+  - fns: NPCDriverView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.NoPowerView` [Module L467] — !strict NoPowerView
+  - fns: NoPowerView.Start, NoPowerView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.NodeToolView` [Module L1107] — !strict NodeToolView -- the Cities: Skylines "Node Controller", in-game.
+  - fns: NodeToolView.Start
+- `StarterPlayer.StarterPlayerScripts.World.OneWayDirectionView` [Module L133] — !strict OneWayDirectionView (client)
+  - fns: OneWayDirectionView.Start
+- `StarterPlayer.StarterPlayerScripts.World.OutsideConnectionView` [Module L155] — !strict OutsideConnectionView (client)
+  - fns: OutsideConnectionView.Start
+- `StarterPlayer.StarterPlayerScripts.World.PedestrianView` [Module L260] — !strict PedestrianView
+  - fns: PedestrianView.Start, PedestrianView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.PlayerPresenceView` [Module L287] — !strict PlayerPresenceView
+  - fns: PlayerPresenceView.Start
+- `StarterPlayer.StarterPlayerScripts.World.RoadEditPreview` [Module L159] — !strict Temporary local road feedback. DataCache remains the server's topology; edits
+  - fns: RoadEditPreview.Start, RoadEditPreview.place, RoadEditPreview.remove, RoadEditPreview.replace, RoadEditPreview.Cleanup
+- `StarterPlayer.StarterPlayerScripts.World.RoadEditPreview.spec` [Module L126] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.RoadMeshView` [Module L1247] — !strict RoadMeshView -- mesh blocks per map CELL of road pieces (a dense cell splits into
+  - fns: RoadMeshView.hidePredictionCells, RoadMeshView.isPredictionReady, RoadMeshView.clearPredictionCells, RoadMeshView.Start, RoadMeshView.isIdle, RoadMeshView.lastBakeAt
+- `StarterPlayer.StarterPlayerScripts.World.RoadMeshView.PredictionCells.spec` [Module L74] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.RoadMeshView.Priority.spec` [Module L31] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.RoadMeshView.Startup.spec` [Module L39] — !strict
+  - fns: RoadMeshView.Start
+- `StarterPlayer.StarterPlayerScripts.World.RoadMeshView.spec` [Module L18] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.RoadPieces` [Module L1089] — !strict RoadPieces -- the road network as mesh pieces, built on THIS client from the topology the
+  - fns: RoadPieces.setPrediction, RoadPieces.isIdle, RoadPieces.affectedSegments, RoadPieces.cellsForSegments, RoadPieces.segmentsForCells, RoadPieces.specsForCell, RoadPieces.hasCell, RoadPieces.coversModel, RoadPieces.releaseModel, RoadPieces.start
+- `StarterPlayer.StarterPlayerScripts.World.RoadPieces.spec` [Module L186] — !strict
+  - fns: env.drawable, env.solveNode
+- `StarterPlayer.StarterPlayerScripts.World.RoadPreviewGeometry` [Module L45] — !strict Small, temporary solid road strips while the authoritative cell mesh is baking.
+  - fns: RoadPreviewGeometry.draw
+- `StarterPlayer.StarterPlayerScripts.World.RoadPreviewGeometry.Geometry.spec` [Module L27] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.SewageWorksView` [Module L133] — !strict SewageWorksView -- the sewage works look like what they are doing. Pure cosmetic client view.
+  - fns: SewageWorksView.Start, SewageWorksView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.UtilityOffView` [Module L51] — !strict UtilityOffView -- a generator switched off (attribute Off) stops its smoke; turbines/solar read Off themselves
+  - fns: UtilityOffView.Start, UtilityOffView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.SignalToolView` [Module L1164] — !strict SignalToolView -- the in-game traffic signal controller.
+  - fns: SignalToolView.Start
+- `StarterPlayer.StarterPlayerScripts.World.SkyLightingView` [Module L431] — !strict SkyLightingView -- the colour of the sky and its light, from three clocks:
+  - fns: SkyLightingView.sample, SkyLightingView.sampleSeason, SkyLightingView.snap, SkyLightingView.apply, SkyLightingView.Start
+- `StarterPlayer.StarterPlayerScripts.World.SkyLightingView.spec` [Module L44] — !strict The day and the year blends wrap and never jump. No framework -- `require(script).run()`
+  - fns: spec.run
+- `StarterPlayer.StarterPlayerScripts.World.SolarTrackerView` [Module L122] — !strict SolarTrackerView -- turns the panels of every solar tracker row to the sun (tag SolarTracker: each
+  - fns: SolarTrackerView.Start, SolarTrackerView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.StreetNameView` [Module L735] — !strict StreetNameView
+  - fns: StreetNameView.Start
+- `StarterPlayer.StarterPlayerScripts.World.TrafficJamView` [Module L264] — !strict TrafficJamView
+  - fns: TrafficJamView.Start, TrafficJamView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.TrafficJamView.spec` [Module L32] — !strict
+- `StarterPlayer.StarterPlayerScripts.World.TrafficSignView` [Module L415] — !strict TrafficSignView -- draws the city's traffic signs, client-side and only near the camera.
+  - fns: TrafficSignView.Start, TrafficSignView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.UtilityProblems` [Module L63] — !strict UtilityProblems
+  - fns: UtilityProblems.keysFor
+- `StarterPlayer.StarterPlayerScripts.World.WaterView` [Module L349] — !strict WaterView (client): the custom water colour + foam layer of the hybrid water system.
+  - fns: WaterView.clear, WaterView.build, WaterView.Start, WaterView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.WindTurbineView` [Module L75] — !strict WindTurbineView -- spins the "Rotor" sub-model of every wind turbine (tag:
+  - fns: WindTurbineView.Start, WindTurbineView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.WindowLightsView` [Module L124] — !strict WindowLightsView -- cosmetic night lights in building windows.
+  - fns: WindowLightsView.Start
+- `StarterPlayer.StarterPlayerScripts.World.WorldRevealController` [Module L1016] — !strict WorldRevealController -- the entrance a city makes when it is loaded.
+  - fns: WorldRevealController.release, WorldRevealController.arm, WorldRevealController.play, WorldRevealController.isActive
+
+
+## Regenerate this index
+
+```lua
+
+local roots = {"ReplicatedFirst","ReplicatedStorage","ServerScriptService","ServerStorage","StarterPlayer","StarterGui","StarterPack","Workspace","Lighting","SoundService"}
+local function isStock(fp) return fp:find("PlayerModule") or fp:find("PlayerScriptsLoader") or fp:find("RbxCharacterSounds") end
+local function purposeOf(src)
+  local block = src:match("^%s*%-%-%[%[(.-)%]%]")
+  if block then return (block:gsub("%s+"," "):gsub("^%s+",""):gsub("%s+$","")) end
+  local lines = {}
+  for line in (src.."\n"):gmatch("(.-)\n") do
+    local t = line:match("^%s*(.-)%s*$")
+    if t == "" then if #lines>0 then break end
+    elseif t:match("^%-%-") then
+      local c = t:gsub("^%-+%s*","")
+      if c ~= "" then lines[#lines+1]=c end
+      if #lines>=2 then break end
+    else break end
+  end
+  return table.concat(lines," ")
+end
+local function fnsOf(src)
+  local set, order = {}, {}
+  local function add(n) if n and not set[n] then set[n]=true; order[#order+1]=n end end
+  for n in src:gmatch("function%s+([%w_]+[%.:][%w_]+)%s*%(") do add(n) end
+  for n in src:gmatch("([%w_]+%.[%w_]+)%s*=%s*function") do add(n) end
+  if #order>16 then local t={} for i=1,16 do t[i]=order[i] end t[#t+1]="…(+"..(#order-16)..")"; order=t end
+  return table.concat(order, ", ")
+end
+local kindMap = {Script="Server", LocalScript="Local", ModuleScript="Module"}
+local seen, out = {}, {}
+local metadata, counts = {}, {}
+local total = 0
+for _,rn in ipairs(roots) do
+  local svc = game:FindFirstChild(rn)
+  if svc then
+    local entries = {}
+    for _,d in ipairs(svc:GetDescendants()) do
+      if d:IsA("LuaSourceContainer") and not seen[d] then
+        seen[d]=true
+        local fp = d:GetFullName()
+        if not isStock(fp) then
+          local ok, src = pcall(function() return d.Source end); src = ok and src or ""
+          local lc=0; for _ in (src.."\n"):gmatch("\n") do lc+=1 end
+          local kind = kindMap[d.ClassName] or d.ClassName
+          if d:IsA("Script") and d.RunContext==Enum.RunContext.Client then kind="ClientScript" end
+          entries[#entries+1] = {path=fp, kind=kind, lc=lc, purpose=purposeOf(src), fns=fnsOf(src)}
+        end
+      end
+    end
+    if #entries>0 then
+      total += #entries
+      counts[rn]=#entries
+      table.sort(entries, function(a,b) return a.path<b.path end)
+      out[#out+1]="## "..rn.." ("..#entries..")"; out[#out+1]=""
+      for _,e in ipairs(entries) do
+        if e.path:find("^ServerScriptService.Services.") or e.path:find("^ReplicatedStorage.GameSpeed") or e.path:find("^ReplicatedStorage.Road.RoadNavigationGraph") or e.path:find("CitizenPresenceView",1,true) or e.path:find("CitySimConstants",1,true) then table.insert(metadata,e) end
+        local p=e.purpose; if #p>170 then p=p:sub(1,167).."…" end
+        local line="- `"..e.path.."` ["..e.kind.." L"..e.lc.."]"; if p~="" then line=line.." — "..p end
+        out[#out+1]=line; if e.fns~="" then out[#out+1]="  - fns: "..e.fns end
+      end
+      out[#out+1]=""
+    end
+  end
+end
+return {total=total,counts=counts,entries=metadata}
+```
+
+
