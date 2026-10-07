@@ -82,17 +82,18 @@ local MAX_TRIS_PER_MESH = 19_000
 -- baked back to static in the background, oldest first, which keeps room for the next edit.
 -- A batch that does not fit, or that the budget refuses, takes the static path exactly as before.
 local LIVE_BAKES = true
-local MAX_LIVE_TRIS = 48_000
-local SETTLE_WATERMARK = 24_000
+local MAX_LIVE_TRIS = 32_000
+local SETTLE_WATERMARK = 16_000
 -- ...and by COUNT: an edit's meshes are small (measured on a grid: ~700-1,000 triangles over ~6
 -- meshes), so the triangle cap alone would let hundreds of snapshots pile up, and each one may
--- carry a fixed cost in the shared budget whatever it holds.
-local MAX_LIVE_MESHES = 40
-local SETTLE_MESHES = 20
+-- carry a fixed cost in the shared budget whatever it holds. Kept well inside it: the UI's
+-- frosted panes (Kit.Frost) allocate from the same budget when a new panel shape first shows.
+local MAX_LIVE_MESHES = 24
+local SETTLE_MESHES = 12
 local SETTLE_QUIET = 4
 -- An edit queues a few road cells; a city load queues every one at once. A longer backlog than
 -- this means a load (or a huge paste), and that bakes static like it always did.
-local LIVE_MAX_BACKLOG = 8
+local LIVE_MAX_BACKLOG = 16
 local _liveTris = 0
 local _liveMeshes = 0
 

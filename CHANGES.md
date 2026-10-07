@@ -70,7 +70,7 @@ delta the server sends. Four things stood between the click and the real road:
   blocking engine work per mesh and roughly one completes per frame; a cell is 3–5 meshes.
   Cells re-baked by an **edit** now bake *live* — the same FixedSize-EditableMesh path
   TerrainMeshView already uses for the sculpt brush (measured there ~6 ms vs ~36 ms).
-  Capped (48k triangles / 40 meshes); past 24k / 20 the longest-quiet cells settle back to
+  Capped (32k triangles / 24 meshes); past 16k / 12 the longest-quiet cells settle back to
   static in the background. City loads, lot ground and anything over budget stay static.
   Offline: load = all static; each edit = live, 0 static bakes; settle trims back under
   the watermark; a refused snapshot falls back to static.
