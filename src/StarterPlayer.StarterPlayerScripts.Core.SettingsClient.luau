@@ -18,6 +18,7 @@ local Glass = require(uiFolder:WaitForChild("Kit"):WaitForChild("Glass"))
 local Locale = require(uiFolder:WaitForChild("Locale"))
 local PerfOverlay = require(uiFolder:WaitForChild("PerfOverlay"))
 local BootGate = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ClientBootGate"))
+local TerrainMeshView = require(ReplicatedStorage:WaitForChild("Terrain"):WaitForChild("TerrainMeshView"))
 
 local SettingsClient = {}
 
@@ -308,7 +309,10 @@ function SettingsClient.Start()
 	-- render distance, so fog is the honest lever.
 	Settings.onChanged("renderDistance", function(v)
 		Lighting.FogEnd = baseFogEnd * math.clamp(tonumber(v) or 1, 0.4, 2)
+		-- ...and how far the ground holds its detail (TerrainMeshView LOD ladder).
+		TerrainMeshView.setDetailScale(tonumber(v) or 1)
 	end)
+	TerrainMeshView.setDetailScale(tonumber(Settings.get("renderDistance")) or 1)
 
 	-- Day/night off: pin the local clock to noon. The server (TimeService) keeps
 	-- writing the replicated ClockTime every heartbeat, so we re-pin on every

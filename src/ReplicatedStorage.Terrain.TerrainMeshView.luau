@@ -172,8 +172,35 @@ local SUPERS = CHUNKS // SUPER
 -- the per-chunk path, which costs speed and nothing else.
 local TRI_BUDGET = 20000
 
-type Super = { parts: { MeshPart }, members: { number } }
+-- sig: the member buckets (and underground flag) the parts were built at; nil = not reusable
+-- (built before a shape or membership change it no longer matches). tris: what it draws.
+type Super = { parts: { MeshPart }, members: { number }, sig: string?, buckets: { [number]: number }?, tris: number? }
 local _supers: { [number]: Super } = {}
+
+-- LOD FOLLOWS THE CAMERA (2026-10-07). The ladder was FROZEN at the load (see bucketOf) because
+-- every re-tier was a block rebuild ending in a blocking bake, and a camera arriving somewhere
+-- queued dozens of them (flying to the map edge sat at 20 fps for ~10 s). Three things make it
+-- affordable to let it move again:
+--   * VARIANTS. A block that re-tiers keeps the parts it had, parked (unparented), keyed by the
+--     buckets they were built at. Coming back to a ring it has been drawn at before is a swap of
+--     parents -- no geometry, no bake. Parked ground is capped at MAX_VARIANT_TRIS, least
+--     recently used goes first, and anything that changes the shape or membership of a block
+--     drops its variants (they would be stale).
+--   * THROTTLE. A re-tier that does need a bake waits LOD_BAKE_GAP after the last one, so a
+--     backlog lands as an occasional bake while the camera rests, not one every frame.
+--     Shape changes (roads, pads, brushes) and the first fill are never throttled.
+--   * RESTING. Unchanged: rings are only re-judged while the camera rests (sweepDue).
+-- Draw distance (Settings.renderDistance, via setDetailScale) now reaches the ground too:
+-- distance is divided by it, so Low judges every block as if further away (coarser) and Ultra
+-- as if nearer. The city's own chunks stay at full detail (pinned) whatever the setting.
+local LOD_LIVE = true
+local LOD_BAKE_GAP = 0.4
+local MAX_VARIANT_TRIS = 300_000
+type Variant = { parts: { MeshPart }, buckets: { [number]: number }, tris: number, usedAt: number }
+local _variants: { [number]: { [string]: Variant } } = {}
+local _variantTris = 0
+local _lastLodBakeAt = -math.huge
+local _detailScale = 1
 -- Chunk key -> the block currently drawing it. A chunk in here has no _states entry and no
 -- mesh of its own; that is how every other path in this file knows to leave it alone.
 local _superOf: { [number]: number } = {}
@@ -319,11 +346,11 @@ local function bucketNearEdge(b: number): number
 	return if b <= 0 then 0 else BUCKET_NEAR * BUCKET_RATIO ^ (b - 1)
 end
 
-local function bucketOf(key: number, camPos: Vector3): number
+-- The bucket for a chunk drawn at `current` (nil: not drawn yet) seen from camPos.
+local function bucketFrom(key: number, camPos: Vector3, current: number?): number
 	if _pinned[key] then return 0 end
-	local d = chunkDist(key, camPos)
+	local d = chunkDist(key, camPos) / _detailScale
 	local b = bucketFor(d)
-	local current = _drawn[key]
 	-- REFINE-ONLY once the player is in (2026-10-01): ground drawn finer is never coarsened again
 	-- as the camera leaves. Every re-tier is a blocking bake (~25-50 ms, unsliceable), and the
 	-- coarsening half of them is pure cost -- it only trims triangles nobody is near. Flying
@@ -333,7 +360,7 @@ local function bucketOf(key: number, camPos: Vector3): number
 	-- backdrop caught up. The load picks every chunk's detail and it holds. (MAX_BUCKET 1 was
 	-- tried for finer far ground: blocks overran the bake cap, ~140 extra bakes on load.) Pinned and sculpted chunks
 	-- still rebuild -- the player caused those.
-	if current and not _loading then return current end
+	if current and not _loading and not LOD_LIVE then return current end
 	if current and current ~= b then
 		-- Stay put while within the stretched boundary of the bucket we are already drawn in.
 		local lo = bucketNearEdge(current) * (1 - LOD_HYSTERESIS)
@@ -341,6 +368,10 @@ local function bucketOf(key: number, camPos: Vector3): number
 		if d >= lo and d < hi then return current end
 	end
 	return b
+end
+
+local function bucketOf(key: number, camPos: Vector3): number
+	return bucketFrom(key, camPos, _drawn[key])
 end
 
 -- The worst height error this bucket can hide. Never finer than one height quantum: detail
@@ -651,6 +682,134 @@ local function dress(mp: MeshPart, geo: TerrainMesh.Geo, name: string)
 	mp.Parent = folder()
 end
 
+-- == LOD variants (see LOD FOLLOWS THE CAMERA) ===================================
+local function sigOf(members: { number }, buckets: { [number]: number }): string
+	local out = table.create(#members + 1)
+	for i, key in members do out[i] = tostring(buckets[key] or -1) end
+	out[#members + 1] = if _underground then "u" else "g"
+	return table.concat(out, ",")
+end
+
+local function dropVariants(sk: number)
+	local byBlock = _variants[sk]
+	if not byBlock then return end
+	_variants[sk] = nil
+	for _, v in byBlock do
+		for _, part in v.parts do retire(part, nil) end
+		_variantTris -= v.tris
+	end
+end
+
+local function dropAllVariants()
+	local blocks = {}
+	for sk in _variants do blocks[#blocks + 1] = sk end
+	for _, sk in blocks do dropVariants(sk) end
+	_variantTris = 0
+end
+
+-- The block's ground or membership changed: what it parked, and what it draws now, no longer
+-- match any ring it could be shown at again.
+local function invalidateBlock(sk: number)
+	dropVariants(sk)
+	local cur = _supers[sk]
+	if cur then cur.sig = nil end
+end
+
+local function evictVariants()
+	-- a Low device keeps proportionally less ground parked
+	while _variantTris > MAX_VARIANT_TRIS * math.min(_detailScale, 1) do
+		local bestSk: number? = nil
+		local bestSig: string? = nil
+		local bestAt = math.huge
+		for sk, byBlock in _variants do
+			for sig, v in byBlock do
+				if v.usedAt < bestAt then bestSk, bestSig, bestAt = sk, sig, v.usedAt end
+			end
+		end
+		if not bestSk or not bestSig then break end
+		local byBlock = _variants[bestSk]
+		local v = byBlock[bestSig]
+		byBlock[bestSig] = nil
+		if next(byBlock) == nil then _variants[bestSk] = nil end
+		for _, part in v.parts do retire(part, nil) end
+		_variantTris -= v.tris
+	end
+end
+
+-- Keep what a block draws for when the camera brings it back to this ring. Its parts leave the
+-- scene two frames on, once the parts replacing them are certainly drawing (a part swap has no
+-- frame at which the engine promises both are drawn -- see buildChunk); the two surfaces agree
+-- to within the ladder's sub-pixel tolerance, so the overlap does not show.
+local function park(sk: number, cur: Super)
+	local sig, buckets = cur.sig, cur.buckets
+	if not sig or not buckets then
+		for _, part in cur.parts do retire(part, nil) end
+		return
+	end
+	local byBlock = _variants[sk]
+	if not byBlock then
+		byBlock = {}
+		_variants[sk] = byBlock
+	end
+	local prior = byBlock[sig]
+	if prior then
+		for _, part in prior.parts do retire(part, nil) end
+		_variantTris -= prior.tris
+	end
+	local v: Variant = { parts = cur.parts, buckets = buckets, tris = cur.tris or 0, usedAt = os.clock() }
+	byBlock[sig] = v
+	_variantTris += v.tris
+	local frames = 0
+	local conn: RBXScriptConnection
+	conn = RunService.Heartbeat:Connect(function()
+		frames += 1
+		if frames < 2 then return end
+		conn:Disconnect()
+		local still = _variants[sk]
+		if still and still[sig] == v then
+			for _, part in v.parts do part.Parent = nil end
+		end
+	end)
+	evictVariants()
+end
+
+-- Swap a block to a variant parked for the rings the camera puts it in now. No geometry and
+-- no bake: two sets of parts change parents. False when there is no such variant.
+local function showVariant(sk: number, camPos: Vector3): boolean
+	local cur = _supers[sk]
+	local byBlock = _variants[sk]
+	if not cur or not cur.sig or not byBlock then return false end
+	-- Any parked variant whose every member the ladder would KEEP where it is from here: the same
+	-- test bucketOf applies to what is drawn, hysteresis included. An exact match on the buckets
+	-- a rebuild would pick missed whenever a member sat inside a ring's hysteresis band.
+	local sig: string? = nil
+	local v: Variant? = nil
+	for vsig, cand in byBlock do
+		local fits = true
+		for _, key in cur.members do
+			local vb = cand.buckets[key]
+			if vb == nil or bucketFrom(key, camPos, vb) ~= vb then
+				fits = false
+				break
+			end
+		end
+		if fits then
+			sig, v = vsig, cand
+			break
+		end
+	end
+	if not v or not sig or sig == cur.sig then return false end
+	byBlock[sig] = nil
+	if next(byBlock) == nil then _variants[sk] = nil end
+	_variantTris -= v.tris
+	local f = folder()
+	for _, part in v.parts do part.Parent = f end
+	park(sk, cur)
+	_supers[sk] = { parts = v.parts, members = cur.members, sig = sig, buckets = v.buckets, tris = v.tris }
+	for _, key in cur.members do _drawn[key] = v.buckets[key] end
+	return true
+end
+
 -- Build (or rebuild) one chunk and swap it in. The old part is destroyed only after the new
 -- one is parented, so the ground never flickers a hole. `eye` is the LOD reference; it
 -- defaults to the camera and is passed explicitly during the first fill, when the camera is
@@ -768,6 +927,7 @@ local function buildSuper(sk: number, eye: Vector3): boolean
  if #members == 0 then
   if old then for _,part in old.parts do retire(part,nil) end end
   clearOldOwnership()
+  dropVariants(sk)
   _supers[sk] = nil
   return true
  end
@@ -826,6 +986,40 @@ local function buildSuper(sk: number, eye: Vector3): boolean
   -- Reset owns the new queues; an old-city build must not enqueue itself into them.
   return epoch ~= _epoch
  end
+ local newSig = sigOf(members,buckets)
+ local newTris = 0
+ for _,entry in staged do newTris += #entry.geo.tri // 3 end
+ local sameMembers = old ~= nil and #old.members == #members
+ if sameMembers and old then
+  for i,key in members do
+   if old.members[i] ~= key then
+    sameMembers = false
+    break
+   end
+  end
+ end
+ if not sameMembers then dropVariants(sk) end
+ -- A pure re-tier keeps what it replaces (see LOD variants): park it rather than reshape it.
+ if LOD_LIVE and old and sameMembers and old.sig and old.sig ~= newSig then
+  local parts: { MeshPart } = {}
+  for i,entry in staged do
+   dress(entry.part,entry.geo,"S"..sk..(if i == 1 then "" else "_"..i))
+   parts[i] = entry.part
+  end
+  park(sk,old)
+  _supers[sk] = {parts=parts,members=members,sig=newSig,buckets=buckets,tris=newTris}
+  for _,key in members do
+   _drawn[key] = buckets[key]
+   _shapeDirty[key] = nil
+   _superOf[key] = sk
+   local state = _states[key]
+   if state then
+    retire(state.part,state.em)
+    _states[key] = nil
+   end
+  end
+  return true
+ end
  local parts: { MeshPart } = {}
  for i,entry in staged do
   local part = entry.part
@@ -850,7 +1044,7 @@ local function buildSuper(sk: number, eye: Vector3): boolean
   for i = #parts+1,#old.parts do retire(old.parts[i],nil) end
  end
  clearOldOwnership()
- _supers[sk] = {parts=parts,members=members}
+ _supers[sk] = {parts=parts,members=members,sig=newSig,buckets=buckets,tris=newTris}
  for _,key in members do
   _drawn[key] = buckets[key]
   _shapeDirty[key] = nil
@@ -886,6 +1080,7 @@ local function soloise(key: number)
 	if not owner then return end
 	_superOf[key] = nil
 	_ejected[owner] = true
+	invalidateBlock(owner)
 	enqueueSuper(owner)
 	enqueueChunk(key)
 end
@@ -921,6 +1116,36 @@ local function sweepDue(dt: number, camPos: Vector3): boolean
 	return moved < SETTLE_STUDS or _loading
 end
 
+-- A re-tier: ground already drawn whose shape has not changed, rebuilt only because the camera
+-- moved it to another ring. Those wait out LOD_BAKE_GAP (see LOD FOLLOWS THE CAMERA); nothing else
+-- does -- not a shape change, not a block shedding a member, not the fill, not a catch-up.
+local function lodHold(): boolean
+	return LOD_LIVE and not _loading and _playSlice ~= CATCH_UP_SLICE
+		and os.clock() - _lastLodBakeAt < LOD_BAKE_GAP
+end
+local function chunkRetier(key: number): boolean
+	return _states[key] ~= nil and not _shapeDirty[key]
+end
+local function superRetier(sk: number): boolean
+	if _ejected[sk] or not _supers[sk] then return false end
+	for _, key in superMembers(sk) do
+		if _shapeDirty[key] then return false end
+	end
+	return true
+end
+-- The first job that may run now: everything, or (holding) everything but re-tiers.
+local function takeJob(queue: { number }, isRetier: (number) -> boolean): (number?, boolean)
+	local hold = lodHold()
+	for i, item in queue do
+		local retier = isRetier(item)
+		if not (hold and retier) then
+			table.remove(queue, i)
+			return item, retier
+		end
+	end
+	return nil, false
+end
+
 local function tick(dt: number, sweeps: boolean)
 	local cam = Workspace.CurrentCamera
 	if not cam then return end
@@ -945,7 +1170,7 @@ local function tick(dt: number, sweeps: boolean)
 			if not _superQueued[sk] and not _buildingSuper[sk] then
 				for _, key in s.members do
 					if bucketOf(key, camPos) ~= _drawn[key] then
-						enqueueSuper(sk)
+						if not (LOD_LIVE and showVariant(sk, camPos)) then enqueueSuper(sk) end
 						break
 					end
 				end
@@ -976,8 +1201,10 @@ local function tick(dt: number, sweeps: boolean)
 	repeat
 		-- Chunks before blocks: the chunk queue is filled nearest-first, and what the player is
 		-- about to look at matters more than the horizon behind it.
-		if #_queue > 0 then
-			local key = table.remove(_queue, 1) :: number
+		local ckey: number?, chunkRetiering = nil, false
+		if #_queue > 0 then ckey, chunkRetiering = takeJob(_queue, chunkRetier) end
+		if ckey then
+			local key = ckey
 			_queued[key] = nil
 			-- It was merged into the backdrop while it sat in the queue. Building it now would
 			-- put a second surface over ground the block is already drawing.
@@ -994,6 +1221,7 @@ local function tick(dt: number, sweeps: boolean)
 				_building[key] = nil
 				if urgent then _sliceEnd[co] = t0 + slice end
 				_inFlight = math.max(_inFlight - 1, 0)
+				if chunkRetiering then _lastLodBakeAt = os.clock() end
 				if not ok then
 					warn("[TerrainMeshView] chunk", key, "failed:", built)
 				elseif not built then
@@ -1004,11 +1232,24 @@ local function tick(dt: number, sweeps: boolean)
 				end
 			end
 		else
-			local sk = table.remove(_superQueue, 1) :: number
+			local sk, retier = takeJob(_superQueue, superRetier)
+			if not sk then return end -- all that is left is re-tiers waiting out LOD_BAKE_GAP
 			_superQueued[sk] = nil
 			if _buildingSuper[sk] then
 				enqueueSuper(sk)
 				return
+			end
+			if retier then
+				-- The camera may have moved on while it waited: back into the ring it is drawn at
+				-- (nothing to do), or into one it has a variant for (a swap, no bake).
+				local stale = false
+				for _, member in (_supers[sk] :: Super).members do
+					if bucketOf(member, camPos) ~= _drawn[member] then
+						stale = true
+						break
+					end
+				end
+				if not stale or (LOD_LIVE and showVariant(sk, camPos)) then continue end
 			end
 			local urgent = _ejected[sk] == true
 			for _, key in superMembers(sk) do
@@ -1023,6 +1264,7 @@ local function tick(dt: number, sweeps: boolean)
 			local ok, built = pcall(buildSuper, sk, camPos)
 			_buildingSuper[sk] = nil
 			if ok and built then _ejected[sk] = nil end
+			if retier then _lastLodBakeAt = os.clock() end
 			if urgent then _sliceEnd[co] = t0 + slice end
 			_inFlight = math.max(_inFlight - 1, 0)
 			if not ok then
@@ -1116,6 +1358,7 @@ end
 
 local function shapeDirty(key: number)
  _startupRevision += 1
+	invalidateBlock(superKeyOf(key))
 	_shapeDirty[key] = true
 	_errs[key] = nil -- the shape decides the strides, so a new shape re-decides them
 	_caps[key] = nil
@@ -1415,6 +1658,9 @@ function TerrainMeshView.setUnderground(on: boolean)
 	if _underground == on then return end
  _startupRevision += 1
 	_underground = on
+	-- Skirts differ, so nothing parked or drawn now is a variant of what comes next.
+	dropAllVariants()
+	for _, cur in _supers do cur.sig = nil end
 	-- The x-ray look itself is UndergroundView's (see-through ground). What lives HERE is the
 	-- skirts (TerrainMesh.addSkirt): curtains under every chunk border that hide sub-pixel seams
 	-- between chunks drawn at different detail. Under an opaque ground nobody sees them; through
@@ -1429,6 +1675,18 @@ function TerrainMeshView.setUnderground(on: boolean)
 	for sk in _supers do
 		if superDist(sk, at) <= SKIRTLESS_RANGE then enqueueSuper(sk) end
 	end
+end
+
+-- Draw distance for the ground (Settings.renderDistance): distance is divided by it when a block
+-- is judged, so below 1 the whole ladder pulls in (coarser, fewer triangles) and above 1 it
+-- pushes out. Everything re-judges on the next resting sweep; parked variants were built for the
+-- old ladder and go.
+function TerrainMeshView.setDetailScale(scale: number)
+	local s = math.clamp(if scale == scale then scale else 1, 0.25, 2)
+	if s == _detailScale then return end
+	_detailScale = s
+	dropAllVariants()
+	for _, cur in _supers do cur.sig = nil end
 end
 
 function TerrainMeshView.isUnderground(): boolean
@@ -1466,6 +1724,8 @@ function TerrainMeshView.reset()
 		for _,part in s.parts do retire(part,nil) end
 	end
 	table.clear(_supers)
+	dropAllVariants()
+	_lastLodBakeAt = -math.huge
 	table.clear(_superOf)
 	table.clear(_superQueue)
 	table.clear(_superQueued)
