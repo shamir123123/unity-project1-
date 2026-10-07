@@ -16,6 +16,12 @@ local TIMEOUT = 10
 local POLL = 0.03
 local MAX_PENDING = 32
 local MAX_AFFECTED_SEGMENTS = 64
+-- Upgrade / delete used to hide the affected cells and stand crude flat Parts in for every road
+-- in them until the server acknowledged the edit -- a round trip at the very least -- because the
+-- predicted mesh then took that long to bake. It now bakes live (RoadMeshView, LIVE BAKES) a frame
+-- or two after the click, so the real predicted road simply replaces the old one in place, and
+-- the flat stand-ins (a visible flash of the whole cell) are no longer shown.
+local STAND_IN_CELLS = false
 type Pending = { at: number, revision: number?, model: Model?, predicted: boolean, rollingBack: boolean? }
 local _pending: { [number]: Pending } = {}
 local _nextToken = 0
@@ -123,8 +129,10 @@ function RoadEditPreview.remove(entries: { any }): number?
 	local token = begin(nil, true)
 	if token then
 		RoadPieces.setPrediction(token, overrides)
-		for cell in RoadPieces.cellsForSegments(affected) do cells[cell] = true end
-		RoadMeshView.hidePredictionCells(token, cells)
+		if STAND_IN_CELLS then
+			for cell in RoadPieces.cellsForSegments(affected) do cells[cell] = true end
+			RoadMeshView.hidePredictionCells(token, cells)
+		end
 	end
 	return token
 end
@@ -143,8 +151,10 @@ function RoadEditPreview.replace(id: number, roadType: string, cursor: Vector3?)
 	local token = begin(nil, true)
 	if token then
 		RoadPieces.setPrediction(token, { [id] = replacement })
-		for cell in RoadPieces.cellsForSegments(affected) do cells[cell] = true end
-		RoadMeshView.hidePredictionCells(token, cells)
+		if STAND_IN_CELLS then
+			for cell in RoadPieces.cellsForSegments(affected) do cells[cell] = true end
+			RoadMeshView.hidePredictionCells(token, cells)
+		end
 	end
 	return token
 end

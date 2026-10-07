@@ -80,6 +80,9 @@ local _queued: { [number]: boolean } = {}
 -- needs redrawing at another stride. Only the first kind has to pull its neighbours along,
 -- and telling them apart is what stops a rebuild from cascading (see buildChunk).
 local _shapeDirty: { [number]: boolean } = {}
+-- The shape change waiting on these came from the CITY (a road graded, a pad levelled, a patch from
+-- the server), not from this player's brush. See markDirty.
+local _cityShape: { [number]: boolean } = {}
 -- Forward-declared: buildChunk requeues neighbours, and it is defined above the queue.
 local enqueue: (key: number) -> ()
 local _sampleY: ((number, number) -> number)? = nil
@@ -182,6 +185,11 @@ local _solo: { [number]: boolean } = {}
 local _superQueue: { number } = {}
 local _superQueued: { [number]: boolean } = {}
 local _superVersion: { [number]: number } = {}
+-- Blocks that must re-build WITHOUT a member that just went solo. Urgent like a shape change: until
+-- it lands the block still draws that chunk's OLD ground under the new one, and where the ground
+-- was cut that old surface stands up through the road. (The member's own rebuild runs first and
+-- clears its _shapeDirty, which is what used to mark the block urgent.)
+local _ejected: { [number]: boolean } = {}
 -- Ground that has left the queue but does not exist yet. Baking YIELDS, so without this the
 -- queues read empty for the whole of the last bake -- and `pending` is what the join gate
 -- holds the loading screen on, so the player was let in during it. One part, but the promise
@@ -663,6 +671,7 @@ function TerrainMeshView.buildChunk(key: number, eye: Vector3?, live: boolean?):
 		return true
 	end
 	local shapeChanged = _shapeDirty[key] == true
+	local cityChange = _cityShape[key] == true
 	-- The chunk records only its distance BUCKET: its blocks' strides follow from that plus a
 	-- shape that does not change on its own, so the bucket is the whole of what can go stale.
 	local tier = bucketOf(key, at)
@@ -678,6 +687,7 @@ function TerrainMeshView.buildChunk(key: number, eye: Vector3?, live: boolean?):
 		return true
 	end
 	_shapeDirty[key] = nil -- cleared only once the work it asked for actually landed
+	_cityShape[key] = nil
 
 	-- RESHAPE the part that is already there instead of swapping in a new one. A swap is two
 	-- instances changing places in the render scene, and that hand-off is the flicker the
@@ -725,6 +735,13 @@ function TerrainMeshView.buildChunk(key: number, eye: Vector3?, live: boolean?):
 	-- measured on a camera sweep, 60 block rebuilds against 24 without, and the ground took
 	-- 10.4 s to catch up against 0.6 s.
 	if not shapeChanged then return true end
+	-- A change the city made (markDirty) re-draws only this chunk. Re-stitching the neighbours is
+	-- for a STRIDE change along the shared edge, and the crack a stale stitch opens is within the
+	-- coarser side's tolerance -- what the skirts are sized to fill (skirtDepth). A height change
+	-- ON the shared edge reaches the neighbour by its own patch (both chunks hold that corner). It
+	-- used to re-draw up to four neighbours -- whole 4x4 blocks where they are scenery, each ending
+	-- in a blocking bake -- after every road placed near a chunk border.
+	if cityChange then return true end
 	for _, d in NEIGHBOUR_DXZ do
 		local nk = neighbourKey(cx, cz, d)
 		if nk and (_states[nk] or _superOf[nk]) then enqueue(nk) end
@@ -868,6 +885,7 @@ local function soloise(key: number)
 	local owner = _superOf[key]
 	if not owner then return end
 	_superOf[key] = nil
+	_ejected[owner] = true
 	enqueueSuper(owner)
 	enqueueChunk(key)
 end
@@ -992,7 +1010,7 @@ local function tick(dt: number, sweeps: boolean)
 				enqueueSuper(sk)
 				return
 			end
-			local urgent = false
+			local urgent = _ejected[sk] == true
 			for _, key in superMembers(sk) do
 				if _shapeDirty[key] then
 					urgent = true
@@ -1004,6 +1022,7 @@ local function tick(dt: number, sweeps: boolean)
 			_buildingSuper[sk] = true
 			local ok, built = pcall(buildSuper, sk, camPos)
 			_buildingSuper[sk] = nil
+			if ok and built then _ejected[sk] = nil end
 			if urgent then _sliceEnd[co] = t0 + slice end
 			_inFlight = math.max(_inFlight - 1, 0)
 			if not ok then
@@ -1095,13 +1114,27 @@ function TerrainMeshView.pending(): number
 	return #_queue + #_superQueue + _inFlight
 end
 
--- The chunk's heights changed (a brush stroke, a road grade, a building pad): rebuild it,
--- and pull along any neighbour that stitched itself to the edge we just moved.
-function TerrainMeshView.markDirty(key: number)
+local function shapeDirty(key: number)
  _startupRevision += 1
 	_shapeDirty[key] = true
 	_errs[key] = nil -- the shape decides the strides, so a new shape re-decides them
 	_caps[key] = nil
+end
+
+-- The chunk's heights changed (a road grade, a building pad, a patch from the server): rebuild it.
+--
+-- Past the load, ground the CITY changes leaves its backdrop block and draws itself (soloise),
+-- exactly as ground under a brush does. A block member's change re-builds the WHOLE 4x4 block --
+-- sixteen chunks of geometry, the merge and the mesh fill, ~220 ms measured, and unsliced because
+-- the ground changed (see tick) -- so every road placed out there was a frame-rate cliff. Solo,
+-- it costs that once (the block re-builds without it) and one chunk per edit after. Behind the
+-- loading screen nothing changes: the load decides membership as before.
+function TerrainMeshView.markDirty(key: number)
+	shapeDirty(key)
+	if not _loading then
+		_cityShape[key] = true
+		soloise(key)
+	end
 	enqueue(key)
 end
 
@@ -1361,7 +1394,8 @@ function TerrainMeshView.editEnd()
 	for key in _editChunks do
 		_errs[key] = nil
 		_caps[key] = nil
-		TerrainMeshView.markDirty(key)
+		shapeDirty(key) -- already solo (editArea); a brush re-stitches its neighbours as before
+		enqueue(key)
 	end
 	table.clear(_editChunks)
 	table.clear(_editFine)
@@ -1424,6 +1458,7 @@ function TerrainMeshView.reset()
 	table.clear(_queue)
 	table.clear(_queued)
 	table.clear(_shapeDirty)
+	table.clear(_cityShape)
 	table.clear(_errs)
 	table.clear(_drawn)
 	table.clear(_caps)
@@ -1435,6 +1470,7 @@ function TerrainMeshView.reset()
 	table.clear(_superQueue)
 	table.clear(_superQueued)
 	table.clear(_superVersion)
+	table.clear(_ejected)
 	table.clear(_solo)
 	_accum = 0
 	-- Clear through folder(), not the cached handle: a rejoin (or a reload in a test
