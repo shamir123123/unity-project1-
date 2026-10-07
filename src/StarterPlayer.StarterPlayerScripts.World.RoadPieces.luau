@@ -289,8 +289,30 @@ local function setGround(key: string, old: Piece?, new: Piece?)
 	end
 end
 
+-- Value equality of two spec lists, all the way down (Vector3 / CFrame / Color3 / EnumItem
+-- compare by value with ==).
+local function sameValue(a: any, b: any): boolean
+	if a == b then return true end
+	if type(a) ~= "table" or type(b) ~= "table" then return false end
+	for k, v in a do
+		if not sameValue(v, b[k]) then return false end
+	end
+	for k in b do
+		if a[k] == nil then return false end
+	end
+	return true
+end
+
 local function setPiece(key: string, specs: { any }?, dirty: { [string]: boolean })
 	local old = _pieces[key]
+	-- An edit rebuilds every road meeting a touched node, and most of them come back exactly as
+	-- they were (measured on a grid: a short link between two streets rebuilt 20 pieces, 3 of
+	-- them changed, and dirtied 7 cells where 3 had anything new). Every dirty cell is a full
+	-- re-bake, several engine mesh bakes each, so an unchanged piece must not dirty its cell.
+	-- Same specs means the same cell (it is keyed off the first point) and the same ground.
+	if old and specs and #specs == #old.specs and sameValue(old.specs, specs) then
+		return
+	end
 	if old then
 		local set = _byCell[old.cell]
 		if set then

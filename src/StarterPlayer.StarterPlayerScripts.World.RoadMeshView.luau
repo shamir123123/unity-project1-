@@ -70,6 +70,32 @@ local MAX_BATCH_SPAN = 1500 -- engine mesh extent cap is 2048; margin for the pi
 -- With the static bake there is no memory-budget ceiling on total road geometry.
 local MAX_TRIS_PER_MESH = 19_000
 
+-- LIVE BAKES -- how an EDIT gets on screen at once. A static bake (CreateDataModelContentAsync +
+-- CreateMeshPartAsync) is ~25-35 ms of blocking engine work per mesh whatever it holds, and the
+-- engine finishes about one a frame, so an edit re-baking two or three cells of ~4 meshes each
+-- kept the new road off screen for a dozen long frames. A road cell an edit re-bakes now goes
+-- the way the terrain brush does (TerrainMeshView.bake, live): the scratch mesh is snapshotted
+-- into a FixedSize EditableMesh and the part is drawn straight from it -- measured there at ~6 ms
+-- against ~36 ms. The snapshot has to outlive its part and counts against the client's SHARED
+-- Editable budget (its own size only -- not the fat reservation of a dynamic one), so live road
+-- geometry is capped at MAX_LIVE_TRIS; past SETTLE_WATERMARK the cells quiet for SETTLE_QUIET are
+-- baked back to static in the background, oldest first, which keeps room for the next edit.
+-- A batch that does not fit, or that the budget refuses, takes the static path exactly as before.
+local LIVE_BAKES = true
+local MAX_LIVE_TRIS = 48_000
+local SETTLE_WATERMARK = 24_000
+-- ...and by COUNT: an edit's meshes are small (measured on a grid: ~700-1,000 triangles over ~6
+-- meshes), so the triangle cap alone would let hundreds of snapshots pile up, and each one may
+-- carry a fixed cost in the shared budget whatever it holds.
+local MAX_LIVE_MESHES = 40
+local SETTLE_MESHES = 20
+local SETTLE_QUIET = 4
+-- An edit queues a few road cells; a city load queues every one at once. A longer backlog than
+-- this means a load (or a huge paste), and that bakes static like it always did.
+local LIVE_MAX_BACKLOG = 8
+local _liveTris = 0
+local _liveMeshes = 0
+
 -- Distance LOD: the levels of Shared.LOD, applied per CELL, ~tens of cells per tick.
 --   NEAR/MID  full
 --   FAR       lane paint hidden -- a 0.3-stud ribbon is under the pixel budget by here
@@ -184,6 +210,14 @@ type CellState = {
 	-- Level currently applied; 0 means "nothing yet", so the next tick always acts.
 	tier: number,	-- Arrow plates: the game's arrow textures on flat Parts (RoadPieces' symbol specs).
 	symbols: { BasePart },
+	-- FixedSize EditableMeshes the live meshes draw from (see LIVE BAKES), and their triangles.
+	-- Destroyed only after the parts drawing from them are gone.
+	liveEms: { EditableMesh },
+	liveTris: number,
+	-- os.clock() of the last change to this cell's content; settling waits SETTLE_QUIET past it.
+	editedAt: number,
+	-- The change waiting to bake is an EDIT (see LIVE BAKES), not a load. Cleared by the bake.
+	wantLive: boolean,
 }
 
 local _cells: { [string]: CellState } = {}
@@ -228,10 +262,17 @@ end
 local function cellState(key: string): CellState
 	local st = _cells[key]
 	if not st then
-		st = { version = 0, bakedVersion = 0, meshes = {}, details = {}, models = {}, center = centreOf(key), tier = 0, detailsDropped = false, symbols = {} }
+		st = { version = 0, bakedVersion = 0, meshes = {}, details = {}, models = {}, center = centreOf(key), tier = 0, detailsDropped = false, symbols = {},
+			liveEms = {}, liveTris = 0, editedAt = 0, wantLive = false }
 		_cells[key] = st
 	end
 	return st
+end
+
+local function releaseLive(ems: { EditableMesh }, tris: number)
+	for _, em in ems do em:Destroy() end
+	_liveTris = math.max(_liveTris - tris, 0)
+	_liveMeshes = math.max(_liveMeshes - #ems, 0)
 end
 
 local MAX_PREDICTION_CELLS = 8
@@ -364,7 +405,9 @@ local function triCount(s, rails: number): number
 	end
 end
 
-local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
+-- live: may this batch bake live (see LIVE BAKES)? Returns the part, and for a live bake the
+-- snapshot it draws from plus the triangles it holds against MAX_LIVE_TRIS.
+local function bakeBatch(cellKey: string, specs: { any }, look: Look?, live: boolean?): (MeshPart, EditableMesh?, number)
 	local minV = Vector3.new(math.huge, math.huge, math.huge)
 	local maxV = -minV
 	for _, s in specs do
@@ -423,7 +466,9 @@ local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
 	-- normal), which read as alternating dark slices on the junction fan. Every triangle
 	-- is emitted through here and swapped to agree with its shading normal.
 	-- c2/c3 give corners 2 and 3 their own colour (a gradient across the face); default cid.
+	local triangles = 0
 	local function emitTri(v1, v2, v3, n1, n2, n3, worldN, cid, c2, c3)
+		triangles += 1
 		c2 = c2 or cid
 		c3 = c3 or cid
 		local g = (posOf[v2] - posOf[v1]):Cross(posOf[v3] - posOf[v1])
@@ -649,7 +694,7 @@ local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
 		end
 	end
 
-	local okBake, meshOrErr = pcall(function()
+	local okBake, meshOrErr, liveEm, liveTris = pcall(function(): (MeshPart, EditableMesh?, number)
 		for si, s in specs do
 			if si % 400 == 0 then
 				task.wait() -- spread a big batch build across frames instead of one long hitch
@@ -686,6 +731,28 @@ local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
 				end
 			end
 		end
+		if live and _liveTris + triangles <= MAX_LIVE_TRIS and _liveMeshes < MAX_LIVE_MESHES then
+			-- LIVE (see LIVE BAKES): a FixedSize snapshot, the part drawn straight from it. The
+			-- scratch dies below either way; only the snapshot outlives this call. Reserved before
+			-- the async calls -- they yield, and the next batch must see this one's share.
+			_liveTris += triangles
+			_liveMeshes += 1
+			local okFixed, fixed = pcall(function(): EditableMesh
+				return AssetService:CreateEditableMeshAsync(Content.fromObject(em), { FixedSize = true })
+			end)
+			if okFixed and fixed then
+				local okPart, part = pcall(function(): MeshPart
+					return AssetService:CreateMeshPartAsync(Content.fromObject(fixed), {
+						CollisionFidelity = Enum.CollisionFidelity.Box,
+					})
+				end)
+				if okPart and part then return part, fixed, triangles end
+				fixed:Destroy()
+			end
+			_liveTris -= triangles
+			_liveMeshes -= 1
+			-- Refused (the shared budget is full this instant): fall through to the static bake.
+		end
 		-- Bake to STATIC content: the MeshPart owns a static copy of the geometry, so the
 		-- EditableMesh can die right away instead of being kept alive per mesh (the old
 		-- keep-alive pattern is what exhausted the client's Editable* memory budget).
@@ -697,7 +764,7 @@ local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
 			-- ponytail: mesh never collides or gets queried -- Box skips the precise collision
 			-- decomposition CreateMeshPartAsync would otherwise compute per road piece.
 			CollisionFidelity = Enum.CollisionFidelity.Box,
-		})
+		}), nil, 0
 	end)
 	em:Destroy()
 	if not okBake then
@@ -720,12 +787,12 @@ local function bakeBatch(cellKey: string, specs: { any }, look: Look?): MeshPart
 		if look.variant then mesh.MaterialVariant = look.variant end
 	end
 	mesh.CFrame = CFrame.new(center)
-	return mesh
+	return mesh, liveEm, liveTris
 end
 
 -- detailsOnly bakes the paint and nothing else: that is the LOD re-entry path, and the base
 -- slabs it would otherwise redo are the expensive half.
-local function bake(cellKey: string, models: { Model }, detailsOnly: boolean?): ({ MeshPart }, { MeshPart }, { any })
+local function bake(cellKey: string, models: { Model }, detailsOnly: boolean?, live: boolean?): ({ MeshPart }, { MeshPart }, { any }, { EditableMesh }, number)
 	local symbolSpecs = {} -- arrow plates: placed, not baked
 	local baseSpecs = {}
 	local paveSpecs = {}
@@ -775,13 +842,21 @@ local function bake(cellKey: string, models: { Model }, detailsOnly: boolean?): 
 			table.insert(listFor(s), s)
 		end
 	end
+	local liveEms: { EditableMesh } = {}
+	local liveTotal = 0
 	local function bakeList(specs, out: { MeshPart }, look: Look?)
 		local batch = {}
 		local batchTris = 0
 		local lo: Vector3?, hi: Vector3? = nil, nil
 		local function flush()
 			if #batch == 0 then return end
-			table.insert(out, bakeBatch(cellKey, batch, look))
+			local okBatch, mesh, liveEm, liveTris = pcall(bakeBatch, cellKey, batch, look, live)
+			if not okBatch then error(mesh, 0) end
+			if liveEm then
+				table.insert(liveEms, liveEm)
+				liveTotal += liveTris
+			end
+			table.insert(out, mesh)
 			batch = {}
 			batchTris = 0
 			lo, hi = nil, nil
@@ -822,12 +897,13 @@ local function bake(cellKey: string, models: { Model }, detailsOnly: boolean?): 
 		-- Don't leak the batches that DID bake before the failure.
 		for _, m in meshes do m:Destroy() end
 		for _, m in details do m:Destroy() end
+		releaseLive(liveEms, liveTotal)
 		error(err)
 	end
 	for _, m in details do
 		m.Name = "RoadDetail_" .. cellKey
 	end
-	return meshes, details, symbolSpecs
+	return meshes, details, symbolSpecs, liveEms, liveTotal
 end
 
 -- The cell's real world extent, from the base slabs just baked. Bakes are rare, so this is
@@ -845,7 +921,9 @@ local function refreshBounds(st: CellState)
 	st.boundsMax = hi
 end
 
-local function rebuild(key: string)
+local armSettle: () -> ()
+
+local function rebuild(key: string, live: boolean?)
 	local st = _cells[key]
 	if not st then return end
 	local models: { Model } = {}
@@ -853,7 +931,8 @@ local function rebuild(key: string)
 		if m.Parent then table.insert(models, m) end
 	end
 	local version = st.version
-	local ok, meshesOrErr, newDetails, newSymbols = pcall(bake, key, models)
+	st.wantLive = false
+	local ok, meshesOrErr, newDetails, newSymbols, newLive, newLiveTris = pcall(bake, key, models, nil, live)
 	if not ok then
 		warn(`[RoadMeshView] bake failed for cell {key}: {meshesOrErr}`)
 		-- Same retry hook as the detail path: if the paint was dropped, a failed rebuild
@@ -864,9 +943,12 @@ local function rebuild(key: string)
 	if _cells[key] ~= st or st.version ~= version then
 		for _, m in meshesOrErr do m:Destroy() end
 		for _, m in newDetails do m:Destroy() end
+		releaseLive(newLive, newLiveTris)
 		return
 	end
 	local oldMeshes, oldDetails = st.meshes, st.details
+	local oldLive, oldLiveTris = st.liveEms, st.liveTris
+	st.liveEms, st.liveTris = newLive, newLiveTris
 	st.meshes = meshesOrErr
 	st.bakedVersion = version
 	refreshBounds(st)
@@ -883,6 +965,8 @@ local function rebuild(key: string)
 	end
 	for _, m in oldMeshes do m:Destroy() end
 	for _, m in oldDetails do m:Destroy() end
+	-- after the parts that drew from them: a live part stops rendering when its mesh dies
+	releaseLive(oldLive, oldLiveTris)
 	for _, p in st.symbols do p:Destroy() end
 	st.symbols = {}
 	for _, s in newSymbols or {} do
@@ -900,8 +984,12 @@ local function rebuild(key: string)
 		for _, m in st.meshes do m:Destroy() end
 		for _, m in st.details do m:Destroy() end
 		for _, p in st.symbols do p:Destroy() end
+		releaseLive(st.liveEms, st.liveTris)
+		st.liveEms, st.liveTris = {}, 0
 		_cells[key] = nil
+		return
 	end
+	if st.liveTris > 0 then armSettle() end
 end
 
 -- Re-bake ONLY the paint a far cell gave back. Runs through the same one-at-a-time queue,
@@ -915,7 +1003,7 @@ local function rebuildDetails(key: string)
 		if m.Parent then table.insert(models, m) end
 	end
 
-	local ok, _meshes, newDetails = pcall(bake, key, models, true)
+	local ok, _meshes, newDetails = pcall(bake :: any, key, models, true, false)
 	if not ok then
 		warn(`[RoadMeshView] detail rebake failed for cell {key}: {_meshes}`)
 		-- The paint is still dropped and applyLevel only re-enqueues on a tier CHANGE, so
@@ -944,11 +1032,15 @@ local function rebuildDetails(key: string)
 	st.tier = 0
 end
 
-type BakeJob = { key: string, detailsOnly: boolean }
+-- settle: a background static re-bake of a live cell (see LIVE BAKES). Lowest priority, and
+-- invisible to isIdle -- nothing the player is waiting on.
+type BakeJob = { key: string, detailsOnly: boolean, settle: boolean? }
 
 local _bakeQueue: { BakeJob } = {}
 local _queuedSet: { [string]: boolean } = {}
 local _pumping = false
+-- Jobs queued or running that are NOT settles: what isIdle answers for.
+local _busyJobs = 0
 -- isIdle / lastBakeAt: rebuilds waiting out REBUILD_QUIET, and when a bake last finished --
 -- together they say when a road that just replicated is on screen (for the road tool's
 -- frozen mesh ghost, ROAD_OVERHAUL_V2 Phase 2).
@@ -960,7 +1052,7 @@ local function popBakeJob(): BakeJob
 	local eye = if camera then camera.CFrame.Position else Vector3.zero
 	local best, bestKind, bestDistance = 1, math.huge, math.huge
 	for i, job in _bakeQueue do
-		local kind = if job.detailsOnly then 3 elseif _predictionHidden[job.key] then 0 elseif isLotKey(job.key) then 2 else 1
+		local kind = if job.settle then 4 elseif job.detailsOnly then 3 elseif _predictionHidden[job.key] then 0 elseif isLotKey(job.key) then 2 else 1
 		local state = _cells[job.key]
 		local center = if state then state.center else centreOf(job.key)
 		local dx,dz = eye.X-center.X,eye.Z-center.Z
@@ -972,13 +1064,18 @@ local function popBakeJob(): BakeJob
 	return table.remove(_bakeQueue,best)
 end
 
-local function enqueue(key: string, detailsOnly: boolean?)
+local function jobTag(job: BakeJob): string
+	return if job.settle then "s:" .. job.key elseif job.detailsOnly then "d:" .. job.key else job.key
+end
+
+local function enqueue(key: string, detailsOnly: boolean?, settle: boolean?)
 	local only = detailsOnly == true
-	local tag = if only then "d:" .. key else key
+	local job: BakeJob = { key = key, detailsOnly = only, settle = settle == true }
+	local tag = jobTag(job)
 	if _queuedSet[tag] then return end
 	_queuedSet[tag] = true
-	local job = { key = key, detailsOnly = only }
-	if only then
+	if not job.settle then _busyJobs += 1 end
+	if only or job.settle then
 		table.insert(_bakeQueue, job)
 	else
 		-- A road that was just built or changed (by anyone on the server) goes ahead of the
@@ -994,19 +1091,34 @@ local function enqueue(key: string, detailsOnly: boolean?)
 	_pumping = true
 	task.spawn(function()
 		while #_bakeQueue > 0 do
+			-- Road cells still waiting, counted before the pop: a short backlog is an edit.
+			local backlog = 0
+			for _, queued in _bakeQueue do
+				if not (queued.settle or queued.detailsOnly or isLotKey(queued.key)) then backlog += 1 end
+			end
 			local job = popBakeJob()
-			_queuedSet[if job.detailsOnly then "d:" .. job.key else job.key] = nil
+			_queuedSet[jobTag(job)] = nil
 			-- Error boundary. An error escaping a job used to kill this thread with
 			-- _pumping still true, so every later enqueue appended to a queue nobody
 			-- pumped: road paint (and every rebuild) silently stopped for the session.
 			local ok, err = pcall(function()
 				if job.detailsOnly then
 					rebuildDetails(job.key)
+				elseif job.settle then
+					local st = _cells[job.key]
+					-- Touched again since it was picked: not quiet, it waits for a later check.
+					if st and st.liveTris > 0 and os.clock() - st.editedAt >= SETTLE_QUIET then
+						rebuild(job.key, false)
+					end
+					armSettle() -- the next one, if the total is still past the watermark
 				else
-					rebuild(job.key)
+					local st = _cells[job.key]
+					rebuild(job.key, LIVE_BAKES and st ~= nil and st.wantLive and not isLotKey(job.key)
+						and backlog <= LIVE_MAX_BACKLOG)
 				end
 			end)
-			if not job.detailsOnly then _lastBakeAt = os.clock() end
+			if not job.settle then _busyJobs -= 1 end
+			if not (job.detailsOnly or job.settle) then _lastBakeAt = os.clock() end
 			if not ok then
 				warn(`[RoadMeshView] bake job failed for cell {job.key}: {err}`)
 			end
@@ -1015,10 +1127,46 @@ local function enqueue(key: string, detailsOnly: boolean?)
 	end)
 end
 
-local function schedule(key: string)
+-- Past either watermark, bake the longest-quiet live cell back to static (one at a time: each settle
+-- re-arms the check when it lands). Below it live cells simply stay live -- a static bake costs
+-- the same blocking frames whenever it runs, so it is only paid when the room is needed.
+local _settleArmed = false
+local function settleCheck()
+	_settleArmed = false
+	if _liveTris <= SETTLE_WATERMARK and _liveMeshes <= SETTLE_MESHES then return end
+	local now = os.clock()
+	local bestKey: string? = nil
+	local bestAt = math.huge
+	local waiting = false
+	for key, st in _cells do
+		if st.liveTris > 0 then
+			if now - st.editedAt >= SETTLE_QUIET then
+				if st.editedAt < bestAt then bestKey, bestAt = key, st.editedAt end
+			else
+				waiting = true
+			end
+		end
+	end
+	if bestKey then
+		enqueue(bestKey, false, true)
+	elseif waiting then
+		armSettle()
+	end
+end
+function armSettle()
+	if _settleArmed then return end
+	_settleArmed = true
+	task.delay(SETTLE_QUIET, settleCheck)
+end
+
+-- live: this change is an edit to be drawn at once (see LIVE BAKES). A city load is not: it
+-- arrives as one big notify, or as models replicating into cells never baked before.
+local function schedule(key: string, live: boolean?)
 	local st = _cells[key]
 	if not st then return end
 	st.version += 1
+	st.editedAt = os.clock()
+	if live then st.wantLive = true end
 	local v = st.version
 	if isLotKey(key) and #st.meshes > 0 then -- a first bake (the city loading) goes straight through
 		-- Never starved: a block that keeps growing still rebakes every LOT_MAX_WAIT.
@@ -1048,22 +1196,31 @@ end
 -- (Re)assign a road piece to its cell by pivot -- pieces can arrive before their
 -- geometry replicates, so the cell is re-derived on every content change and the
 -- piece migrates (rebaking both cells) if it landed somewhere new.
+-- A piece RoadPieces draws (hidden) puts nothing in the bake: its blob is skipped and its plates
+-- are hidden. So its arriving, its blob landing or changing, and its leaving change nothing on
+-- screen, and must not re-bake the cell. They used to: every edit's server models replicate in
+-- a beat after RoadPieces has drawn the new road, and each one re-baked the cell it landed in --
+-- throwing away the bake already in flight for that cell (its version moved) and baking it
+-- again. Coverage changing either way still re-bakes (RoadPieces.start's notify, below).
 local function remap(child: Model)
 	local key = cellKeyFor(child)
 	local old = _cellOf[child]
+	local wasBaked = old ~= nil and not _hidden[child]
+	if _v2 and RoadPieces.coversModel(child.Name) and not _hidden[child] then setHidden(child, true) end
+	local baked = not _hidden[child]
 	if old == key then
-		schedule(key)
+		if wasBaked or baked then schedule(key, cellState(key).bakedVersion > 0) end
 		return
 	end
 	if old then
 		local ost = _cells[old]
 		if ost then ost.models[child] = nil end
-		schedule(old)
+		if wasBaked then schedule(old, ost ~= nil and ost.bakedVersion > 0) end
 	end
 	_cellOf[child] = key
-	cellState(key).models[child] = true
-	if _v2 and RoadPieces.coversModel(child.Name) and not _hidden[child] then setHidden(child, true) end
-	schedule(key)
+	local st = cellState(key)
+	st.models[child] = true
+	if baked then schedule(key, st.bakedVersion > 0) end
 end
 
 local function track(child)
@@ -1095,6 +1252,7 @@ end
 
 local function untrack(child)
 	if _v2 then RoadPieces.releaseModel(child.Name) end
+	local wasBaked = not _hidden[child]
 	_hidden[child] = nil
 	local conns = _conns[child]
 	if conns then
@@ -1107,7 +1265,7 @@ local function untrack(child)
 		local st = _cells[key]
 		if st then
 			st.models[child] = nil
-			schedule(key)
+			if wasBaked then schedule(key, st.bakedVersion > 0) end
 		end
 	end
 end
@@ -1193,15 +1351,19 @@ function RoadMeshView.Start()
 		-- draws (or no longer draws). Topology edits are rare; the scan is a flag per piece.
 		RoadPieces.start(function(dirty)
 			if next(_predictionTokens) then refreshPredictionCells() end
+			-- A handful of cells is an edit and bakes live; the whole city at once is a load.
+			local count = 0
+			for _ in dirty do count += 1 end
+			local live = count <= LIVE_MAX_BACKLOG
 			for key in dirty do
 				cellState(key)
-				schedule(key)
+				schedule(key, live)
 			end
 			for model, key in _cellOf do
 				local hide = RoadPieces.coversModel(model.Name)
 				if (_hidden[model] == true) ~= hide then
 					setHidden(model, hide)
-					schedule(key)
+					schedule(key, live)
 				end
 			end
 		end)
@@ -1235,7 +1397,7 @@ end
 
 -- True when no road rebuild is waiting or baking on this client.
 function RoadMeshView.isIdle(): boolean
-	return _scheduled == 0 and not _pumping and #_bakeQueue == 0 and (not _v2 or RoadPieces.isIdle())
+	return _scheduled == 0 and _busyJobs == 0 and (not _v2 or RoadPieces.isIdle())
 end
 
 -- os.clock() of the last finished road (not paint-only) bake.

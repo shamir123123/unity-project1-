@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local RunService = game:GetService("RunService")
 
 local RoadConstants = require(ReplicatedStorage.Road.RoadConstants)
 local BezierUtil = require(ReplicatedStorage.Road.BezierUtil)
@@ -69,6 +70,10 @@ local function groundRoadCenterY(x: number, z: number): number
 end
 
 local _rebuildPending = false
+-- Post-edit work queue (see renderWorker below): forward-declared, the nav flush feeds it.
+local wakeRenderWorker: () -> ()
+local _renderSegs: { [Types.SegmentId]: boolean } = {}
+local _renderNodes: { [Types.NodeId]: boolean } = {}
 local _pendingNavLaneSyncAll = false
 local _pendingNavLaneSyncNodes: { [Types.NodeId]: boolean } = {}
 
@@ -188,18 +193,18 @@ local function flushNavRebuild()
 			end
 		end
 
+		-- Queued, not drawn here: the render worker draws every queued piece once, so an arm the
+		-- edit already queued is not drawn twice (it used to be: here, then again in the pass).
 		for sid in dirtySegs do
 			local s = _network:getSegment(sid)
 			if s and not s.isArc
 				and (_network:getNodeKind(s.startNode) == "intersection"
 					or _network:getNodeKind(s.endNode) == "intersection")
 			then
-				local ok, err = pcall(RoadSceneRenderer.renderSegment, s)
-				if not ok then
-					warn(`[RoadService] approach re-render failed for segment {sid}: {err}`)
-				end
+				_renderSegs[sid] = true
 			end
 		end
+		if next(_renderSegs) ~= nil then wakeRenderWorker() end
 
 		-- Roundabout splitter islands are shaped by the lanes, so the centres go last, off the
 		-- graph just rebuilt: the ones these segments touch, or all of them after a full rebuild.
@@ -222,6 +227,8 @@ local function scheduleNavRebuild(nodeId: Types.NodeId?, syncAllLanePaths: boole
 	end
 	if _rebuildPending then return end
 	_rebuildPending = true
+	-- Same frame, as always: listeners debounced to the next Heartbeat (signal discovery) read
+	-- the graph. Only the drawing it queues waits for the render worker.
 	task.defer(flushNavRebuild)
 end
 local _topologyListeners: { (any?) -> () } = {}
@@ -850,10 +857,94 @@ local function safeEndTrim(nodeId: Types.NodeId, segId: Types.SegmentId): number
 	return if ok and typeof(v) == "number" then v else 0
 end
 
--- Deferred render passes queued by applyChanges that have not finished (see the pass itself).
+-- 1 while the render worker has work in hand (waitForRender polls it).
 local _renderPasses = 0
 local RENDER_SLICE_MIN_ITEMS = 64
 local RENDER_SLICE_SECONDS = 0.05
+-- An ordinary edit's render runs AFTER the frame it was made in, a few ms per frame.
+-- The edit itself (network change + topology delta) is what every client draws the road from
+-- (RoadPieces); the server's own render is street furniture plus the blobs for the pieces the
+-- client cannot draw. It used to run in the SAME frame as the edit -- the nav flush, the
+-- approach re-render, then every touched segment and junction at ~5-8 ms each -- so the frame
+-- carrying the delta to the clients ran 100+ ms long and the new road reached them that much
+-- later (and in Studio, where server and client share a thread, it was a visible hitch).
+local RENDER_EDIT_BUDGET = 0.006
+local RENDER_LEAD_FRAMES = 2 -- Heartbeats to let the edit's packets leave before rendering
+
+-- One worker drains the queue: nav flush first (arrows and stop lines are painted from the
+-- graph), then every queued segment, then every queued node, each drawn ONCE from the network
+-- as it stands when its turn comes. A load queues thousands and slices at the old 50 ms; an
+-- edit queues a handful and runs a frame later at RENDER_EDIT_BUDGET a frame.
+local _renderWorkerAlive = false
+local function renderWorker()
+	local function backlog(): number
+		local n = 0
+		for _ in _renderSegs do n += 1 end
+		for _ in _renderNodes do n += 1 end
+		return n
+	end
+	if backlog() <= RENDER_SLICE_MIN_ITEMS then
+		for _ = 1, RENDER_LEAD_FRAMES do RunService.Heartbeat:Wait() end
+	end
+	while _rebuildPending or next(_renderSegs) ~= nil or next(_renderNodes) ~= nil do
+		local okNav, navErr = pcall(flushNavRebuild)
+		if not okNav then warn(`[RoadService] nav rebuild before render failed: {navErr}`) end
+		local budget = if backlog() > RENDER_SLICE_MIN_ITEMS then RENDER_SLICE_SECONDS else RENDER_EDIT_BUDGET
+		local segs, nodes = _renderSegs, _renderNodes
+		_renderSegs, _renderNodes = {}, {}
+		local t0 = os.clock()
+		local function breathe()
+			if os.clock() - t0 >= budget then
+				task.wait()
+				t0 = os.clock()
+			end
+		end
+		-- Per-item fault isolation: one segment/node that errors while rendering must not
+		-- abort the rest of the pass. Without this, a single bad node on a city load left
+		-- every node AFTER it in the loop unbuilt -- a swath of junction fills silently
+		-- missing while the segments + approach markings survived ("intersections didn't save").
+		for sid in segs do
+			local s = _network:getSegment(sid)
+			if s then
+				local ok, err = pcall(RoadSceneRenderer.renderSegment, s)
+				if not ok then
+					warn(`[RoadService] renderSegment failed for seg {sid}: {err}`)
+				end
+				breathe()
+			end
+		end
+		for nid in nodes do
+			if _network:getNodes()[nid] then
+				local ok, err = pcall(RoadSceneRenderer.refreshNode, nid)
+				if not ok then
+					warn(`[RoadService] refreshNode failed for node {nid}: {err}`)
+				end
+				breathe()
+			end
+		end
+	end
+	_renderWorkerAlive = false
+	_renderPasses -= 1
+end
+
+function wakeRenderWorker()
+	if _renderWorkerAlive then return end
+	_renderWorkerAlive = true
+	_renderPasses += 1
+	-- Deferred, like the pass it replaces: the edit that woke it has not finished filling the
+	-- nav dirty sets yet, and a load must not start drawing before its graph is flushed.
+	task.defer(function()
+		local ok, err = xpcall(renderWorker, debug.traceback)
+		if not ok then
+			-- Never leave waitForRender (and so a city load or teardown) waiting on a dead worker.
+			warn(`[RoadService] render worker failed: {err}`)
+			if _renderWorkerAlive then
+				_renderWorkerAlive = false
+				_renderPasses -= 1
+			end
+		end
+	end)
+end
 
 local function applyChanges()
 	-- An edit that added or removed a roundabout entry leaves the ring sliced around the
@@ -974,51 +1065,9 @@ local function applyChanges()
 	RoadReplicationService.queueSegDelta(segDeltaChanged, segDeltaRemoved)
 
 	if #segsToRender > 0 or #nodesToRefresh > 0 then
-		_renderPasses += 1
-		task.defer(function()
-			-- Lane arrows and stop spans are painted from the nav graph, so the graph
-			-- must absorb this topology change BEFORE the segments render. The nav
-			-- defer is queued after this one, which painted markings one placement
-			-- behind -- flush it now instead.
-			local okNav, navErr = pcall(flushNavRebuild)
-			if not okNav then warn(`[RoadService] nav rebuild before render failed: {navErr}`) end
-			-- A LOAD renders the whole network in this one pass: ~5 ms a segment and ~8 a
-			-- junction, so a few thousand roads ran far past the ~10 s a live server lets a thread
-			-- go without yielding -- the thread was killed and the rest of the roads never drew.
-			-- A pass that big now yields between items; an ordinary edit (a handful of pieces)
-			-- still lands in one go, exactly as before. CitySerializer waits for it (waitForRender).
-			local sliced = #segsToRender + #nodesToRefresh > RENDER_SLICE_MIN_ITEMS
-			local t0 = os.clock()
-			local function breathe()
-				if sliced and os.clock() - t0 >= RENDER_SLICE_SECONDS then
-					task.wait()
-					t0 = os.clock()
-				end
-			end
-			-- Per-item fault isolation: one segment/node that errors while rendering must not
-			-- abort the rest of the pass. Without this, a single bad node on a city load left
-			-- every node AFTER it in the loop unbuilt -- a swath of junction fills silently
-			-- missing while the segments + approach markings survived ("intersections didn't save").
-			for _, s in segsToRender do
-				if _network:getSegment(s.id) then
-					local ok, err = pcall(RoadSceneRenderer.renderSegment, s)
-					if not ok then
-						warn(`[RoadService] renderSegment failed for seg {s.id}: {err}`)
-					end
-				end
-				breathe()
-			end
-			for _, nid in nodesToRefresh do
-				if _network:getNodes()[nid] then
-					local ok, err = pcall(RoadSceneRenderer.refreshNode, nid)
-					if not ok then
-						warn(`[RoadService] refreshNode failed for node {nid}: {err}`)
-					end
-				end
-				breathe()
-			end
-			_renderPasses -= 1
-		end)
+		for _, seg in segsToRender do _renderSegs[seg.id] = true end
+		for _, nid in nodesToRefresh do _renderNodes[nid] = true end
+		wakeRenderWorker()
 	end
 
 	-- Reconcile roundabout islands unconditionally (even on pure deletions where no
@@ -2246,7 +2295,11 @@ local function commitInPlace(seg: Types.Segment, lanesChanged: boolean, reversed
 	RoadReplicationService.broadcastTopologyDeltas()
 	for _, id in topologyChange.segmentIds do _pendingNavDirtySegs[id] = true end
 	for _, id in topologyChange.removedSegmentIds do _pendingNavRemovedSegs[id] = true end
-	scheduleNavRebuild(nil, true, false)
+	-- Incremental lane sync, not the whole city's: the nav flush re-sends the lanes of every
+	-- node a changed segment ends at (the cascade above includes both of this road's nodes and
+	-- every road meeting them), which is every junction an in-place re-type or reversal can
+	-- change. The full broadcast re-sent every junction in the city per upgrade.
+	scheduleNavRebuild()
 	syncSegmentGrades(topologyChange)
 	notifyTopologyListeners(topologyChange)
 end

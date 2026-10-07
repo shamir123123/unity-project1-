@@ -1,0 +1,4217 @@
+{
+ "name": "Game",
+ "className": "DataModel",
+ "children": [
+  {
+   "name": "Workspace",
+   "className": "Workspace"
+  },
+  {
+   "name": "ReplicatedFirst",
+   "className": "ReplicatedFirst",
+   "children": [
+    {
+     "name": "LoadingController",
+     "className": "LocalScript",
+     "filePaths": [
+      "src/ReplicatedFirst.LoadingController.client.luau"
+     ],
+     "children": [
+      {
+       "name": "LoadingView",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedFirst.LoadingController.LoadingView.luau"
+       ],
+       "children": [
+        {
+         "name": "Transition.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedFirst.LoadingController.LoadingView.Transition.spec.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "StarterPlayer",
+   "className": "StarterPlayer",
+   "children": [
+    {
+     "name": "StarterPlayerScripts",
+     "className": "StarterPlayerScripts",
+     "children": [
+      {
+       "name": "SeasonTintClient",
+       "className": "LocalScript",
+       "filePaths": [
+        "src/StarterPlayer.StarterPlayerScripts.SeasonTintClient.client.luau"
+       ]
+      },
+      {
+       "name": "WeatherClient",
+       "className": "LocalScript",
+       "filePaths": [
+        "src/StarterPlayer.StarterPlayerScripts.WeatherClient.client.luau"
+       ]
+      },
+      {
+       "name": "Controllers",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "RoadPlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementController.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementController.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerrainEditController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.TerrainEditController.luau"
+         ]
+        },
+        {
+         "name": "RoadPlacementSnapper",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper.luau"
+         ]
+        },
+        {
+         "name": "RoadGhostPreviewController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadGhostPreviewController.luau"
+         ]
+        },
+        {
+         "name": "ToolStripController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.ToolStripController.luau"
+         ]
+        },
+        {
+         "name": "BottomBarController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.BottomBarController.luau"
+         ]
+        },
+        {
+         "name": "DeleteHoverController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.DeleteHoverController.luau"
+         ]
+        },
+        {
+         "name": "SchoolPlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.SchoolPlacementController.luau"
+         ]
+        },
+        {
+         "name": "BulldozeController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.BulldozeController.luau"
+         ]
+        },
+        {
+         "name": "TerrainPanelController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.TerrainPanelController.luau"
+         ]
+        },
+        {
+         "name": "RoadDockPanel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadDockPanel.luau"
+         ]
+        },
+        {
+         "name": "EmergencyPlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.EmergencyPlacementController.luau"
+         ]
+        },
+        {
+         "name": "TransitPlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.TransitPlacementController.luau"
+         ]
+        },
+        {
+         "name": "SeasonController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.SeasonController.luau"
+         ]
+        },
+        {
+         "name": "PlotController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.luau"
+         ],
+         "children": [
+          {
+           "name": "SeatIndex",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.SeatIndex.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.SeatIndex.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "PreviewInputs.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PreviewInputs.spec.luau"
+           ]
+          },
+          {
+           "name": "PreviewCleanup.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PreviewCleanup.spec.luau"
+           ]
+          },
+          {
+           "name": "PlanningBudget.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.PlotController.PlanningBudget.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "NaturePlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.NaturePlacementController.luau"
+         ]
+        },
+        {
+         "name": "NatureFreePlaceMode",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.NatureFreePlaceMode.luau"
+         ]
+        },
+        {
+         "name": "EditorGizmos",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.EditorGizmos.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.EditorGizmos.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "EditorController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.EditorController.luau"
+         ]
+        },
+        {
+         "name": "HeatmapController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.HeatmapController.luau"
+         ]
+        },
+        {
+         "name": "CoverageOverlay",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.CoverageOverlay.luau"
+         ]
+        },
+        {
+         "name": "RoadMoveController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.RoadMoveController.luau"
+         ]
+        },
+        {
+         "name": "GhostPlacement",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.GhostPlacement.luau"
+         ]
+        },
+        {
+         "name": "CreationPlacementController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.CreationPlacementController.luau"
+         ]
+        },
+        {
+         "name": "NatureGizmo",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.NatureGizmo.luau"
+         ]
+        },
+        {
+         "name": "PowerLineController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.PowerLineController.luau"
+         ]
+        },
+        {
+         "name": "CoverageOverlay_live",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.CoverageOverlay_live.luau"
+         ]
+        },
+        {
+         "name": "WaterPipeController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.WaterPipeController.luau"
+         ]
+        },
+        {
+         "name": "PreciseBuildPanel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.PreciseBuildPanel.luau"
+         ]
+        },
+        {
+         "name": "ColorPanel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.ColorPanel.luau"
+         ]
+        },
+        {
+         "name": "NatureSelection",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.NatureSelection.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Controllers.NatureSelection.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "BuildRail",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.BuildRail.luau"
+         ]
+        },
+        {
+         "name": "ToolRail",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.ToolRail.luau"
+         ]
+        },
+        {
+         "name": "TerritoryController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.TerritoryController.luau"
+         ]
+        },
+        {
+         "name": "PropPaintTool",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.PropPaintTool.luau"
+         ]
+        },
+        {
+         "name": "GridPicker",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.GridPicker.luau"
+         ]
+        },
+        {
+         "name": "JunctionLightTool",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.JunctionLightTool.luau"
+         ]
+        },
+        {
+         "name": "LaneConnectorTool",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.LaneConnectorTool.luau"
+         ]
+        },
+        {
+         "name": "UndergroundView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.UndergroundView.luau"
+         ]
+        },
+        {
+         "name": "PipeView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Controllers.PipeView.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Bootstrap",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "Bootstrap",
+         "className": "LocalScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap.client.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Core",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "FreeCamController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.FreeCamController.luau"
+         ]
+        },
+        {
+         "name": "CacheSync",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.CacheSync.luau"
+         ]
+        },
+        {
+         "name": "TransitClient",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.TransitClient.luau"
+         ]
+        },
+        {
+         "name": "SoundFX",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.SoundFX.luau"
+         ]
+        },
+        {
+         "name": "Settings",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.Settings.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Core.Settings.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "SettingsClient",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.SettingsClient.luau"
+         ]
+        },
+        {
+         "name": "AutoSave",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.AutoSave.luau"
+         ]
+        },
+        {
+         "name": "CursorRay",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.CursorRay.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.Core.CursorRay.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "UiScratch",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.UiScratch.luau"
+         ]
+        },
+        {
+         "name": "DeviceProfile",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.DeviceProfile.luau"
+         ]
+        },
+        {
+         "name": "RenderPressure",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Core.RenderPressure.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "UI",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "Theme",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.Theme.luau"
+         ]
+        },
+        {
+         "name": "UITween",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.UITween.luau"
+         ]
+        },
+        {
+         "name": "Icons",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.Icons.luau"
+         ]
+        },
+        {
+         "name": "HudScale",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.HudScale.luau"
+         ]
+        },
+        {
+         "name": "HubTheme",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.HubTheme.luau"
+         ]
+        },
+        {
+         "name": "SettingsPanel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.SettingsPanel.luau"
+         ]
+        },
+        {
+         "name": "PerfOverlay",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.PerfOverlay.luau"
+         ]
+        },
+        {
+         "name": "Locale",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.Locale.luau"
+         ]
+        },
+        {
+         "name": "TopbarDock",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.TopbarDock.luau"
+         ]
+        },
+        {
+         "name": "PanelSlots",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.PanelSlots.luau"
+         ]
+        },
+        {
+         "name": "UIVisibility",
+         "className": "LocalScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.UIVisibility.client.luau"
+         ]
+        },
+        {
+         "name": "Format",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UI.Format.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Format.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "Kit",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "Button",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Button.luau"
+           ]
+          },
+          {
+           "name": "IconButton",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.IconButton.luau"
+           ]
+          },
+          {
+           "name": "Panel",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Panel.luau"
+           ]
+          },
+          {
+           "name": "Divider",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Divider.luau"
+           ]
+          },
+          {
+           "name": "Tab",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Tab.luau"
+           ]
+          },
+          {
+           "name": "Tooltip",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Tooltip.luau"
+           ]
+          },
+          {
+           "name": "Popover",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Popover.luau"
+           ]
+          },
+          {
+           "name": "Modal",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Modal.luau"
+           ]
+          },
+          {
+           "name": "Glass",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Glass.luau"
+           ]
+          },
+          {
+           "name": "Dock",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Dock.luau"
+           ]
+          },
+          {
+           "name": "DockWindow",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.DockWindow.luau"
+           ]
+          },
+          {
+           "name": "Slider",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Slider.luau"
+           ]
+          },
+          {
+           "name": "Toggle",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Toggle.luau"
+           ]
+          },
+          {
+           "name": "Dropdown",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Dropdown.luau"
+           ]
+          },
+          {
+           "name": "Frost",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.Frost.luau"
+           ]
+          },
+          {
+           "name": "BuildCard",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.Kit.BuildCard.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "MainMenu",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "MainMenuController",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.MainMenuController.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.MainMenuController.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "UpdateLogsPanel",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogsPanel.luau"
+           ]
+          },
+          {
+           "name": "UpdateLogData",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogData.luau"
+           ]
+          },
+          {
+           "name": "UpdateLogBuilder",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.UpdateLogBuilder.luau"
+           ]
+          },
+          {
+           "name": "MenuReel",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.UI.MainMenu.MenuReel.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "HUD",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "DashboardController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.DashboardController.luau"
+         ]
+        },
+        {
+         "name": "NotificationController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.NotificationController.luau"
+         ]
+        },
+        {
+         "name": "BuildingInfoController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController.luau"
+         ]
+        },
+        {
+         "name": "BankruptcyController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.BankruptcyController.luau"
+         ]
+        },
+        {
+         "name": "EconomyPanelController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.EconomyPanelController.luau"
+         ]
+        },
+        {
+         "name": "TransportOverviewController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.TransportOverviewController.luau"
+         ]
+        },
+        {
+         "name": "CityStatsController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.CityStatsController.luau"
+         ]
+        },
+        {
+         "name": "PlacementCostHud",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.PlacementCostHud.luau"
+         ]
+        },
+        {
+         "name": "ProgressionController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.ProgressionController.luau"
+         ]
+        },
+        {
+         "name": "FloatingCostEffect",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.FloatingCostEffect.luau"
+         ]
+        },
+        {
+         "name": "RadioController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.RadioController.luau"
+         ]
+        },
+        {
+         "name": "PlayerHubController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.PlayerHubController.luau"
+         ]
+        },
+        {
+         "name": "RoadInfoController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.RoadInfoController.luau"
+         ]
+        },
+        {
+         "name": "ElectricityPanelController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.ElectricityPanelController.luau"
+         ]
+        },
+        {
+         "name": "WaterPanelController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.WaterPanelController.luau"
+         ]
+        },
+        {
+         "name": "TopLeftCluster",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.TopLeftCluster.luau"
+         ]
+        },
+        {
+         "name": "GameMenuController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.GameMenuController.luau"
+         ]
+        },
+        {
+         "name": "CityVitalsPanel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.CityVitalsPanel.luau"
+         ]
+        },
+        {
+         "name": "TransitInfoController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.TransitInfoController.luau"
+         ]
+        },
+        {
+         "name": "UtilityGauges",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.HUD.UtilityGauges.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "World",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "NPCDriverView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.NPCDriverView.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.NPCDriverView.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "PedestrianView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.PedestrianView.luau"
+         ]
+        },
+        {
+         "name": "CitizenPresenceView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.CitizenPresenceView.luau"
+         ]
+        },
+        {
+         "name": "FireView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.FireView.luau"
+         ]
+        },
+        {
+         "name": "ConstructionViewController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.ConstructionViewController.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.ConstructionViewController.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TrafficSignView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.TrafficSignView.luau"
+         ]
+        },
+        {
+         "name": "OutsideConnectionView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.OutsideConnectionView.luau"
+         ]
+        },
+        {
+         "name": "WaterView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.WaterView.luau"
+         ]
+        },
+        {
+         "name": "OneWayDirectionView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.OneWayDirectionView.luau"
+         ]
+        },
+        {
+         "name": "RoadMeshView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.RoadMeshView.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadMeshView.spec.luau"
+           ]
+          },
+          {
+           "name": "PredictionCells.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadMeshView.PredictionCells.spec.luau"
+           ]
+          },
+          {
+           "name": "Priority.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadMeshView.Priority.spec.luau"
+           ]
+          },
+          {
+           "name": "Startup.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadMeshView.Startup.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "AmbienceController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.AmbienceController.luau"
+         ]
+        },
+        {
+         "name": "WindowLightsView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.WindowLightsView.luau"
+         ]
+        },
+        {
+         "name": "WindTurbineView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.WindTurbineView.luau"
+         ]
+        },
+        {
+         "name": "StreetNameView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.StreetNameView.luau"
+         ]
+        },
+        {
+         "name": "AssetLODView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.AssetLODView.luau"
+         ]
+        },
+        {
+         "name": "NodeToolView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.NodeToolView.luau"
+         ]
+        },
+        {
+         "name": "SignalToolView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.SignalToolView.luau"
+         ]
+        },
+        {
+         "name": "PlayerPresenceView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.PlayerPresenceView.luau"
+         ]
+        },
+        {
+         "name": "NoPowerView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.NoPowerView.luau"
+         ]
+        },
+        {
+         "name": "WorldRevealController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.WorldRevealController.luau"
+         ]
+        },
+        {
+         "name": "TrafficJamView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.TrafficJamView.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.TrafficJamView.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "SkyLightingView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.SkyLightingView.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.SkyLightingView.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "RoadPieces",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.RoadPieces.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadPieces.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "CitizenAvatarView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.CitizenAvatarView.luau"
+         ]
+        },
+        {
+         "name": "AmbientCityView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.AmbientCityView.luau"
+         ]
+        },
+        {
+         "name": "SolarTrackerView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.SolarTrackerView.luau"
+         ]
+        },
+        {
+         "name": "UtilityProblems",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.UtilityProblems.luau"
+         ]
+        },
+        {
+         "name": "RoadEditPreview",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.RoadEditPreview.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadEditPreview.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "RoadPreviewGeometry",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.RoadPreviewGeometry.luau"
+         ],
+         "children": [
+          {
+           "name": "Geometry.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/StarterPlayer.StarterPlayerScripts.World.RoadPreviewGeometry.Geometry.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "SewageWorksView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.SewageWorksView.luau"
+         ]
+        },
+        {
+         "name": "UtilityOffView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.World.UtilityOffView.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Debug",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "IconDiag",
+         "className": "LocalScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Debug.IconDiag.client.luau"
+         ]
+        },
+        {
+         "name": "TrafficBenchClient",
+         "className": "LocalScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.Debug.TrafficBenchClient.client.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "UICreation",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "MainMenuView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UICreation.MainMenuView.luau"
+         ]
+        },
+        {
+         "name": "EditorView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UICreation.EditorView.luau"
+         ]
+        },
+        {
+         "name": "MenuScreenView",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/StarterPlayer.StarterPlayerScripts.UICreation.MenuScreenView.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "StarterGui",
+   "className": "StarterGui"
+  },
+  {
+   "name": "ReplicatedStorage",
+   "className": "ReplicatedStorage",
+   "children": [
+    {
+     "name": "DataCache",
+     "className": "ModuleScript",
+     "filePaths": [
+      "src/ReplicatedStorage.DataCache.luau"
+     ],
+     "children": [
+      {
+       "name": "spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.DataCache.spec.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "NetMiddleware",
+     "className": "ModuleScript",
+     "filePaths": [
+      "src/ReplicatedStorage.NetMiddleware.luau"
+     ]
+    },
+    {
+     "name": "GameSpeed",
+     "className": "ModuleScript",
+     "filePaths": [
+      "src/ReplicatedStorage.GameSpeed.luau"
+     ],
+     "children": [
+      {
+       "name": "spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.GameSpeed.spec.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Networker",
+     "className": "ModuleScript",
+     "filePaths": [
+      "src/ReplicatedStorage.Networker.luau"
+     ],
+     "children": [
+      {
+       "name": "spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Networker.spec.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Road",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "RoadTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadTypes.luau"
+       ]
+      },
+      {
+       "name": "BezierUtil",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.BezierUtil.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.BezierUtil.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "RoadNetwork",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadNetwork.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.RoadNetwork.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "RoadRenderer",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadRenderer.luau"
+       ]
+      },
+      {
+       "name": "RoadTypeCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadTypeCatalog.luau"
+       ]
+      },
+      {
+       "name": "IntersectionRenderer",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.IntersectionRenderer.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.IntersectionRenderer.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "LaneArrow",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.LaneArrow.luau"
+       ]
+      },
+      {
+       "name": "RoadNavigationGraph",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadNavigationGraph.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.RoadNavigationGraph.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "DeadEndRenderer",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.DeadEndRenderer.luau"
+       ]
+      },
+      {
+       "name": "SnapUtil",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.SnapUtil.luau"
+       ],
+       "children": [
+        {
+         "name": "SnapConstants",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.SnapUtil.SnapConstants.luau"
+         ]
+        },
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.SnapUtil.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "VehicleTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.VehicleTypes.luau"
+       ]
+      },
+      {
+       "name": "RoadRules",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadRules.luau"
+       ]
+      },
+      {
+       "name": "RoadVerticalProfile",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadVerticalProfile.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.RoadVerticalProfile.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "RoadConstants",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadConstants.luau"
+       ]
+      },
+      {
+       "name": "RoadMeshBuilder",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadMeshBuilder.luau"
+       ]
+      },
+      {
+       "name": "NavRouter",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.NavRouter.luau"
+       ]
+      },
+      {
+       "name": "RoadSceneRenderer",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadSceneRenderer.luau"
+       ]
+      },
+      {
+       "name": "RoadMoveGeometry",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadMoveGeometry.luau"
+       ]
+      },
+      {
+       "name": "RoadBeams",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadBeams.luau"
+       ]
+      },
+      {
+       "name": "DriverProfile",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.DriverProfile.luau"
+       ]
+      },
+      {
+       "name": "NavCost",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.NavCost.luau"
+       ]
+      },
+      {
+       "name": "BridgeBuilder",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.BridgeBuilder.luau"
+       ]
+      },
+      {
+       "name": "RegionCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RegionCatalog.luau"
+       ]
+      },
+      {
+       "name": "TrafficViolations",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.TrafficViolations.luau"
+       ]
+      },
+      {
+       "name": "RoadProximity",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadProximity.luau"
+       ]
+      },
+      {
+       "name": "SignalSpec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.SignalSpec.luau"
+       ]
+      },
+      {
+       "name": "VehicleCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.VehicleCatalog.luau"
+       ]
+      },
+      {
+       "name": "IntersectionRenderer_specrun",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.IntersectionRenderer_specrun.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.IntersectionRenderer_specrun.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "RoadGeometry",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadGeometry.luau"
+       ]
+      },
+      {
+       "name": "RoadProximity.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadProximity.spec.luau"
+       ]
+      },
+      {
+       "name": "TrafficSignPlanner",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.TrafficSignPlanner.luau"
+       ]
+      },
+      {
+       "name": "RoadMeshBuilder.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadMeshBuilder.spec.luau"
+       ]
+      },
+      {
+       "name": "RoadProfile",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadProfile.luau"
+       ]
+      },
+      {
+       "name": "RoadProfile.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadProfile.spec.luau"
+       ]
+      },
+      {
+       "name": "RoadSection",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadSection.luau"
+       ]
+      },
+      {
+       "name": "RoadJunctionSolver",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.RoadJunctionSolver.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Road.RoadJunctionSolver.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "JunctionGroups",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Road.JunctionGroups.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "City",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "ZoneTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.ZoneTypes.luau"
+       ]
+      },
+      {
+       "name": "MapPresets",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.MapPresets.luau"
+       ]
+      },
+      {
+       "name": "UIEvents",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.UIEvents.luau"
+       ]
+      },
+      {
+       "name": "CitizenModel",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.CitizenModel.luau"
+       ],
+       "children": [
+        {
+         "name": "CitizenModel.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.CitizenModel.CitizenModel.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "SchoolTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.SchoolTypes.luau"
+       ]
+      },
+      {
+       "name": "SchoolModel",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.SchoolModel.luau"
+       ]
+      },
+      {
+       "name": "AddressBook",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.AddressBook.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.AddressBook.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "ZoneGrid",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.ZoneGrid.luau"
+       ]
+      },
+      {
+       "name": "ServiceTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.ServiceTypes.luau"
+       ]
+      },
+      {
+       "name": "ServiceBuildingModel",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.ServiceBuildingModel.luau"
+       ]
+      },
+      {
+       "name": "BuildingTextures",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.BuildingTextures.luau"
+       ]
+      },
+      {
+       "name": "OutsideConnectionConstants",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.OutsideConnectionConstants.luau"
+       ]
+      },
+      {
+       "name": "OutsideConnectionTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.OutsideConnectionTypes.luau"
+       ]
+      },
+      {
+       "name": "PlotGeometry",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.PlotGeometry.luau"
+       ],
+       "children": [
+        {
+         "name": "RoadIndex.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.PlotGeometry.RoadIndex.spec.luau"
+         ]
+        },
+        {
+         "name": "PolygonIndex.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.PlotGeometry.PolygonIndex.spec.luau"
+         ]
+        },
+        {
+         "name": "PlanningBudget.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.PlotGeometry.PlanningBudget.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "FootprintGen",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.FootprintGen.luau"
+       ]
+      },
+      {
+       "name": "MilestoneUnlocks",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.MilestoneUnlocks.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.City.MilestoneUnlocks.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "MapPreview",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.MapPreview.luau"
+       ]
+      },
+      {
+       "name": "WaterImage",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.WaterImage.luau"
+       ]
+      },
+      {
+       "name": "DevelopmentTree",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.DevelopmentTree.luau"
+       ]
+      },
+      {
+       "name": "MapResources",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.MapResources.luau"
+       ]
+      },
+      {
+       "name": "PlotGeometry.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.PlotGeometry.spec.luau"
+       ]
+      },
+      {
+       "name": "CitizenWardrobe",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.CitizenWardrobe.luau"
+       ]
+      },
+      {
+       "name": "TerritoryGrid",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.TerritoryGrid.luau"
+       ]
+      },
+      {
+       "name": "PipeArt",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.City.PipeArt.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Transit",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "TransitTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Transit.TransitTypes.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Access",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "PlacesConfig",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Access.PlacesConfig.luau"
+       ]
+      },
+      {
+       "name": "PlacesConfig.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Access.PlacesConfig.spec.luau"
+       ]
+      },
+      {
+       "name": "CityRoles",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Access.CityRoles.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Access.CityRoles.spec.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Editor",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "EditorConfig",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Editor.EditorConfig.luau"
+       ]
+      },
+      {
+       "name": "CreationBuilder",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Editor.CreationBuilder.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Editor.CreationBuilder.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "CreationCategories",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Editor.CreationCategories.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Editor.CreationCategories.spec.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Shared",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "FreePlacement",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.FreePlacement.luau"
+       ]
+      },
+      {
+       "name": "Quant",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.Quant.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.Quant.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "LOD",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.LOD.luau"
+       ]
+      },
+      {
+       "name": "ClientBootGate",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.ClientBootGate.luau"
+       ]
+      },
+      {
+       "name": "TextureAverages",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.TextureAverages.luau"
+       ]
+      },
+      {
+       "name": "ModelBaker",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.ModelBaker.luau"
+       ]
+      },
+      {
+       "name": "GesturePath",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.GesturePath.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.GesturePath.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "ShapeCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.ShapeCatalog.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.ShapeCatalog.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "PlacementFit",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.PlacementFit.luau"
+       ],
+       "children": [
+        {
+         "name": "PropsIndex.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.PlacementFit.PropsIndex.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "PlacementFit.spec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.PlacementFit.spec.luau"
+       ]
+      },
+      {
+       "name": "MaterialCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.MaterialCatalog.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.MaterialCatalog.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "PlacementGrid",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.PlacementGrid.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.PlacementGrid.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "CityCalendar",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Shared.CityCalendar.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Shared.CityCalendar.spec.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "World",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "WorldThemeCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.World.WorldThemeCatalog.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "BadApple",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "BadAppleFrames",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.BadApple.BadAppleFrames.luau"
+       ]
+      },
+      {
+       "name": "Data1",
+       "className": "StringValue"
+      },
+      {
+       "name": "Data2",
+       "className": "StringValue"
+      },
+      {
+       "name": "Data3",
+       "className": "StringValue"
+      },
+      {
+       "name": "Data4",
+       "className": "StringValue"
+      },
+      {
+       "name": "Data5",
+       "className": "StringValue"
+      },
+      {
+       "name": "Data6",
+       "className": "StringValue"
+      }
+     ]
+    },
+    {
+     "name": "Nature",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "NatureCatalog",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Nature.NatureCatalog.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Terrain",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "TerrainConstants",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainConstants.luau"
+       ]
+      },
+      {
+       "name": "TerrainTypes",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainTypes.luau"
+       ]
+      },
+      {
+       "name": "Heightmap",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.Heightmap.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.Heightmap.spec.luau"
+         ]
+        },
+        {
+         "name": "WriteThrough.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.Heightmap.WriteThrough.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainBrush",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainBrush.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainBrush.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainPainter",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainPainter.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainPainter.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainGenerator",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainGenerator.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainGenerator.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainBuildController",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainBuildController.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainBuildController.spec.luau"
+         ]
+        },
+        {
+         "name": "Frustum",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainBuildController.Frustum.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "StartupArea",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainBuildController.StartupArea.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "Stream",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainBuildController.Stream.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "WaterField",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.WaterField.luau"
+       ]
+      },
+      {
+       "name": "TerrainMesh",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainMesh.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainMesh.spec.luau"
+         ]
+        },
+        {
+         "name": "MergeOrigin",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainMesh.MergeOrigin.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainMeshView",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainMeshView.luau"
+       ],
+       "children": [
+        {
+         "name": "Frustum",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainMeshView.Frustum.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "StartupArea",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ReplicatedStorage.Terrain.TerrainMeshView.StartupArea.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "MergedBatches.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainMeshView.MergedBatches.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainSurfaceTexture",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainSurfaceTexture.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.TerrainSurfaceTexture.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "RoadCrossSection",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.RoadCrossSection.luau"
+       ],
+       "children": [
+        {
+         "name": "spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ReplicatedStorage.Terrain.RoadCrossSection.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "TerrainLandform",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainLandform.luau"
+       ]
+      },
+      {
+       "name": "TerrainStreamCodec",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ReplicatedStorage.Terrain.TerrainStreamCodec.luau"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ServerScriptService",
+   "className": "ServerScriptService",
+   "children": [
+    {
+     "name": "Services",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "City",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "BuildingService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.BuildingService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.BuildingService.spec.luau"
+           ]
+          },
+          {
+           "name": "ConstructionQueue",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.BuildingService.ConstructionQueue.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.BuildingService.ConstructionQueue.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "Performance.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.BuildingService.Performance.spec.luau"
+           ]
+          },
+          {
+           "name": "Scheduler.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.BuildingService.Scheduler.spec.luau"
+           ]
+          },
+          {
+           "name": "CommitRollback.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.BuildingService.CommitRollback.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "CityStatsService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.CityStatsService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.CityStatsService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "LandValueService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.LandValueService.luau"
+         ]
+        },
+        {
+         "name": "LotDressingConfig",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.LotDressingConfig.luau"
+         ]
+        },
+        {
+         "name": "LotDressingService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.LotDressingService.luau"
+         ]
+        },
+        {
+         "name": "TimeService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.TimeService.luau"
+         ]
+        },
+        {
+         "name": "ParkingService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.ParkingService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.ParkingService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "NameGen",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.NameGen.luau"
+         ]
+        },
+        {
+         "name": "CitySimConstants",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.CitySimConstants.luau"
+         ]
+        },
+        {
+         "name": "OutsideConnectionService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.OutsideConnectionService.luau"
+         ]
+        },
+        {
+         "name": "PlotService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.PlotService.luau"
+         ],
+         "children": [
+          {
+           "name": "BatchPlacement.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.PlotService.BatchPlacement.spec.luau"
+           ]
+          },
+          {
+           "name": "RestoreBudget.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.PlotService.RestoreBudget.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "NaturePlaceService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.NaturePlaceService.luau"
+         ]
+        },
+        {
+         "name": "ProgressionService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.ProgressionService.luau"
+         ]
+        },
+        {
+         "name": "ServicePlacement",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.ServicePlacement.luau"
+         ]
+        },
+        {
+         "name": "PlotService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.PlotService.spec.luau"
+         ]
+        },
+        {
+         "name": "CreationPlaceService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.CreationPlaceService.luau"
+         ]
+        },
+        {
+         "name": "ParkingService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.ParkingService.spec__ref6059.luau"
+         ]
+        },
+        {
+         "name": "PowerService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.PowerService.luau"
+         ]
+        },
+        {
+         "name": "PowerService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.PowerService.spec.luau"
+         ]
+        },
+        {
+         "name": "BuildingService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.BuildingService.spec__ref6062.luau"
+         ]
+        },
+        {
+         "name": "WaterService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.WaterService.luau"
+         ]
+        },
+        {
+         "name": "WaterService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.WaterService.spec.luau"
+         ]
+        },
+        {
+         "name": "WaterPipeService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.WaterPipeService.luau"
+         ]
+        },
+        {
+         "name": "WaterPipeService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.WaterPipeService.spec.luau"
+         ]
+        },
+        {
+         "name": "Civic",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "EducationService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.EducationService.luau"
+           ]
+          },
+          {
+           "name": "CoverageService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.CoverageService.luau"
+           ]
+          },
+          {
+           "name": "EmergencyService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.EmergencyService.luau"
+           ]
+          },
+          {
+           "name": "CrimeService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.CrimeService.luau"
+           ]
+          },
+          {
+           "name": "SicknessService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.SicknessService.luau"
+           ]
+          },
+          {
+           "name": "DeathcareService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.DeathcareService.luau"
+           ]
+          },
+          {
+           "name": "EmergencyDispatch",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.EmergencyDispatch.luau"
+           ]
+          },
+          {
+           "name": "SewageOutfall",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Civic.SewageOutfall.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "Simulation",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "CitizenService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenService.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.CitizenService.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "ZoneSimService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.ZoneSimService.luau"
+           ]
+          },
+          {
+           "name": "FireService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.FireService.luau"
+           ]
+          },
+          {
+           "name": "ThroughTrafficService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.ThroughTrafficService.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.ThroughTrafficService.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "TravelModeChoice",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.TravelModeChoice.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.TravelModeChoice.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "CitizenSaveColumns",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenSaveColumns.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.CitizenSaveColumns.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "CitizenQueries",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenQueries.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.CitizenQueries.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "CitizenTypes",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenTypes.luau"
+           ]
+          },
+          {
+           "name": "CitizenJourneys",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenJourneys.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.CitizenJourneys.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "HouseholdNeeds",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.HouseholdNeeds.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.HouseholdNeeds.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "CitizenActivityState",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Simulation.CitizenActivityState.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Simulation.CitizenActivityState.spec.luau"
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "name": "Economy",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "SupplyService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Economy.SupplyService.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Economy.SupplyService.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "CityEconomyService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Economy.CityEconomyService.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Economy.CityEconomyService.spec.luau"
+             ]
+            }
+           ]
+          },
+          {
+           "name": "BusinessService",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.Economy.BusinessService.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.City.Economy.BusinessService.spec.luau"
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "name": "MapSeedService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.MapSeedService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.MapSeedService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerritoryService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.TerritoryService.luau"
+         ]
+        },
+        {
+         "name": "WeatherService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.WeatherService.luau"
+         ]
+        },
+        {
+         "name": "LotGroundMesh",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.City.LotGroundMesh.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.City.LotGroundMesh.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Road",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "RoadService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadService.luau"
+         ],
+         "children": [
+          {
+           "name": "PendingEdits.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Road.RoadService.PendingEdits.spec.luau"
+           ]
+          },
+          {
+           "name": "HistoryWarm.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Road.RoadService.HistoryWarm.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "RoadHistoryService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadHistoryService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Road.RoadHistoryService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "RoadReplicationService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadReplicationService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Road.RoadReplicationService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "RoadTurnPermissionStore",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadTurnPermissionStore.luau"
+         ]
+        },
+        {
+         "name": "RoadSerializer",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadSerializer.luau"
+         ]
+        },
+        {
+         "name": "RoadSerializer.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadSerializer.spec.luau"
+         ]
+        },
+        {
+         "name": "RoadSceneryService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadSceneryService.luau"
+         ]
+        },
+        {
+         "name": "RoadDeadEndService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Road.RoadDeadEndService.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Debug",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "DebugService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Debug.DebugService.luau"
+         ]
+        },
+        {
+         "name": "AdminService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Debug.AdminService.luau"
+         ]
+        },
+        {
+         "name": "DeveloperService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Debug.DeveloperService.luau"
+         ]
+        },
+        {
+         "name": "TrafficBenchmark",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Debug.TrafficBenchmark.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Data",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "PlayerDataStore",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.PlayerDataStore.luau"
+         ]
+        },
+        {
+         "name": "CitySerializer",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.CitySerializer.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Data.CitySerializer.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "CitySlotService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.CitySlotService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Data.CitySlotService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "MapTemplateService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.MapTemplateService.luau"
+         ]
+        },
+        {
+         "name": "BlobCodec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.BlobCodec.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Data.BlobCodec.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "PlayerSettingsService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.PlayerSettingsService.luau"
+         ]
+        },
+        {
+         "name": "BlueprintStore",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.BlueprintStore.luau"
+         ]
+        },
+        {
+         "name": "PlayerStatsService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.PlayerStatsService.luau"
+         ]
+        },
+        {
+         "name": "PlayerLoadService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.PlayerLoadService.luau"
+         ]
+        },
+        {
+         "name": "NumberPack",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Data.NumberPack.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Data.NumberPack.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "NPC",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "NPCDriverService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.NPC.NPCDriverService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.NPC.NPCDriverService.spec.luau"
+           ]
+          },
+          {
+           "name": "IntegrationFixture",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.NPC.NPCDriverService.IntegrationFixture.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "NPCWalkingService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.NPC.NPCWalkingService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.NPC.NPCWalkingService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "VehicleFactory",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.NPC.VehicleFactory.luau"
+         ]
+        },
+        {
+         "name": "EmergencyVehicleFactory",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.NPC.EmergencyVehicleFactory.luau"
+         ]
+        },
+        {
+         "name": "CitizenAgentService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.NPC.CitizenAgentService.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Util",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "PathFollower",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Util.PathFollower.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Util.PathFollower.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "Telemetry",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Util.Telemetry.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Traffic",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "TrafficSignalService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.TrafficSignalService.luau"
+         ],
+         "children": [
+          {
+           "name": "TestFixture",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Traffic.TrafficSignalService.TestFixture.luau"
+           ]
+          },
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Traffic.TrafficSignalService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TrafficConfig",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.TrafficConfig.luau"
+         ]
+        },
+        {
+         "name": "IntersectionDetector",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.IntersectionDetector.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Traffic.IntersectionDetector.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "SignalPhaseBuilder",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.SignalPhaseBuilder.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Traffic.SignalPhaseBuilder.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TrafficLightPlacer",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.TrafficLightPlacer.luau"
+         ]
+        },
+        {
+         "name": "SignalPlanStore",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.SignalPlanStore.luau"
+         ]
+        },
+        {
+         "name": "SignalCoordinator",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.SignalCoordinator.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Traffic.SignalCoordinator.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "SignalReplicationService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Traffic.SignalReplicationService.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Terrain",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "TerrainRenderer",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainRenderer.luau"
+         ]
+        },
+        {
+         "name": "TerrainEditService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainEditService.luau"
+         ]
+        },
+        {
+         "name": "TerrainPersistence",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainPersistence.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Terrain.TerrainPersistence.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerrainDataService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainDataService.luau"
+         ],
+         "children": [
+          {
+           "name": "Stream",
+           "className": "Folder",
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.Terrain.TerrainDataService.Stream.spec.luau"
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerrainGradeService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainGradeService.luau"
+         ],
+         "children": [
+          {
+           "name": "LoadingBudget.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Terrain.TerrainGradeService.LoadingBudget.spec.luau"
+           ]
+          },
+          {
+           "name": "Raster.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Terrain.TerrainGradeService.Raster.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerrainPadService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainPadService.luau"
+         ],
+         "children": [
+          {
+           "name": "RoadLookup.spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Terrain.TerrainPadService.RoadLookup.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TerrainOverlayLedger",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainOverlayLedger.luau"
+         ]
+        },
+        {
+         "name": "TerrainGradeService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainGradeService.spec.luau"
+         ]
+        },
+        {
+         "name": "TerrainPadService.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Terrain.TerrainPadService.spec.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Transit",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "TransitService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.TransitService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Transit.TransitService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "BusDispatchService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.BusDispatchService.luau"
+         ]
+        },
+        {
+         "name": "TransitBuildingModel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.TransitBuildingModel.luau"
+         ]
+        },
+        {
+         "name": "TrainDispatchService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.TrainDispatchService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Transit.TrainDispatchService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "TrainBuildingModel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.TrainBuildingModel.luau"
+         ]
+        },
+        {
+         "name": "TransitKitModel",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Transit.TransitKitModel.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Access",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "TesterService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.TesterService.luau"
+         ]
+        },
+        {
+         "name": "PlaceAccessService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.PlaceAccessService.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Access.PlaceAccessService.spec.luau"
+           ]
+          }
+         ]
+        },
+        {
+         "name": "CityTeleport",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.CityTeleport.luau"
+         ]
+        },
+        {
+         "name": "CityTeleport.spec",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.CityTeleport.spec.luau"
+         ]
+        },
+        {
+         "name": "StaffRoster",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.StaffRoster.luau"
+         ]
+        },
+        {
+         "name": "StaffUIService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.StaffUIService.luau"
+         ]
+        },
+        {
+         "name": "ReviewQueue",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.ReviewQueue.luau"
+         ],
+         "children": [
+          {
+           "name": "Shape",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Access.ReviewQueue.Shape.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerScriptService.Services.Access.ReviewQueue.Shape.spec.luau"
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "name": "BadgeService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.BadgeService.luau"
+         ]
+        },
+        {
+         "name": "PlayerPresenceService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.PlayerPresenceService.luau"
+         ]
+        },
+        {
+         "name": "PlayerDirectoryService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.PlayerDirectoryService.luau"
+         ]
+        },
+        {
+         "name": "VisitorList",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Access.VisitorList.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerScriptService.Services.Access.VisitorList.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Editor",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "EditorService",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerScriptService.Services.Editor.EditorService.luau"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Bootstrap",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "Bootstrap",
+       "className": "Script",
+       "filePaths": [
+        "src/ServerScriptService.Bootstrap.Bootstrap.server.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Tests",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "SpecRunner",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerScriptService.Tests.SpecRunner.luau"
+       ]
+      },
+      {
+       "name": "PropLODReport",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerScriptService.Tests.PropLODReport.luau"
+       ]
+      },
+      {
+       "name": "DrawCallProbe",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerScriptService.Tests.DrawCallProbe.luau"
+       ]
+      },
+      {
+       "name": "LoadStressTest",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerScriptService.Tests.LoadStressTest.luau"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ServerStorage",
+   "className": "ServerStorage",
+   "children": [
+    {
+     "name": "Authoring",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "SimpleBuildingBuilder",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.SimpleBuildingBuilder.luau"
+       ]
+      },
+      {
+       "name": "MidRiseKitSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.MidRiseKitSetup.luau"
+       ],
+       "children": [
+        {
+         "name": "Manifest",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.Authoring.MidRiseKitSetup.Manifest.luau"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "CommercialLowSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.CommercialLowSetup.luau"
+       ]
+      },
+      {
+       "name": "IndustrialSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.IndustrialSetup.luau"
+       ]
+      },
+      {
+       "name": "MidRiseV2Setup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.MidRiseV2Setup.luau"
+       ]
+      },
+      {
+       "name": "PropKitSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.PropKitSetup.luau"
+       ]
+      },
+      {
+       "name": "CommercialV2Setup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.CommercialV2Setup.luau"
+       ]
+      },
+      {
+       "name": "HouseV2Setup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.HouseV2Setup.luau"
+       ]
+      },
+      {
+       "name": "TransitSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.TransitSetup.luau"
+       ]
+      },
+      {
+       "name": "PowerTemplateSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.PowerTemplateSetup.luau"
+       ]
+      },
+      {
+       "name": "WaterTemplateSetup",
+       "className": "ModuleScript",
+       "filePaths": [
+        "src/ServerStorage.Authoring.WaterTemplateSetup.luau"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "StaffUI",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "StaffTools",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "AdminController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.AdminController.luau"
+         ]
+        },
+        {
+         "name": "DeveloperController",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.DeveloperController.luau"
+         ]
+        },
+        {
+         "name": "UIOverlapAudit",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.UIOverlapAudit.luau"
+         ]
+        },
+        {
+         "name": "BadAppleShow",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.BadAppleShow.luau"
+         ]
+        },
+        {
+         "name": "BadAppleRoadTile",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.BadAppleRoadTile.luau"
+         ]
+        },
+        {
+         "name": "BadAppleOutline",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.BadAppleOutline.luau"
+         ]
+        },
+        {
+         "name": "StaffBoot",
+         "className": "LocalScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.StaffBoot.client.luau"
+         ]
+        },
+        {
+         "name": "CinematicCamera",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.CinematicCamera.luau"
+         ]
+        },
+        {
+         "name": "TrailerShots",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.TrailerShots.luau"
+         ]
+        },
+        {
+         "name": "CameraSpline",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.StaffUI.StaffTools.CameraSpline.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerStorage.StaffUI.StaffTools.CameraSpline.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "PropsRetired",
+     "className": "Folder",
+     "children": [
+      {
+       "name": "PropCatalog",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "PropCatalog",
+         "className": "ModuleScript",
+         "filePaths": [
+          "src/ServerStorage.PropsRetired.PropCatalog.PropCatalog.luau"
+         ],
+         "children": [
+          {
+           "name": "spec",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerStorage.PropsRetired.PropCatalog.PropCatalog.spec.luau"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "name": "BuildingProps",
+       "className": "Folder",
+       "children": [
+        {
+         "name": "Awnings",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "RetractableAwning",
+           "className": "ProceduralModel",
+           "children": [
+            {
+             "name": "ProceduralGeneration",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.luau"
+             ],
+             "children": [
+              {
+               "name": "Dependencies",
+               "className": "Folder",
+               "children": [
+                {
+                 "name": "ConstructiveSolidGeometry",
+                 "className": "ModuleScript",
+                 "filePaths": [
+                  "src/ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.ConstructiveSolidGeometry.luau"
+                 ]
+                },
+                {
+                 "name": "GeometryPrimitives",
+                 "className": "ModuleScript",
+                 "filePaths": [
+                  "src/ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.GeometryPrimitives.luau"
+                 ]
+                },
+                {
+                 "name": "SmartObject",
+                 "className": "ModuleScript",
+                 "filePaths": [
+                  "src/ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.SmartObject.luau"
+                 ]
+                },
+                {
+                 "name": "MathUtils",
+                 "className": "ModuleScript",
+                 "filePaths": [
+                  "src/ServerStorage.PropsRetired.BuildingProps.Awnings.RetractableAwning.ProceduralGeneration.Dependencies.MathUtils.luau"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "name": "ACUnits",
+         "className": "Folder",
+         "children": [
+          {
+           "name": "ACUnitCatalog",
+           "className": "ModuleScript",
+           "filePaths": [
+            "src/ServerStorage.PropsRetired.BuildingProps.ACUnits.ACUnitCatalog.luau"
+           ],
+           "children": [
+            {
+             "name": "spec",
+             "className": "ModuleScript",
+             "filePaths": [
+              "src/ServerStorage.PropsRetired.BuildingProps.ACUnits.ACUnitCatalog.spec.luau"
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
