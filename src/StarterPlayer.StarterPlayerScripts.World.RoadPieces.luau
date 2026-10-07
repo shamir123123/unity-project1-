@@ -765,9 +765,27 @@ end
 local REBUILD_SLICE_MIN_ITEMS = 64
 local REBUILD_SLICE = 0.004
 
+-- Same segment record, field by field (Vector3s compare by value).
+local function sameRecord(a: any, b: any): boolean
+	for k, v in a do
+		if b[k] ~= v then return false end
+	end
+	for k in b do
+		if a[k] == nil then return false end
+	end
+	return true
+end
+
 local function rebuildFrom(list: { any })
 	local now: { [number]: any } = {}
-	for _, s in list do now[s.id] = s end
+	-- The server re-sends every road meeting a node an edit touched (RoadService.applyChanges'
+	-- cascade), each as a fresh table even when nothing about it changed. Identity is how this
+	-- file tells a changed road from a standing one, so a re-sent but identical record keeps the
+	-- table already drawn: its nodes are not re-solved and its pieces are not re-built.
+	for _, s in list do
+		local old = _seen[s.id]
+		now[s.id] = if old and old ~= s and sameRecord(old, s) then old else s
+	end
 	local dirtyNodes: { [number]: boolean } = {}
 	local removed: { number } = {}
 	for id, s in now do
