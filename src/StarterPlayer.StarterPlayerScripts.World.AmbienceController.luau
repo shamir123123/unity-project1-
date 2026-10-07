@@ -61,6 +61,10 @@ _overlap.FilterType = Enum.RaycastFilterType.Include
 _overlap.MaxParts = 40
 local _ray = RaycastParams.new()
 _ray.FilterType = Enum.RaycastFilterType.Include
+-- Cars near the camera: every car carries exactly one queryable part, its Hitbox
+-- (VehicleFactory), so a radius query over the car folder counts cars without walking the fleet.
+local _carQuery = OverlapParams.new()
+_carQuery.FilterType = Enum.RaycastFilterType.Include
 
 local _started = false
 local _volMult = 1 -- ambienceVolume * masterVolume, cached for the Heartbeat loop
@@ -108,6 +112,16 @@ local function crowd(tag: string, center: Vector3, radius: number, full: number)
 	return math.min(n / full, 1)
 end
 
+-- crowd() for cars, as a spatial query: GetTagged built an array of the WHOLE fleet every sample
+-- and read every car's position, a cost that grew with the city for one 0..1 number.
+local function carCrowd(folder: Instance?, center: Vector3, radius: number, full: number): number
+	if not folder then return 0 end
+	local cur = _carQuery.FilterDescendantsInstances
+	if cur[1] ~= folder or #cur ~= 1 then _carQuery.FilterDescendantsInstances = { folder } end
+	_carQuery.MaxParts = full
+	return math.min(#Workspace:GetPartBoundsInRadius(center, radius, _carQuery) / full, 1)
+end
+
 -- Fraction of the probe grid standing over terrain water.
 local function seaFraction(center: Vector3): number
 	local wet, total = 0, 0
@@ -141,7 +155,7 @@ local function sample()
 	-- two different bird loops over a leafy street just sounds muddy.
 	local birds = math.max(density(houses, pos, NEAR_RADIUS), density(nature, pos, SENSE_RADIUS))
 
-	_targets.Traffic = crowd("NPCDriver", pos, SENSE_RADIUS, CARS_FULL) * high
+	_targets.Traffic = carCrowd(if city then city:FindFirstChild("NPCDrivers") else nil, pos, SENSE_RADIUS, CARS_FULL) * high
 	_targets.Chatter = crowd("NPCWalker", pos, NEAR_RADIUS, WALKERS_FULL) * high
 	local raining = Workspace:GetAttribute("Weather") == "Rain"
 	local hour = Lighting.ClockTime
@@ -174,7 +188,9 @@ function AmbienceController.Start()
 		acc += dt
 		if acc >= SAMPLE_INTERVAL then
 			acc = 0
+			debug.profilebegin("AmbienceController.sample")
 			sample()
+			debug.profileend()
 		end
 		-- Smooth every frame toward targets (cheap: 5 sounds).
 		for _, def in AMBIENT do

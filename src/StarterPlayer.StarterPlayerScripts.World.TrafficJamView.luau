@@ -244,7 +244,9 @@ function TrafficJamView.Start()
 		_acc += dt
 		if _acc < SCAN_PERIOD then return end
 		_acc = 0
+		debug.profilebegin("TrafficJamView.scan")
 		local ok, err = pcall(scan)
+		debug.profileend()
 		if not ok then warn("[TrafficJamView] scan failed: " .. tostring(err)) end
 	end)
 end

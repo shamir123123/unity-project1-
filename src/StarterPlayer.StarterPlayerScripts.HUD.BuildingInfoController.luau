@@ -7,6 +7,7 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -191,7 +192,19 @@ local function getBuildingAt(input: InputObject?): Model?
 	if _schoolsFolder then table.insert(filters, _schoolsFolder) end
 	if #filters == 0 then return nil end
 
-	_buildingRayParams.FilterDescendantsInstances = filters
+	-- Written only when the folders changed: assigning FilterDescendantsInstances re-marshals the
+	-- list, and this runs on every hover (CursorRay.setFilter does the same for the shared rays).
+	local cur = _buildingRayParams.FilterDescendantsInstances
+	local same = #cur == #filters
+	if same then
+		for i, inst in filters do
+			if cur[i] ~= inst then
+				same = false
+				break
+			end
+		end
+	end
+	if not same then _buildingRayParams.FilterDescendantsInstances = filters end
 	local hit = CursorRay.raycast(_buildingRayParams, input)
 	return if hit then findModelFromInstance(hit.Instance) else nil
 end
@@ -1723,10 +1736,24 @@ function BuildingInfoController.Start()
 	end)
 	_bottomBar = if ok then bb else nil
 
+	-- At most one hover pick a frame. A mouse reports movement several times a frame (more on a
+	-- high-rate mouse), and each report was a full-length pick ray into the city; only the last
+	-- position of the frame is ever seen, so that is the one picked.
+	local pendingInput: InputObject? = nil
+	local pendingProcessed = false
 	UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
-			updateHover(input, gameProcessed)
+			pendingInput = input
+			pendingProcessed = gameProcessed
 		end
+	end)
+	RunService.RenderStepped:Connect(function()
+		local input = pendingInput
+		if not input then return end
+		pendingInput = nil
+		debug.profilebegin("BuildingInfo.hover")
+		updateHover(input, pendingProcessed)
+		debug.profileend()
 	end)
 
 	-- The cursor leaves a building without moving whenever the camera pans: the world

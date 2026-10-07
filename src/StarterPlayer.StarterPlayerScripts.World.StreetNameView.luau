@@ -715,15 +715,18 @@ function StreetNameView.Start()
 		_pollAccum += dt
 		if _pollAccum < SCALE_POLL or next(_streets) == nil then return end
 		_pollAccum = 0
+		debug.profilebegin("StreetNameView.poll")
 		local target = targetHeight()
 		local current = _driver.Value
 		if math.abs(target - current) <= math.max(current, MIN_TEXT_HEIGHT) * SCALE_EPSILON then
 			-- Size has settled, but the camera may have turned. applyHeight no-ops per
 			-- street unless it did, so this is a cheap comparison, not a re-lay.
 			applyHeight(current)
+			debug.profileend()
 			return
 		end
 		_driver.Value = target
+		debug.profileend()
 	end)
 
 	if DataCache.IsReady() then

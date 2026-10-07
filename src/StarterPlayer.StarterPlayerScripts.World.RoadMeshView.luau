@@ -1387,9 +1387,11 @@ function RoadMeshView.Start()
 				local eye = cam.CFrame.Position
 				-- Draw distance setting stretches the ladder for roads too.
 				local scale = (tonumber(Settings.get("renderDistance")) or 1) * PAINT_RANGE_SCALE
+				debug.profilebegin("RoadMeshView.lod")
 				for key, st in _cells do
 					applyLevel(key, st, LOD.tierAt(nearestPointIn(st, eye), eye, nil, scale))
 				end
+				debug.profileend()
 			end
 		end
 	end)
