@@ -599,19 +599,9 @@ end
 -- Points sampled along the street to fingerprint its SHAPE.
 local SIG_SAMPLES = 12
 
-local function signature(name: string, pts: { Vector3 }, cum: { number }, blocks: { { number } }): string
-	-- The blocks are in the signature, not just the geometry: a new road landing
-	-- mid-street moves nothing on this chain but does change where names may sit.
-	local spans = table.create(#blocks)
-	for i, b in blocks do
-		spans[i] = string.format("%d-%d", math.round(b[1]), math.round(b[2]))
-	end
-	-- The SHAPE, not just the two ends. A road reshaped in the middle -- a curve
-	-- handle dragged, a node moved, the ground regraded under it -- keeps its
-	-- endpoints and very nearly its length; on a CLOSED LOOP the two ends are the
-	-- same point, so ends fingerprint nothing at all. Matching on ends alone left the
-	-- street unrebuilt and its glyphs lying along the road's OLD line -- straight
-	-- across a bend the road now takes, out over the grass.
+-- The street's SHAPE as a string (see signatureWith): the part of the fingerprint that only the
+-- geometry decides, so it is cached with the polyline it is read from.
+local function shapeSignature(pts: { Vector3 }, cum: { number }): string
 	local n = #pts
 	local shape = table.create(SIG_SAMPLES)
 	for i = 1, SIG_SAMPLES do
@@ -619,12 +609,50 @@ local function signature(name: string, pts: { Vector3 }, cum: { number }, blocks
 		local p = pts[at] or Vector3.zero
 		shape[i] = string.format("%d,%d,%d", math.round(p.X), math.round(p.Y), math.round(p.Z))
 	end
-	return string.format(
-		"%s|%d|%d|%s|%s",
-		name, math.round(cum[n] or 0), n,
-		table.concat(shape, ";"),
-		table.concat(spans, ",")
-	)
+	return string.format("%d|%d|%s", math.round(cum[n] or 0), n, table.concat(shape, ";"))
+end
+
+-- name|length|samples|shape|blocks: a street's fingerprint. The blocks are in it, not just the
+-- geometry: a new road landing mid-street moves nothing on this chain but does change where
+-- names may sit. And the SHAPE, not just the two ends: a road reshaped in the middle keeps its
+-- endpoints and very nearly its length, and on a CLOSED LOOP the two ends are the same point --
+-- matching on ends alone left a street's glyphs lying along its OLD line.
+local function signatureWith(name: string, shape: string, blocks: { { number } }): string
+	local spans = table.create(#blocks)
+	for i, b in blocks do
+		spans[i] = string.format("%d-%d", math.round(b[1]), math.round(b[2]))
+	end
+	return string.format("%s|%s|%s", name, shape, table.concat(spans, ","))
+end
+
+-- A street's polyline and shape, kept from the last rebuild while every segment of its chain is
+-- the SAME record (DataCache replaces exactly the records that changed) running the same way.
+-- Every road edit re-ran the whole city through chainPolyline and the fingerprint -- measured offline,
+-- 46 ms on an 840-segment grid with nothing changed -- and almost every street is untouched.
+type PolyCache = { segs: { any }, dirs: { boolean }, pts: { Vector3 }, cum: { number }, joints: { Joint }, shape: string }
+local _polyCache: { [number]: PolyCache } = {}
+
+local function cachedPolyline(index: AddressBook.Index, key: number, chain: { number }): PolyCache
+	local c = _polyCache[key]
+	if c and #c.segs == #chain then
+		local same = true
+		for i, id in chain do
+			if c.segs[i] ~= index.segs[id] or c.dirs[i] ~= (index.dirs[id] ~= false) then
+				same = false
+				break
+			end
+		end
+		if same then return c end
+	end
+	local pts, cum, joints = chainPolyline(index, chain)
+	local segs, dirs = table.create(#chain), table.create(#chain)
+	for i, id in chain do
+		segs[i] = index.segs[id]
+		dirs[i] = index.dirs[id] ~= false
+	end
+	local fresh: PolyCache = { segs = segs, dirs = dirs, pts = pts, cum = cum, joints = joints, shape = shapeSignature(pts, cum) }
+	_polyCache[key] = fresh
+	return fresh
 end
 
 local function clearStreet(key: number)
@@ -660,7 +688,8 @@ local function rebuild()
 		local name = index.names[key]
 		if not name or name == "" then continue end
 
-		local pts, cum, joints = chainPolyline(index, chain)
+		local poly = cachedPolyline(index, key, chain)
+		local pts, cum, joints = poly.pts, poly.cum, poly.joints
 		local length = cum[#cum] or 0
 		if length < MIN_STREET_LENGTH then continue end
 
@@ -671,7 +700,7 @@ local function rebuild()
 			local s = index.segs[sid]
 			types[i] = if s then tostring(s.roadType) else ""
 		end
-		local sig = signature(name, pts, cum, blocks) .. "|" .. table.concat(types, ",")
+		local sig = signatureWith(name, poly.shape, blocks) .. "|" .. table.concat(types, ",")
 		local existing = _streets[key]
 		if existing and existing.sig == sig then
 			live[key] = true
@@ -729,6 +758,9 @@ local function rebuild()
 		if not live[key] then
 			clearStreet(key)
 		end
+	end
+	for key in _polyCache do
+		if not index.chains[key] then _polyCache[key] = nil end
 	end
 
 	-- New plates are created unsized; place them at the current height.

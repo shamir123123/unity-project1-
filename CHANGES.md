@@ -131,6 +131,12 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   frame, filter written only when it changes.
 - **Ambience** (`AmbienceController`): counted nearby cars by walking the whole fleet every
   0.8 s; now a radius query on the cars' hitboxes.
+- **Street names** (`StreetNameView`): every name was one Part + SurfaceGui + TextLabel
+  *per letter* (so names can bend), up to 3,000 plates. A name on a straight span is now
+  **one plate** laid on the chord and pitched with the road; curves keep per-letter
+  plates. Offline grid: **574 → 106 plates**, identical offsets/heights. And the rebuild
+  that runs ~0.35 s after every road edit re-sampled every street in the city; unchanged
+  streets now reuse their polyline: **46 → 12 ms** on an 840-segment grid (offline).
 
 ## Toggles (to A/B in Studio)
 
