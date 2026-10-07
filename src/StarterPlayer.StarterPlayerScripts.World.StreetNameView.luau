@@ -145,6 +145,9 @@ type Glyph = {
 	-- from the camera on every apply so the text is never upside down, and kept per
 	-- glyph so FLIP_DEADBAND has a previous state to hold against.
 	sign: number,
+	-- The WHOLE name on one plate (see WHOLE-WORD PLATES): laid along the chord of its span,
+	-- pitched with the road, instead of one plate per letter.
+	whole: boolean?,
 }
 
 type Street = {
@@ -235,6 +238,18 @@ local function nameWidth(name: string, height: number): number
 	end
 	return pxToStuds(total, height)
 end
+
+-- WHOLE-WORD PLATES. A name is one plate per CHARACTER so it can bend through a curve -- and
+-- every plate is a Part with its own SurfaceGui and TextLabel, the heaviest thing per pixel this
+-- view draws (up to MAX_PLATES_FULL of them). On a straight span there is nothing to bend
+-- round, so a label whose span stays within STRAIGHT_TOLERANCE (of the cap height) of its own
+-- chord is ONE plate carrying the whole name -- a dozen SurfaceGuis become one, and the plate
+-- budget reaches that many more streets. Bends keep the per-letter layout exactly as before.
+local STRAIGHT_TOLERANCE = 0.06
+local STRAIGHT_SAMPLES = 8
+-- A whole-word plate's canvas is the name's width at TEXT_PX; past this a long name stays
+-- per-letter rather than drawing one oversized SurfaceGui.
+local MAX_WHOLE_PX = 1024
 
 local function makeGlyph(folder: Folder, char: string): (BasePart, SurfaceGui)
 	local part = Instance.new("Part")
@@ -327,6 +342,30 @@ local function sampleAt(pts: { Vector3 }, cum: { number }, d: number): (Vector3,
 	return a:Lerp(b, f), dir
 end
 
+-- Does the label laid at full size around `centre` (arc distance) run straight? Judged in plan
+-- against its chord, and in height against the straight grade between its ends.
+local function spanIsStraight(pts: { Vector3 }, cum: { number }, centre: number, width: number, h: number): boolean
+	local half = width * 0.5
+	local n = #cum
+	if n < 2 or centre - half < 0 or centre + half > cum[n] then return false end
+	local a = sampleAt(pts, cum, centre - half)
+	local b = sampleAt(pts, cum, centre + half)
+	local chord = b - a
+	local flat = Vector3.new(chord.X, 0, chord.Z)
+	local len = flat.Magnitude
+	if len < 1e-3 then return false end
+	local dir = flat / len
+	local tol = STRAIGHT_TOLERANCE * h
+	for k = 1, STRAIGHT_SAMPLES - 1 do
+		local f = k / STRAIGHT_SAMPLES
+		local p = sampleAt(pts, cum, centre - half + width * f)
+		local rel = Vector3.new(p.X - a.X, 0, p.Z - a.Z)
+		if (rel - dir * rel:Dot(dir)).Magnitude > tol then return false end
+		if math.abs(p.Y - (a.Y + chord.Y * f)) > tol then return false end
+	end
+	return true
+end
+
 -- The strip of carriageway a name is painted on: how wide it is, and how far off the
 -- road's centre line it sits. A road with a CENTRE MEDIAN has no carriageway on its centre
 -- line at all -- the name laid there was buried under the planted strip -- so it moves onto
@@ -363,6 +402,31 @@ local function applyStreet(street: Street, h: number, right: Vector3, force: boo
 			end
 		end
 		g.sign = sign
+		if g.whole then
+			-- Along the span's chord, pitched with the road: the ends sit on the surface too.
+			local half = g.widthUnit * h * 0.5
+			local a = sampleAt(pts, cum, g.centre - half)
+			local b = sampleAt(pts, cum, g.centre + half)
+			local mid, tangent = sampleAt(pts, cum, g.centre)
+			if street.offset ~= 0 then
+				local shift = UP:Cross(tangent) * street.offset
+				a += shift
+				b += shift
+				mid += shift
+			end
+			local along = b - a
+			local vZ3 = if along.Magnitude > 1e-4 then -along.Unit * sign else -tangent * sign
+			local flatZ = Vector3.new(vZ3.X, 0, vZ3.Z)
+			flatZ = if flatZ.Magnitude > 1e-4 then flatZ.Unit else -tangent * sign
+			local rightV = UP:Cross(flatZ)
+			local upV = vZ3:Cross(rightV).Unit
+			local centreY = (a.Y + b.Y) * 0.5
+			local y = centreY + RoadConstants.ROAD_THICKNESS * 0.5 + SURFACE_LIFT
+			g.part.Size = Vector3.new(h, PLATE_THICKNESS, g.widthUnit * h)
+			g.part.CFrame = CFrame.fromMatrix(Vector3.new(mid.X, y, mid.Z), rightV, upV, vZ3)
+			g.gui.PixelsPerStud = pixels
+			continue
+		end
 		local pos, tangent = sampleAt(pts, cum, g.centre + g.offsetUnit * h * sign)
 		-- Off the centre line onto one carriageway when the road has a median. Taken from the
 		-- TANGENT, not the reading direction, so the name keeps to the same side of the road
@@ -437,6 +501,21 @@ local function layoutLabel(
 		local a = pxToStuds(advancePx(string.sub(name, k, k)), h)
 		advances[k] = a
 		width += a
+	end
+	local widthPx = width / h * TEXT_PX / TEXT_FILL
+	if budget > 0 and widthPx <= MAX_WHOLE_PX and spanIsStraight(street.pts, street.cum, centre, width, h) then
+		local part, gui = makeGlyph(folder, name)
+		table.insert(street.parts, part)
+		table.insert(street.glyphs, {
+			part = part,
+			gui = gui,
+			centre = centre,
+			offsetUnit = 0,
+			widthUnit = width / h,
+			sign = 1,
+			whole = true,
+		})
+		return 1
 	end
 	-- Offsets are stored in reading order out from the label's midpoint. Which way
 	-- that order runs along the street is decided from the camera, at apply time.

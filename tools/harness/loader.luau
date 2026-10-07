@@ -247,6 +247,12 @@ local function makeEnv(isServer: boolean)
 	env.DateTime = { now = function() return { UnixTimestamp = os.time(), UnixTimestampMillis = os.time() * 1000 } end }
 	env.debug = setmetatable({ profilebegin = function() end, profileend = function() end, setmemorycategory = function() end, resetmemorycategory = function() end }, { __index = debug })
 	env.TweenInfo = env.TweenInfo or { new = function(...) return { ... } end }
+	local function params(defaults)
+		return { new = function() return table.clone(defaults) end }
+	end
+	env.RaycastParams = env.RaycastParams or params({ FilterDescendantsInstances = {}, FilterType = "Exclude", IgnoreWater = false, RespectCanCollide = false })
+	env.OverlapParams = env.OverlapParams or params({ FilterDescendantsInstances = {}, FilterType = "Exclude", MaxParts = 0 })
+	env.Font = env.Font or { new = function(...) return { ... } end, fromEnum = function(e) return { e } end, fromName = function(n) return { n } end }
 	return env
 end
 
