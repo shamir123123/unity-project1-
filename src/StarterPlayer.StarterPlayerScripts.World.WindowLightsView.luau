@@ -75,6 +75,10 @@ end
 -- has nothing to do until evening -- it walked every window in the city each second all day.
 local ON_EARLIEST, OFF_LATEST = 17.5, 29.5
 local _allDark = false
+-- ...except to drop windows whose buildings are gone (the walk below is also what lets go of
+-- them): once a minute by day, so a demolished street is not held until evening.
+local COMPACT_SECONDS = 60
+local _compactedAt = 0
 
 local function sweep()
 	-- Wrap the clock so an evening-to-morning window is one contiguous range:
@@ -83,7 +87,8 @@ local function sweep()
 	if h < 12 then h += 24 end
 	local on = Settings.get("windowLights") ~= false
 	local dark = not on or h < ON_EARLIEST or h >= OFF_LATEST
-	if dark and _allDark then return end
+	if dark and _allDark and os.clock() - _compactedAt < COMPACT_SECONDS then return end
+	_compactedAt = os.clock()
 	local i, n = 1, 0
 	while i <= #_parts do
 		n += 1

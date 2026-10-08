@@ -13,7 +13,13 @@ H.patches["StarterPlayer.StarterPlayerScripts.World.WindowLightsView"] = functio
 	if process.args[1] == "orig" then
 		src = process.exec("git", { "show", "5858734:src/StarterPlayer.StarterPlayerScripts.World.WindowLightsView.luau" }).stdout
 	end
-	return counted(src)
+	src = counted(src)
+	if process.env.COMPACT then
+		src = string.gsub(src, "local COMPACT_SECONDS = 60", "local COMPACT_SECONDS = " .. process.env.COMPACT)
+		-- record how many windows each pass starts with
+		src = string.gsub(src, "\tlocal i, n = 1, 0\n", "\tlocal i, n = 1, 0\n\tshared.sizes = shared.sizes or {}; table.insert(shared.sizes, #_parts)\n", 1)
+	end
+	return src
 end
 local settingsStub = { get = function() return nil end, onChanged = function() end }
 H.boot({ server = false, overrides = { ["StarterPlayer.StarterPlayerScripts.Core.Settings"] = settingsStub } })
@@ -52,4 +58,15 @@ settle(1.2)
 local v0 = H.sharedVisits()
 settle(5)
 log(string.format("daytime, 5 s idle: %d window visits (%d windows)", H.sharedVisits() - v0, N))
+if process.env.COMPACT then
+	-- half the buildings go by day: a compaction pass must let their windows go
+	local kids = zb:GetChildren()
+	for i = 1, #kids // 2 do kids[i]:Destroy() end
+	local v1 = H.sharedVisits()
+	settle(tonumber(process.env.COMPACT) + 0.5)
+	local v2 = H.sharedVisits()
+	settle(tonumber(process.env.COMPACT) + 0.5)
+	local sizes = H.envShared().sizes
+	log(string.format("after removing half by day: windows tracked at the last passes: %s", table.concat(sizes, ",", math.max(1, #sizes - 3))))
+end
 process.exit(0)

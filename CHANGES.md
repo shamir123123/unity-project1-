@@ -253,8 +253,9 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   Same colours.
 - **Window lights** (`WindowLightsView`): walked every window in the city once a second,
   all day, though no window can be lit between 05:30 and 17:30. After one pass puts them
-  all out it now waits for evening. Offline, 2,000 windows: daytime 10,000 window visits
-  per 5 s → 0; same lit counts at night.
+  all out it now waits for evening, walking them once a minute only to let go of windows
+  whose buildings are gone. Offline, 2,000 windows: daytime visits 2,000 a second →
+  2,000 a minute; same lit counts at night; removed buildings' windows are dropped by day.
 - **Walkers** (`PedestrianView`): one CFrame write per walker per frame; now one
   `workspace:BulkMoveTo` per frame, as the car view already does. Same positions offline.
 - **Hover tooltip** (`BuildingInfoController`): every frame the cursor was over a road or
