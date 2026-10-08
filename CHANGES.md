@@ -34,6 +34,13 @@ Vector3 is ~20–50× slower than Roblox's native vectors. See "Verify in Studio
 
 ## Second pass — 2026-10-08 (graphics controls, night look, street furniture)
 
+In short: a **Lowest** preset (every object on its simplest model, sky and foam still);
+**windows glow at night** on houses, mid-rises and shops too, only where someone lives and
+power reaches; **lamp lenses glow only at night**; streets use the **street kit's utility
+boxes**; **placing a long road ~2.7× faster** on the server (121 → 45 ms Lune on 544 roads)
+and the frame after a short edit 27 → 9 ms — all with results identical to the original code
+in the equivalence tests.
+
 ### Lowest graphics preset
 
 A sixth choice, **Lowest**, left of Low in Settings → Graphics → Quality preset (labels in
@@ -157,50 +164,59 @@ Equivalence: `test_crossings_equiv` seeds 7, 11 and 23 give the original code's 
 `status  Studio path  ClassName  file`. For each row, replace the script's Source in Studio
 with the file's contents. For `A` rows, first create a script of that class at that path.
 
-Current list (run the script for the up-to-date one):
+Current list (run the script for the up-to-date one). If you already applied the first batch,
+re-apply the rows marked in the last column:
 
-| | Studio path | Class |
-|---|---|---|
-| M | ReplicatedStorage.Road.RoadNavigationGraph | ModuleScript |
-| M | ReplicatedStorage.Road.RoadNetwork | ModuleScript |
-| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |
-| M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
-| M | ServerScriptService.Services.City.CityStatsService | ModuleScript |
-| M | ServerScriptService.Services.City.Civic.CrimeService | ModuleScript |
-| M | ServerScriptService.Services.City.Civic.DeathcareService | ModuleScript |
-| M | ServerScriptService.Services.City.Civic.SicknessService | ModuleScript |
-| M | ServerScriptService.Services.City.Economy.CityEconomyService | ModuleScript |
-| M | ServerScriptService.Services.City.Economy.SupplyService | ModuleScript |
-| M | ServerScriptService.Services.City.PowerService | ModuleScript |
-| M | ServerScriptService.Services.City.ProgressionService | ModuleScript |
-| M | ServerScriptService.Services.City.Simulation.CitizenService | ModuleScript |
-| M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |
-| M | ServerScriptService.Services.City.WaterService | ModuleScript |
-| M | ServerScriptService.Services.NPC.NPCDriverService | ModuleScript |
-| M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |
-| M | ServerScriptService.Services.Road.RoadService | ModuleScript |
-| M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
-| M | StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.SeasonTintClient | LocalScript |
-| M | StarterPlayer.StarterPlayerScripts.World.AmbienceController | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.AmbientCityView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.AssetLODView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.NodeToolView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.PedestrianView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.RoadEditPreview | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.RoadMeshView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.RoadPieces | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.SolarTrackerView | ModuleScript |
-| **A** | StarterPlayer.StarterPlayerScripts.World.**StreetLightView** | ModuleScript (new) |
-| M | StarterPlayer.StarterPlayerScripts.World.StreetNameView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.TrafficSignView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.WaterView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.WindTurbineView | ModuleScript |
-| M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
+| | Studio path | Class | Changed again 2026-10-08 |
+|---|---|---|---|
+| M | ReplicatedStorage.Road.RoadNavigationGraph | ModuleScript | yes |
+| M | ReplicatedStorage.Road.RoadNetwork | ModuleScript | yes |
+| M | ReplicatedStorage.Road.RoadSceneRenderer | ModuleScript | yes |
+| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |  |
+| M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |  |
+| M | ServerScriptService.Services.City.CityStatsService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Civic.CrimeService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Civic.DeathcareService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Civic.SicknessService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Economy.CityEconomyService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Economy.SupplyService | ModuleScript |  |
+| M | ServerScriptService.Services.City.PowerService | ModuleScript |  |
+| M | ServerScriptService.Services.City.ProgressionService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Simulation.CitizenService | ModuleScript |  |
+| M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |  |
+| M | ServerScriptService.Services.City.WaterService | ModuleScript |  |
+| M | ServerScriptService.Services.NPC.NPCDriverService | ModuleScript |  |
+| M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |  |
+| M | ServerScriptService.Services.Road.RoadReplicationService | ModuleScript | yes |
+| M | ServerScriptService.Services.Road.RoadService | ModuleScript |  |
+| M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |  |
+| M | StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.Core.RenderPressure | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.Core.Settings | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.SeasonTintClient | LocalScript |  |
+| M | StarterPlayer.StarterPlayerScripts.UI.Locale | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.UI.SettingsPanel | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.AmbienceController | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.AmbientCityView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.AssetLODView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.CitizenAvatarView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.NPCDriverView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.NodeToolView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.PedestrianView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.RoadEditPreview | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.RoadMeshView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.RoadPieces | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.SolarTrackerView | ModuleScript |  |
+| **A** | StarterPlayer.StarterPlayerScripts.World.**StreetLightView** | ModuleScript (new) | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.StreetNameView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.TrafficSignView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.WaterView | ModuleScript | yes |
+| M | StarterPlayer.StarterPlayerScripts.World.WindTurbineView | ModuleScript |  |
+| M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript | yes |
 
 `CODE_INDEX.md` already lists the one new module (StreetLightView); regenerate it in Studio
 when convenient (line counts of the changed scripts moved).
@@ -451,6 +467,21 @@ these had no labels at all, so a server spike could not be pinned on a system).
    of the labels above should stand out as a periodic spike.
 
 ## Your call (not changed — a player could notice)
+
+Added 2026-10-08:
+- **Night lights follow power and occupancy** (built that way; one line to undo): an
+  unpowered, empty or abandoned building's windows stay dark — offices too. `served()` in
+  `WindowLightsView` returning `true` makes every window light regardless.
+- **Factories' windows stay dark** (their `Fixed` mesh includes roller doors). Far buildings
+  (LOD2) stay dark at night: the real fix is an emissive window mask per kit atlas, exported
+  from the Blender kits and set by the kit setup scripts.
+- **Autosave hitch**: `BlobCodec` packs with Zstd level 19 (its own comment: ~110 ms per pack,
+  120 KB vs 147 KB at level 9) in one engine call every 10 minutes. A lower level trades save
+  size for a shorter server hitch; left at 19.
+- **Lane-change rules** (seen while tracing, not changed): `clearLaneRulesForSegment` looks for
+  keys starting `"<segmentId>|"`, but rule keys are `"S<seg>:L…:F>…"`, so rules of removed
+  roads are never cleared; and a rule edit is not re-broadcast (the per-edit broadcast sends
+  only gates with new ids). No client script sends that edit today, so neither shows yet.
 
 Things I would A/B in Studio against the 40 fps (Medium, weak device) / 240 fps (Ultra,
 strong PC) targets. I measured none of them here (no GPU), so none were changed:
