@@ -726,12 +726,16 @@ local function invalidateBlock(sk: number)
 	if cur then cur.sig = nil end
 end
 
+-- A variant parked this recently may still be on screen (park unparents it two frames on), so
+-- eviction leaves it be; the cap is met again on a later park.
+local PARK_SETTLE = 0.25
 local function evictVariants()
 	-- a Low device keeps proportionally less ground parked
+	local settled = os.clock() - PARK_SETTLE
 	while _variantTris > MAX_VARIANT_TRIS * math.min(_detailScale, 1) do
 		local bestSk: number? = nil
 		local bestSig: string? = nil
-		local bestAt = math.huge
+		local bestAt = settled
 		for sk, byBlock in _variants do
 			for sig, v in byBlock do
 				if v.usedAt < bestAt then bestSk, bestSig, bestAt = sk, sig, v.usedAt end
