@@ -58,7 +58,8 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.World.WindTurbineView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
 
-After applying, regenerate `CODE_INDEX.md` (one new module: StreetLightView).
+`CODE_INDEX.md` already lists the one new module (StreetLightView); regenerate it in Studio
+when convenient (line counts of the changed scripts moved).
 
 ## What changed, and why
 

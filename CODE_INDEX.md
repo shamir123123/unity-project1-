@@ -614,7 +614,7 @@
 - `ServerStorage.StaffUI.StaffTools.UIOverlapAudit` [Module L207] — !strict Finds HUD surfaces that collide or run off the screen -- at every screen size, from a
   - fns: UIOverlapAudit.run
 
-## StarterPlayer (163)
+## StarterPlayer (164)
 
 - `StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap` [Local L379] — !strict
 - `StarterPlayer.StarterPlayerScripts.Controllers.BottomBarController` [Module L1441] — !strict BUILD SECTIONS + THE BUILD DOCK.
@@ -910,6 +910,8 @@
   - fns: spec.run
 - `StarterPlayer.StarterPlayerScripts.World.SolarTrackerView` [Module L122] — !strict SolarTrackerView -- turns the panels of every solar tracker row to the sun (tag SolarTracker: each
   - fns: SolarTrackerView.Start, SolarTrackerView.Stop
+- `StarterPlayer.StarterPlayerScripts.World.StreetLightView` [Module L162] — !strict StreetLightView -- the light that lamps cast, on this client.
+  - fns: StreetLightView.Start
 - `StarterPlayer.StarterPlayerScripts.World.StreetNameView` [Module L735] — !strict StreetNameView
   - fns: StreetNameView.Start
 - `StarterPlayer.StarterPlayerScripts.World.TrafficJamView` [Module L264] — !strict TrafficJamView
