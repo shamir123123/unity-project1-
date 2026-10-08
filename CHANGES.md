@@ -92,6 +92,20 @@ is plain unlit `SmoothPlastic` in its own colour by day and Neon from dusk (17:4
 touched. Offline check: `tools/harness/test_streetlights.luau` (noon 0/60 lenses glowing,
 bridge 0/2; 22:00 60/60 and 2/2 with 32 lights cast on Medium; 07:00 0/60, 0/2).
 
+### Street furniture: the new street-kit utility boxes
+
+Streets placed the old single-mesh cabinets (`Templates.Asset.Props.Road.StreetFurniture.
+UtilityBox_Big/Wide/Small`). They now place the street kit's cabinets,
+`Templates.Asset.Props.StreetKit.UtilityBox_Large/Medium/Small` (body + paint mesh), looked
+up in that folder by path — the bare name also matches the copies in transit depot yards and
+`PropsRetired`. Same spacing and spot as before (one per ~320 studs, back of the footway,
+seeded by position so a re-render or reload puts the same box in the same place); doors face
+the road (kit props face −Z), and each box is painted from the kit's own `Tints` palette
+(light grey / utility green / beige), picked by position. The old cabinet models are left in
+ServerStorage, unused. Offline check: `tools/harness/test_utilityboxes.luau` (4 cabinets on
+1400 studs: facing the road 4/4, inside the footway 4/4, palette paint 4/4, decoy used 0,
+re-render identical).
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as

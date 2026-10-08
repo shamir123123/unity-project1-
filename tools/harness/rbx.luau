@@ -235,6 +235,10 @@ function methods:GetBoundingBox()
 	if not lo then return roblox.CFrame.new(), roblox.Vector3.zero end
 	return roblox.CFrame.new((lo + hi) * 0.5), hi - lo
 end
+function methods:GetExtentsSize()
+	local _, size = self:GetBoundingBox()
+	return size
+end
 function methods:GetPivot()
 	local own = self._props.Pivot or self._props.CFrame
 	if own then return own end

@@ -30,3 +30,4 @@ run 300 test_pedestrians.luau
 run 300 test_windowlights.luau
 run 900 test_seasontint.luau
 run 600 test_assetlod.luau
+run 300 test_utilityboxes.luau

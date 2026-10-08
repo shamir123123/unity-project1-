@@ -1763,7 +1763,9 @@ end
 -- a ServerStorage template cloned into the SEGMENT model, so each one replicates
 -- once, carries no persistence of its own and dies with the road it belongs to.
 --   Manhole covers -- on the carriageway, down a wheel track, alternating sides.
---   Utility boxes  -- at the back of the footway, broad side facing the road.
+--   Utility boxes  -- at the back of the footway, doors facing the road: the street kit's
+--                     cabinets (Templates.Asset.Props.StreetKit, user 2026-10-08), each painted
+--                     from the kit's own palette.
 --   Name blades    -- one per arm, at junctions the lights do not control.
 local MANHOLE_SPACING = 420
 local MANHOLE_MIN_RUN = 170
@@ -1771,8 +1773,10 @@ local MANHOLE_JITTER_ALONG = 45
 local MANHOLE_LIFT = RoadConstants.ROAD_THICKNESS * 0.5 + 0.02
 local BOX_SPACING = 320
 local BOX_MIN_RUN = 130
-local BOX_KEYS = { "UtilityBox_Big", "UtilityBox_Wide", "UtilityBox_Small" }
+local BOX_KEYS = { "UtilityBox_Large", "UtilityBox_Medium", "UtilityBox_Small" }
+local BOX_KIT_PATH = { "Templates", "Asset", "Props", "StreetKit" }
 local BOX_JITTER_ALONG = 40 -- studs of scatter up/down the kerb
+local BOX_BACK_CLEAR = 0.3 -- studs between a cabinet's back and the footway's outer edge
 
 -- -1..1 from a position, not from math.random: a re-render must reproduce it.
 local function scatter(seed: number): number
@@ -1831,6 +1835,56 @@ local function addManholes(model: Model, spec: any, vMode: string?, setbackS: nu
 	end)
 end
 
+-- The street kit's cabinets by name, from their own folder: the name alone also finds the
+-- service-yard copies (transit depots, retired plant kits) that ServerStorage holds.
+type BoxKit = { template: Model, depth: number, tints: { Color3 } }
+local _boxKits: { [string]: BoxKit } = {}
+local _boxKitWarned = false
+
+local function boxKit(name: string): BoxKit?
+	if not RunService:IsServer() then return nil end
+	local cached = _boxKits[name]
+	if cached and cached.template.Parent then return cached end
+	local folder: Instance? = game:GetService("ServerStorage")
+	for _, step in BOX_KIT_PATH do
+		folder = folder and folder:FindFirstChild(step)
+	end
+	local template = folder and folder:FindFirstChild(name)
+	if not (template and template:IsA("Model")) then
+		if not _boxKitWarned then
+			_boxKitWarned = true
+			warn(`[RoadSceneRenderer] no {name} in ServerStorage.{table.concat(BOX_KIT_PATH, ".")} -- utility boxes are not placed`)
+		end
+		return nil
+	end
+	local tints: { Color3 } = {}
+	local json = template:GetAttribute("Tints")
+	if typeof(json) == "string" then
+		local ok, list = pcall(function() return game:GetService("HttpService"):JSONDecode(json) end)
+		if ok and typeof(list) == "table" then
+			for _, t in list do
+				if typeof(t) == "table" and #t == 3 then
+					table.insert(tints, Color3.fromRGB(t[1], t[2], t[3]))
+				end
+			end
+		else
+			warn(`[RoadSceneRenderer] {name}: unreadable Tints attribute -- painted as shipped`)
+		end
+	end
+	local kit = { template = template, depth = template:GetExtentsSize().Z, tints = tints }
+	_boxKits[name] = kit
+	return kit
+end
+
+local function paintBox(clone: Model, tint: Color3)
+	for _, d in clone:GetDescendants() do
+		local host = d.Parent
+		if d:IsA("SurfaceAppearance") and host and host:GetAttribute("Paint") then
+			d.Color = tint
+		end
+	end
+end
+
 local function addUtilityBoxes(model: Model, spec: any, vMode: string?, setbackS: number, setbackE: number, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3)
 	if not dressable(spec, vMode) or spec.noSidewalk then return end
 	local sideSign = if hasFootway(spec, 1) then 1 elseif hasFootway(spec, -1) then -1 else 0
@@ -1843,22 +1897,28 @@ local function addUtilityBoxes(model: Model, spec: any, vMode: string?, setbackS
 
 	-- Back of the footway, where a cabinet stands clear of the walking line: the
 	-- lamps take the kerb (0.5 of the width) and the trees the outer third (0.7).
-	local lateral = spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH * 0.88
+	local footEdge = spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH
 	local count = math.max(math.floor((s1 - s0) / BOX_SPACING + 0.5), 1)
 
 	forEachStation(p0, p1, p2, p3, length, s0, s1, count, function(idx, pos, right)
 		-- Seeded off the station's own position, so which cabinet stands here, how far
-		-- it slides along the kerb and how square it sits are all scattered but fixed.
+		-- it slides along the kerb and its paint are all scattered but fixed.
 		local seed = pos.X * 0.7 + pos.Z * 1.3
-		local template = propTemplate(BOX_KEYS[math.floor(math.abs(scatter(seed) * 1000)) % #BOX_KEYS + 1])
-		if not template then return end
-		local clone = template:Clone()
+		local kit = boxKit(BOX_KEYS[math.floor(math.abs(scatter(seed) * 1000)) % #BOX_KEYS + 1])
+		if not kit then return end
+		local clone = kit.template:Clone()
 		clone.Name = `UtilityBox_{idx}`
 		local out = right * sideSign
 		local forward = Vector3.yAxis:Cross(right)
 		local slide = forward * (scatter(seed + 11) * BOX_JITTER_ALONG)
+		local lateral = math.min(footEdge - kit.depth * 0.5 - BOX_BACK_CLEAR, spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH * 0.88)
 		local base = pos + out * lateral + slide + Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0)
-		clone:PivotTo(propCFrame(base, -out))
+		-- Kit props face -Z (Blender's front): look at the road, broad side along the kerb.
+		local toRoad = Vector3.new(-out.X, 0, -out.Z)
+		clone:PivotTo(CFrame.lookAt(base, base + toRoad))
+		if #kit.tints > 0 then
+			paintBox(clone, kit.tints[math.floor(math.abs(scatter(seed + 23) * 1000)) % #kit.tints + 1])
+		end
 		clone.Parent = model
 	end)
 end
