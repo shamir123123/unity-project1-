@@ -48,6 +48,7 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.World.StreetNameView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficSignView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.WaterView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
 
 After applying, regenerate `CODE_INDEX.md` (one new module: StreetLightView).
@@ -158,6 +159,11 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   text and could keep its text GUI switched on far away. Offline (1,200 roads, 832 poles):
   per road edit **195 → 14 ms**; sweep after a 500-stud pan **37 → 1.1 ms**; the drawn
   signs are identical; cached and full plans identical across 8 kinds of edit.
+- **Shoreline foam** (`WaterView`): every shoreline water tile within ~2,000 studs (up to
+  four 256×256 images) was repainted and re-uploaded **on the same frame**, 12 times a
+  second — a regular spike anywhere near a coast. Each tile now keeps its own clock, phased
+  a quarter interval apart. Offline: worst repaints in one frame **4 → 1** at 60 and 240 fps;
+  every tile still 12 Hz.
 - **Prop LOD at high frame rates** (`AssetLODView`): while the camera moves, the prop ladder
   scans and swaps in fixed slices of 1 ms + 3 ms per frame — fine at 60 fps, but most of a
   240 fps frame (4.2 ms). The slices now shrink with the frame time (a 240 fps frame gets a

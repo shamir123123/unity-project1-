@@ -38,7 +38,8 @@ local ANIM_DIST = TILE -- only animate shore tiles within ~1 tile of the camera
 local MASK_CELL = 64 -- studs per ocean-connectivity cell (foam only on ocean-connected water)
 local MASK_DIM = math.ceil(Constants.MAP_EXTENT / MASK_CELL)
 
-type Tile = { img: EditableImage, x0: number, z0: number, depth: buffer, base: buffer, foam: buffer, foamN: number, shore: boolean }
+-- animIn: seconds until this tile's next foam repaint (see animStep).
+type Tile = { img: EditableImage, x0: number, z0: number, depth: buffer, base: buffer, foam: buffer, foamN: number, shore: boolean, animIn: number }
 
 local _params: any = nil
 local _hm: Heightmap.Heightmap = Heightmap.new() -- client prediction: chunks the overlay samples
@@ -47,7 +48,6 @@ local _conn: RBXScriptConnection? = nil
 local _animConn: RBXScriptConnection? = nil
 local _gen = 0 -- build generation; a new city cancels an in-flight tile loop
 local _time = 0 -- wave animation clock
-local _accum = 0
 local _oceanMask: buffer? = nil -- MASK_DIM^2, 1 = water cell connected to the open sea
 
 local function num(v: any, d: number): number
@@ -189,18 +189,22 @@ local function onStroke(stroke: any, allowed: TerrainBrush.AllowedFn?)
 	end
 end
 
--- Per frame: scroll the foam on shoreline tiles near the camera. Throttled to
--- ANIM_INTERVAL; cheap (buffer reads + lerps, no terrain, no math.noise).
+-- Per frame: scroll the foam on shoreline tiles near the camera, each tile every ANIM_INTERVAL.
+-- Cheap per pixel (buffer reads + lerps, no terrain, no math.noise), but a tile is a 256x256
+-- repaint and upload, and every tile in range used to repaint on the SAME frame -- a spike 12
+-- times a second along any coast. Each tile now keeps its own clock, phased apart at build.
 local function animStep(dt: number)
 	_time += dt
-	_accum += dt
-	if _accum < ANIM_INTERVAL then return end
-	_accum = 0
 	local cam = Workspace.CurrentCamera
 	local cp = cam and cam.CFrame.Position
 	if not cp then return end
 	for _, t in _tiles do
 		if t.shore then
+			t.animIn -= dt
+			if t.animIn > 0 then continue end
+			-- Modulo, not +interval: a long frame neither queues repaints nor loses the tile's phase.
+			t.animIn %= ANIM_INTERVAL
+			if t.animIn == 0 then t.animIn = ANIM_INTERVAL end
 			local dx = (t.x0 + TILE / 2) - cp.X
 			local dz = (t.z0 + TILE / 2) - cp.Z
 			if dx * dx + dz * dz <= ANIM_DIST * ANIM_DIST then
@@ -233,7 +237,7 @@ function WaterView.build(params: any)
 	WaterView.clear()
 	local myGen = _gen
 	_params = params
-	_time, _accum = 0, 0
+	_time = 0
 	buildOceanMask()
 	tuneEngineWater()
 	local folder = Instance.new("Folder")
@@ -267,7 +271,10 @@ function WaterView.build(params: any)
 				;(decal :: any).TextureContent = Content.fromObject(img)
 				decal.Parent = part
 				part.Parent = folder
-				_tiles[#_tiles + 1] = { img = img, x0 = x0, z0 = z0, depth = depth, base = base, foam = foam, foamN = foamN, shore = shore }
+				-- Phased by tile parity, so the (at most 2x2) tiles in range repaint a quarter
+				-- interval apart, each on its own frame.
+				local phase = ((i % 2) + 2 * (j % 2)) / 4 * ANIM_INTERVAL
+				_tiles[#_tiles + 1] = { img = img, x0 = x0, z0 = z0, depth = depth, base = base, foam = foam, foamN = foamN, shore = shore, animIn = phase }
 				RunService.Heartbeat:Wait()
 			end
 		end
