@@ -349,6 +349,12 @@ strong PC) targets. I measured none of them here (no GPU), so none were changed:
 - Vehicle and plant-kit MeshParts use `RenderFidelity = Precise` on purpose (they switch to
   their own LOD bodies); left alone.
 
+Not changed, worth a look in the server MicroProfiler: an autosave (every 10 minutes by
+default) serializes and packs the whole city in one server frame (`CitySlotService` →
+`CitySerializer.serialize` + `BlobCodec.pack`). Spreading it over frames would risk a save
+that mixes two states of the city, so it was left alone; if it shows as a spike, snapshotting
+first and packing across frames is the safe split.
+
 Not changed, for scope: the server's plot `refitSeats` rebuilds a road index over every road
 in the city after each edit (`PlotGeometry.buildRoadIndex`, linear in roads: ~2–5 ms on a
 1,200-road city by the harness ratio). Making it incremental means re-deriving its junction
