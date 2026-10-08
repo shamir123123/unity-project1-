@@ -20,23 +20,23 @@ Current list (run the script for the up-to-date one):
 
 | | Studio path | Class |
 |---|---|---|
+| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |
+| M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
 | M | ServerScriptService.Services.City.CityStatsService | ModuleScript |
 | M | ServerScriptService.Services.City.Civic.CrimeService | ModuleScript |
 | M | ServerScriptService.Services.City.Civic.DeathcareService | ModuleScript |
 | M | ServerScriptService.Services.City.Civic.SicknessService | ModuleScript |
 | M | ServerScriptService.Services.City.Economy.CityEconomyService | ModuleScript |
+| M | ServerScriptService.Services.City.Economy.SupplyService | ModuleScript |
 | M | ServerScriptService.Services.City.PowerService | ModuleScript |
 | M | ServerScriptService.Services.City.ProgressionService | ModuleScript |
-| M | ServerScriptService.Services.City.Economy.SupplyService | ModuleScript |
 | M | ServerScriptService.Services.City.Simulation.CitizenService | ModuleScript |
-| M | ServerScriptService.Services.NPC.NPCDriverService | ModuleScript |
-| M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |
-| M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |
 | M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |
 | M | ServerScriptService.Services.City.WaterService | ModuleScript |
+| M | ServerScriptService.Services.NPC.NPCDriverService | ModuleScript |
+| M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |
-| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |
-| M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
+| M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
 | M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |
@@ -269,12 +269,40 @@ these had no labels at all, so a server spike could not be pinned on a system).
    above one bake every ~0.4 s; flying back is instant.
 5. Settings → Low / Medium / Ultra: terrain detail and lamp count follow.
 6. Night: nearest lamps lit, signal heads still switch phases.
+7. Pan along a busy avenue with traffic signs, and place a road near signs: signs stay put
+   (no re-placing of every sign 0.6 s after the edit); text appears close up only.
+8. A coast: no 12 Hz stutter from the shoreline foam. A rain or fog front rolling in: no
+   frame-time rise for its 40 s fade. A big traffic jam: its badge still appears after ~30 s.
+9. MicroProfiler (Ctrl+F6) on both client and server while flying around a big city: none
+   of the labels above should stand out as a periodic spike.
+
+## Your call (not changed — a player could notice)
+
+Things I would A/B in Studio against the 40 fps (Medium, weak device) / 240 fps (Ultra,
+strong PC) targets. I measured none of them here (no GPU), so none were changed:
+
+- **Frosted glass** (High/Ultra, `Kit.Frost`): every visible panel is a Glass pane plus a
+  scene DepthOfFieldEffect — a full-screen blur pass every frame any panel is up. Unmeasured,
+  but full-screen passes are what a 4 ms frame can least afford. Settings → Frosted glass off
+  to compare.
+- **Ultra depth of field** (`CityBuild_DistantDepth`): another full-screen pass.
+- **Soft shadows** (High/Ultra, `ShadowSoftness` 0.45) vs Hard (Medium, 0.2).
+- **Medium keeps `fullCitySim` on**: every real car and walker is drawn and interpolated.
+  Low turns it off (a few local ambient ones instead). On a weak device at Medium this is
+  the biggest CPU lever left.
+- **Lamp light counts** per preset (`StreetLightView`: Low 0 / Medium 32 / High 96 /
+  Ultra 192) are my guesses.
+- Vehicle and plant-kit MeshParts use `RenderFidelity = Precise` on purpose (they switch to
+  their own LOD bodies); left alone.
 
 ## Paths checked (per CLAUDE.md 0c)
 
-Offline only: fresh load (bakes static), edits after load (live), many edits in one frame,
-budget refusal, settle, removal of the last piece in a cell, server models replicating
-after the client drew the piece, city load through the render worker (`waitForRender`).
-**Not checked**: Studio Play, live servers, multiplayer (another player's edits take the
-same client path as yours), teleport arrival, rejoin into a standing city, a load that
-fails halfway.
+Offline only (`tools/harness/run_all.sh` runs every check): fresh load (bakes static), edits
+after load (live), many edits in one frame, budget refusal, settle, removal of the last piece
+in a cell, server models replicating after the client drew the piece, city load through the
+render worker (`waitForRender`); sign plans cached vs full across add / long crossing road /
+signals added / road removed / upgrade in place / speed override / full re-send; window,
+lamp and foam schedules at 30, 60 and 240 fps; old-vs-new digests for walkers, solar panels,
+jam badges, drawn signs and road cells. **Not checked**: Studio Play, live servers, GPU cost,
+multiplayer (another player's edits take the same client path as yours), teleport arrival,
+rejoin into a standing city, a load that fails halfway.
