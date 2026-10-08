@@ -82,6 +82,16 @@ unpowered 0/20, served 45/60, factories 0/10; power restored at 22:00 → 13/20 
 (their own schedules); 07:00: all off, all 100 glazing textures back. Not run in Studio: look
 at a street of houses at night — the glow should fill the window openings only.
 
+### Street lamps glow only at night
+
+The lamps' light pools were already night-only in this branch (`StreetLightView`, first pass),
+but their Neon lens heads still shone at noon. Now every lamp lens — street lamps (`Lens`,
+`LensLong`, `LensShort`), car-park `Bulb`s and the bridge `LampLens` under each bridge lamp —
+is plain unlit `SmoothPlastic` in its own colour by day and Neon from dusk (17:45) to dawn
+(06:30), switched across the whole city in batches of 1500 a frame. Signal heads are never
+touched. Offline check: `tools/harness/test_streetlights.luau` (noon 0/60 lenses glowing,
+bridge 0/2; 22:00 60/60 and 2/2 with 32 lights cast on Medium; 07:00 0/60, 0/2).
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as
