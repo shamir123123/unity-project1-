@@ -226,16 +226,29 @@ function methods:PivotTo(cf)
 	self._props.Pivot = cf
 	self._props.CFrame = cf
 end
-function methods:AddTag(t)
+-- CollectionService:AddTag(inst, tag) lands here too (methods win over service props), so
+-- a call on the service with an instance argument tags that instance instead.
+function methods:AddTag(t, tag)
+	if self._class == "CollectionService" and type(t) == "table" then
+		local fire = self._props.AddTag
+		if fire then return fire(self, t, tag) end
+		return t:AddTag(tag)
+	end
 	self._tags[t] = true
 	_allTags[t] = _allTags[t] or {}
 	_allTags[t][self] = true
 end
-function methods:RemoveTag(t)
+function methods:RemoveTag(t, tag)
+	if self._class == "CollectionService" and type(t) == "table" then
+		local fire = self._props.RemoveTag
+		if fire then return fire(self, t, tag) end
+		return t:RemoveTag(tag)
+	end
 	self._tags[t] = nil
 	if _allTags[t] then _allTags[t][self] = nil end
 end
-function methods:HasTag(t)
+function methods:HasTag(t, tag)
+	if self._class == "CollectionService" and type(t) == "table" then return t._tags[tag] == true end
 	return self._tags[t] == true
 end
 function methods:GetTags()
