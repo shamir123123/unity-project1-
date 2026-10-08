@@ -513,6 +513,15 @@ clusters per edit — doable, but too intricate to do blind.
 
 ## Paths checked (per CLAUDE.md 0c)
 
+Second pass (2026-10-08), offline only: the Lowest preset switched on and off live (AssetLODView,
+NPCDriverView, WaterView react to the setting; new models and a resumed city start forced);
+night lights on a fresh evening, a building losing and regaining power at night, dawn putting
+every glazing texture back, demolished buildings let go; lamp lenses at noon, night, morning and
+lamps added at night; utility boxes on first render and a re-render; road placement and lane
+broadcasts on the grid, in random placement runs and against the original code. Not tested:
+anything in Studio, several players, the teleport and rejoin paths (none of today's changes are
+saved state; all of it is rebuilt or re-read on load).
+
 Offline only (`tools/harness/run_all.sh` runs every check): fresh load (bakes static), edits
 after load (live), many edits in one frame, budget refusal, settle, removal of the last piece
 in a cell, server models replicating after the client drew the piece, city load through the

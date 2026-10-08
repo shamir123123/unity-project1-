@@ -137,7 +137,6 @@ local function switchLenses(night: boolean)
 		if glow.Parent then setLens(glow, night) end
 		if i % LENS_BATCH == 0 then
 			task.wait()
-			if _lensNight ~= night then return end
 		end
 	end
 end
