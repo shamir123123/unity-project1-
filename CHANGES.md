@@ -107,8 +107,8 @@ delta the server sends. Four things stood between the click and the real road:
     each crossing it found, re-sampling both curves of every pair whose hulls met — and a
     long road's hull meets most of the city. It now keeps each road's samples while the road
     is unchanged and, after the first clean scan, tests a piece only against roads that
-    changed since. Same crossings, same order. Diagonal across 544 roads: **681 → ~85 ms**
-    (Lune-relative).
+    changed since. Same crossings, same order. Diagonal across 544 roads: **681 → 81–122 ms**
+    (Lune-relative; run-to-run noise).
   - *Lane-change gates*: every edit rebuilt every gate in the city (ribbon geometry and
     all) for the few roads it touched. A road direction whose lane edges are unchanged now
     reuses its gates (rules are still re-read per connection, so a rule edit applies).
