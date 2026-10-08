@@ -638,6 +638,8 @@ function RoadNavigationGraph.new(segmentFilter: ((seg: any) -> boolean)?)
 		_laneChangeGates = {} :: { LaneChangeGate },
 		_laneChangesByEdge = {} :: { [string]: { any } },
 		_laneChangeTargets = {} :: { [string]: { string } },
+		-- lane edge -> its road direction's key ("S<seg>:F"), worked out once per edge
+		_gateKeyOf = setmetatable({}, { __mode = "k" }) :: any,
 		-- segmentId -> list of edge ids built from that segment (for incremental removal)
 		_edgesBySegment = {} :: { [number]: { string } },
 		_network = nil :: any,
@@ -1677,8 +1679,9 @@ end
 type GateEdge = { edge: LaneEdge, points: { Vector3 }, length: number, ordinal: number, ok: boolean?, fromNode: number, toNode: number }
 -- index: the _laneChangesByEdge buckets of this direction's lanes as indexed last time (a lane's
 -- bucket only ever holds its own direction's gates), handed on while no connection's rule changed.
+-- ruleKeys: every connection's laneChangeRuleKey, in gate then connection order (built once).
 type GateGroup = { edges: { GateEdge }, gates: { LaneChangeGate }, clearStart: number, clearEnd: number,
-	index: { [string]: { any } }? }
+	index: { [string]: { any } }?, ruleKeys: { string } }
 
 function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules: { [string]: boolean }, network: any?)
 	local INTERSECTION_CLEAR = 20
@@ -1694,9 +1697,14 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 	end
 
 	local grouped: { [string]: { LaneEdge } } = {}
+	local keyOf = self._gateKeyOf
 	for _, edge in self._edgeList do
-		local direction = if edge.forward then "F" else "R"
-		local key = `S{edge.segmentId}:{direction}`
+		local key = keyOf[edge]
+		if not key then
+			local direction = if edge.forward then "F" else "R"
+			key = `S{edge.segmentId}:{direction}`
+			keyOf[edge] = key
+		end
 		local bucket = grouped[key]
 		if not bucket then
 			bucket = {}
@@ -1745,9 +1753,12 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 		end
 		if reuse and hit then
 			local sameRules = true
+			local ruleKeys = hit.ruleKeys
+			local k = 0
 			for _, gate in hit.gates do
 				for _, conn in gate.connections do
-					local override = laneChangeRules[laneChangeRuleKey(gate.id, conn.fromEdgeId, conn.toEdgeId)]
+					k += 1
+					local override = laneChangeRules[ruleKeys[k]]
 					local allowed = if override == nil then true else override
 					if allowed ~= conn.allowed then sameRules = false end
 					conn.allowed = allowed
@@ -1778,7 +1789,8 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 			seen[i] = { edge = e, points = e.points, length = e.length, ordinal = e.laneOrdinal, ok = e.laneChangeOk,
 				fromNode = e.fromNode, toNode = e.toNode }
 		end
-		local group: GateGroup = { edges = seen, gates = made, clearStart = clearStart, clearEnd = clearEnd }
+		local ruleKeys: { string } = {}
+		local group: GateGroup = { edges = seen, gates = made, clearStart = clearStart, clearEnd = clearEnd, ruleKeys = ruleKeys }
 		nextCache[key] = group
 
 		for pairIndex = 1, #edges - 1 do
@@ -1818,7 +1830,9 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 				for _, toEdge in { a, b } do
 
 					local defaultAllowed = true
-					local override = laneChangeRules[laneChangeRuleKey(gateId, fromEdge.id, toEdge.id)]
+					local ruleKey = laneChangeRuleKey(gateId, fromEdge.id, toEdge.id)
+					table.insert(ruleKeys, ruleKey)
+					local override = laneChangeRules[ruleKey]
 					local conn: LaneChangeConnection = {
 						fromEdgeId = fromEdge.id,
 						toEdgeId = toEdge.id,

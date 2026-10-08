@@ -114,7 +114,8 @@ Lune-relative, ±20% run to run):
 | | before this pass | now |
 |---|---|---|
 | long diagonal across the city: placement | 121.5 ms (crossings 109) | **45 ms** (crossings ~38) |
-| short link in a block: the frame after | 27 ms | **14.5 ms** |
+| short link in a block: the frame after | 27 ms | **9 ms** |
+| road across 4 streets: the frame after | 65–92 ms | **38 ms** |
 | 60 random placements on a 10×10 grid (`test_crossings_equiv`) | 1.7 s (original code) | **0.45 s** |
 
 - *Crossing resolution* (`RoadNetwork.resolveCrossings`): a piece that has never been
@@ -140,7 +141,11 @@ Lune-relative, ±20% run to run):
 - *Lane-change index*: an unchanged road direction whose rules did not change hands its
   previous per-lane index buckets on instead of rebuilding a record per connection in the
   city. `test_gates_equiv`: all 24 per-step digests identical to the original, including the
-  rule edits; nav rebuild over those steps 1050 → 374 ms.
+  rule edits; nav rebuild over those steps 1050 → 363 ms.
+- *Lane-change gates, the rest*: every edit still re-grouped every lane in the city under a
+  freshly built string key and re-built a rule-key string per connection to re-read the
+  rules. Each lane's group key and each connection's rule key are now built once
+  (`_gateKeyOf`, `GateGroup.ruleKeys`). Same digests as above.
 
 Equivalence: `test_crossings_equiv` seeds 7, 11 and 23 give the original code's digests
 (558/554/552 roads, 0 errors).
