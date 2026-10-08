@@ -9,6 +9,9 @@ run() {
   timeout "$t" "$LUNE" run "$@" 2>&1 | tail -n "${TAIL:-8}"
 }
 run 600 test_pieces_equiv.luau
+run 1500 test_crossings_equiv.luau new 7 60
+run 1800 test_gates_equiv.luau
+run 3000 bench_server_place.luau 8
 run 600 test_meshview.luau
 run 600 test_render_worker.luau
 run 900 test_terrain_edit.luau

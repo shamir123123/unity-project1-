@@ -319,6 +319,11 @@ strong PC) targets. I measured none of them here (no GPU), so none were changed:
 - Vehicle and plant-kit MeshParts use `RenderFidelity = Precise` on purpose (they switch to
   their own LOD bodies); left alone.
 
+Not changed, for scope: the server's plot `refitSeats` rebuilds a road index over every road
+in the city after each edit (`PlotGeometry.buildRoadIndex`, linear in roads: ~2–5 ms on a
+1,200-road city by the harness ratio). Making it incremental means re-deriving its junction
+clusters per edit — doable, but too intricate to do blind.
+
 ## Paths checked (per CLAUDE.md 0c)
 
 Offline only (`tools/harness/run_all.sh` runs every check): fresh load (bakes static), edits
