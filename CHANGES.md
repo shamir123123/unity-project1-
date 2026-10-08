@@ -54,6 +54,34 @@ Offline check: `tools/harness/test_assetlod.luau` (a tiered building and a tree 
 camera: walls hidden 0/3 → 3/3 → 0/3, shell and picture card shown → hidden as the switch
 goes on and off). Not run in Studio: check the six-segment preset row fits on a phone.
 
+### Windows glow at night — houses, mid-rises and shops too
+
+Until now only offices lit up: their windows are separate `Window` parts. The mesh-kit houses
+(`RH_`), mid-rises (`RM_`) and shops (`C2_`) have no window parts and no emissive mask — every
+window's glass and frame is one untinted `Fixed` MeshPart (in the place file it sits 0.2–0.32
+studs inside the wall on every side and spans only window heights, dormers included; on shops
+it is the storefront). `WindowLightsView` now treats that part as the building's glazing: at
+its evening time the texture steps aside and the glazing goes Neon in a dim lamp tone (warm
+bulb / neutral / LED, per building); at its night-time off-hour the texture comes back.
+25% of buildings stay dark all evening (windows of offices keep their own 65%).
+
+**A light needs someone there and power reaching it** (design rule: nothing faked): a
+building with `Occupants` 0, `Abandoned`, or `NoPower` stays dark — a suburb cut off from the
+grid goes black at night, and lights come back when the power does. This applies to office
+windows too. *Your call:* if you would rather windows ignore power and occupancy, make
+`served()` in `WindowLightsView` return `true`.
+
+Factories (`IN_`) are left dark on purpose: their `Fixed` reaches the ground and takes in the
+roller doors, which would glow too. Far-away buildings (LOD2, past ~1 km × Draw distance) show
+their LOD model, which has no glazing, so they stay dark; a proper fix for both is an emissive
+window mask exported with each kit atlas (`SurfaceAppearance.EmissiveMaskContent`, set by the
+kit setup scripts, then switched with `EmissiveStrength` like car lamps already are).
+
+Offline check: `tools/harness/test_windowlights.luau` — 22:00: empty houses 0/20 lit,
+unpowered 0/20, served 45/60, factories 0/10; power restored at 22:00 → 13/20 of those light
+(their own schedules); 07:00: all off, all 100 glazing textures back. Not run in Studio: look
+at a street of houses at night — the glow should fill the window openings only.
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as
