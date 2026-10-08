@@ -120,9 +120,17 @@ local function untrack(model: Model)
 	if p then p:Disconnect(); _pending[model] = nil end
 end
 
+-- One batched move per frame, as NPCDriverView does for cars: workspace:BulkMoveTo is the
+-- engine's cheap path for moving many parts, and a CFrame write per walker paid the full
+-- per-property cost for each. Reused so a frame allocates nothing.
+local _moveParts: { BasePart } = {}
+local _moveCFrames: { CFrame } = {}
+
 local function step(dt: number)
 	_clock += dt
 	_frame += 1
+	table.clear(_moveParts)
+	table.clear(_moveCFrames)
 	local renderTime = _clock - INTERP_DELAY
 	local camera = workspace.CurrentCamera
 	local camPos = if camera then camera.CFrame.Position else nil
@@ -191,7 +199,11 @@ local function step(dt: number)
 
 		t.display = pose
 		t.lastWritten = pose
-		root.CFrame = pose
+		table.insert(_moveParts, root)
+		table.insert(_moveCFrames, pose)
+	end
+	if #_moveParts > 0 then
+		workspace:BulkMoveTo(_moveParts, _moveCFrames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
 end
 

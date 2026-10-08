@@ -318,4 +318,12 @@ function H.boot(opts: { server: boolean?, overrides: { [string]: any }? }?)
 end
 
 H.task = task
+-- Counter a patched module can bump through the `shared` global (see test_windowlights).
+function H.sharedVisits(): number
+	return (_env and _env.shared.visits) or 0
+end
+-- The `shared` table every module sees, for counters patched into module sources.
+function H.envShared(): { [string]: any }
+	return _env.shared
+end
 return H

@@ -70,12 +70,20 @@ local function apply(part: BasePart, e: Entry, lit: boolean)
 	end
 end
 
+-- Every window's schedule lies inside [ON_EARLIEST, OFF_LATEST) on the wrapped clock (see
+-- track): outside it no window can be lit, so once a pass has put them all out the sweep
+-- has nothing to do until evening -- it walked every window in the city each second all day.
+local ON_EARLIEST, OFF_LATEST = 17.5, 29.5
+local _allDark = false
+
 local function sweep()
 	-- Wrap the clock so an evening-to-morning window is one contiguous range:
 	-- 17:30 -> 17.5, midnight -> 24, 05:30 -> 29.5.
 	local h = Lighting.ClockTime
 	if h < 12 then h += 24 end
 	local on = Settings.get("windowLights") ~= false
+	local dark = not on or h < ON_EARLIEST or h >= OFF_LATEST
+	if dark and _allDark then return end
 	local i, n = 1, 0
 	while i <= #_parts do
 		n += 1
@@ -91,6 +99,8 @@ local function sweep()
 			i += 1
 		end
 	end
+	-- A window tracked later starts dark (lit = false), so it cannot break this.
+	_allDark = dark
 end
 
 function WindowLightsView.Start()

@@ -39,12 +39,14 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.World.AmbientCityView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.AssetLODView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.NodeToolView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.PedestrianView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadEditPreview | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadMeshView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.RoadPieces | ModuleScript |
 | **A** | StarterPlayer.StarterPlayerScripts.World.**StreetLightView** | ModuleScript (new) |
 | M | StarterPlayer.StarterPlayerScripts.World.StreetNameView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
 
 After applying, regenerate `CODE_INDEX.md` (one new module: StreetLightView).
 
@@ -150,8 +152,15 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
 - **Rain and fog fades** (`SeasonTintClient`): while the weather faded in or out (40 s for
   rain, 12 s for fog) the client re-tinted **every tree in the city, back to back, for the
   whole fade** — 400 trees a frame — though leaf colour does not depend on wetness. It now
-  re-tints only when the frost on the leaves moves. Offline, 2,000 trees: rain fade-in
-  **continuous → 0 passes**; snow 259 → 20 passes; same colours.
+  re-tints only when the frost on the leaves moves. Offline, 2,000 trees, tree re-tints:
+  rain fade-in (42 s) **962,000 → 0**; snow 134,000 → 40,000; clearing up 594,000 → 40,000.
+  Same colours.
+- **Window lights** (`WindowLightsView`): walked every window in the city once a second,
+  all day, though no window can be lit between 05:30 and 17:30. After one pass puts them
+  all out it now waits for evening. Offline, 2,000 windows: daytime 10,000 window visits
+  per 5 s → 0; same lit counts at night.
+- **Walkers** (`PedestrianView`): one CFrame write per walker per frame; now one
+  `workspace:BulkMoveTo` per frame, as the car view already does. Same positions offline.
 - **Hover tooltip** (`BuildingInfoController`): every frame the cursor was over a road or
   the ground, the (already hidden) tooltip started a new fade tween. Now a no-op.
 - **Ambience** (`AmbienceController`): counted nearby cars by walking the whole fleet every
