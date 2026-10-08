@@ -130,8 +130,8 @@
 - `ReplicatedStorage.Road.RoadNetwork` [Module L3017] — !strict
   - fns: RoadNetwork.new, RoadNetwork.findNodeNear, RoadNetwork.beginBulkWeld, RoadNetwork.endBulkWeld, RoadNetwork._createNode, RoadNetwork.touchNode, RoadNetwork.moveRoundaboutBy, RoadNetwork.touchSegment, RoadNetwork.reverseSegment, RoadNetwork.consumeChanges, RoadNetwork.getOrCreateNode, RoadNetwork.getNodeKind, RoadNetwork.splitSegment, RoadNetwork.getOrCreateJunctionNode, RoadNetwork.dedupeParallel, RoadNetwork.mergeNodes, …(+33)
 - `ReplicatedStorage.Road.RoadNetwork.spec` [Module L572] — !strict
-- `ReplicatedStorage.Road.RoadProfile` [Module L434] — !strict RoadProfile -- a road's CROSS-SECTION: an ordered list of strips, LEFT to RIGHT looking along
-  - fns: RoadProfile.isSide, RoadProfile.angledSides, RoadProfile.parkingWidths, RoadProfile.footways, RoadProfile.fromSpec, RoadProfile.lanes, RoadProfile.offsets, RoadProfile.parkRows, RoadProfile.widths, RoadProfile.encode, RoadProfile.decode
+- `ReplicatedStorage.Road.RoadProfile` [Module L443] — !strict RoadProfile -- a road's CROSS-SECTION: an ordered list of strips, LEFT to RIGHT looking along
+  - fns: RoadProfile.isSide, RoadProfile.angledSides, RoadProfile.parkingWidths, RoadProfile.footways, RoadProfile.fromSpec, RoadProfile.lanes, RoadProfile.offsets, RoadProfile.parkRows, RoadProfile.widths, RoadProfile.encode, RoadProfile.decode, RoadProfile.roadsideLift
 - `ReplicatedStorage.Road.RoadProfile.spec` [Module L238] — !strict A road's cross-section decides where every car drives. The one promise that matters: every
 - `ReplicatedStorage.Road.RoadProximity` [Module L211] — !strict RoadProximity -- "is this world point too close to a road?", answered once for both sides.
   - fns: RoadProximity.reachesLayer, RoadProximity.flatDistance, RoadProximity.roadSpec, RoadProximity.isPointNearRoad, RoadProximity.samplePavement, RoadProximity.propsOnRoads, RoadProximity.propsInDisc
@@ -140,7 +140,7 @@
   - fns: RoadRenderer.build
 - `ReplicatedStorage.Road.RoadRules` [Module L467] — !strict RoadRules
   - fns: RoadRules.getDrivingSide, RoadRules.getLaneSideSign, RoadRules.getNearsideTurn, RoadRules.getCrossingTurn, RoadRules.isCrossingTurn, RoadRules.isNearsideTurn, RoadRules.setDrivingSide, RoadRules.onDrivingSideChanged, RoadRules.getSpeedLimitKmh, RoadRules.getSpeedLimitStuds, RoadRules.allowedVehicleSet, RoadRules.laneAllowedVehicleSet, RoadRules.allowsVehicle, RoadRules.roadClass, RoadRules.hasParking, RoadRules.highwayJunction, …(+7)
-- `ReplicatedStorage.Road.RoadSceneRenderer` [Module L3502] — !strict
+- `ReplicatedStorage.Road.RoadSceneRenderer` [Module L3516] — !strict
   - fns: Memo.get, RoadSceneRenderer.init, RoadSceneRenderer.syncRoundabouts, RoadSceneRenderer.refreshRoundaboutsFor, RoadSceneRenderer.removeSegmentModel, RoadSceneRenderer.removeNodeVisuals, RoadSceneRenderer.syncDeadEnds, RoadSceneRenderer.endSurfaceTrim
 - `ReplicatedStorage.Road.RoadSection` [Module L270] — !strict RoadSection -- a profile laid out ACROSS the road in studs, as seen from one end: bands with
   - fns: RoadSection.of, RoadSection.shifted, RoadSection.bulbed, RoadSection.bayed, RoadSection.parkWidth, RoadSection.lanes
@@ -156,7 +156,7 @@
   - fns: SnapUtil.setSegments, SnapUtil.setIntersectionCentres, SnapUtil.setBuildingFronts, SnapUtil.setActiveRoadType, SnapUtil.getActiveRoadType, SnapUtil.setRoadSnapEnabled, SnapUtil.isRoadSnapEnabled, SnapUtil.setLaneSnapEnabled, SnapUtil.isLaneSnapEnabled, SnapUtil.setGuideEnabled, SnapUtil.isGuideEnabled, SnapUtil.setIntersectionSnapEnabled, SnapUtil.isIntersectionSnapEnabled, SnapUtil.setAngleSnapEnabled, SnapUtil.isAngleSnapEnabled, SnapUtil.setAngleFreeOverride, …(+15)
 - `ReplicatedStorage.Road.SnapUtil.SnapConstants` [Module L159] — !strict
 - `ReplicatedStorage.Road.SnapUtil.spec` [Module L196] — !strict The road grid: a drawn road snaps its LENGTH along its own heading, so swinging it round
-- `ReplicatedStorage.Road.TrafficSignPlanner` [Module L331] — !strict TrafficSignPlanner -- where every traffic sign in the city stands, worked out from the road
+- `ReplicatedStorage.Road.TrafficSignPlanner` [Module L342] — !strict TrafficSignPlanner -- where every traffic sign in the city stands, worked out from the road
   - fns: TrafficSignPlanner.plan, TrafficSignPlanner.defaultOptions
 - `ReplicatedStorage.Road.TrafficViolations` [Module L151] — !strict TrafficViolations
   - fns: TrafficViolations.isEnforced, TrafficViolations.isSecondaryOnly, TrafficViolations.score, TrafficViolations.cameraDetectionChance
@@ -505,7 +505,7 @@
 - `ServerScriptService.Services.Terrain.TerrainPersistence.spec` [Module L70] — !strict Terrain saves must restore bit for bit: every height, material and flag. The encoder
 - `ServerScriptService.Services.Terrain.TerrainRenderer` [Module L203] — !strict Server-side terrain painting for INCREMENTAL edits made after a city is loaded
   - fns: TerrainRenderer.Init, TerrainRenderer.Bind, TerrainRenderer.Start, TerrainRenderer.enableEditPainting, TerrainRenderer.pauseEditPainting, TerrainRenderer.discardPending, TerrainRenderer.flushAllDirty, TerrainRenderer.renderAllAndWait
-- `ServerScriptService.Services.Traffic.IntersectionDetector` [Module L248] — !strict IntersectionDetector
+- `ServerScriptService.Services.Traffic.IntersectionDetector` [Module L338] — !strict IntersectionDetector
   - fns: IntersectionDetector.detect
 - `ServerScriptService.Services.Traffic.IntersectionDetector.spec` [Module L132] — !strict Signal poles stand on the kerb the driving side puts them on, and the mast arm
 - `ServerScriptService.Services.Traffic.SignalCoordinator` [Module L379] — !strict SignalCoordinator
@@ -835,7 +835,7 @@
   - fns: PanelSlots.claim, PanelSlots.release, PanelSlots.holders
 - `StarterPlayer.StarterPlayerScripts.UI.PerfOverlay` [Module L99] — !strict Frame-rate readout, driven by the "showFps" setting.
   - fns: PerfOverlay.Start
-- `StarterPlayer.StarterPlayerScripts.UI.SettingsPanel` [Module L2513] — !strict SETTINGS -- "Control Room": the full-screen options page. A numbered section
+- `StarterPlayer.StarterPlayerScripts.UI.SettingsPanel` [Module L2515] — !strict SETTINGS -- "Control Room": the full-screen options page. A numbered section
   - fns: SettingsPanel.Open, SettingsPanel.Close, SettingsPanel.IsOpen
 - `StarterPlayer.StarterPlayerScripts.UI.Theme` [Module L153] — !strict Single source of truth for UI colors, typography, spacing, and motion.
 - `StarterPlayer.StarterPlayerScripts.UI.TopbarDock` [Module L50] — !strict The Roblox topbar band, expressed in a ScreenGui's own coordinate space.
@@ -910,7 +910,7 @@
   - fns: spec.run
 - `StarterPlayer.StarterPlayerScripts.World.SolarTrackerView` [Module L136] — !strict SolarTrackerView -- turns the panels of every solar tracker row to the sun (tag SolarTracker: each
   - fns: SolarTrackerView.Start, SolarTrackerView.Stop
-- `StarterPlayer.StarterPlayerScripts.World.StreetLightView` [Module L213] — !strict StreetLightView -- the light that lamps cast, on this client.
+- `StarterPlayer.StarterPlayerScripts.World.StreetLightView` [Module L212] — !strict StreetLightView -- the light that lamps cast, on this client.
   - fns: StreetLightView.Start
 - `StarterPlayer.StarterPlayerScripts.World.StreetNameView` [Module L848] — !strict StreetNameView
   - fns: StreetNameView.Start
