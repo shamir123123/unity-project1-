@@ -115,7 +115,10 @@ local DEFAULT_VALUES: { [string]: any } = table.freeze({
 	-- the server sim is untouched (World.AmbientCityView).
 	fullCitySim = true,
 	waterWaves = true, -- animated terrain water surface
-	graphicsPreset = "High", -- Low | Medium | High | Ultra | Custom
+	-- Every building, tree, prop and car drawn at its simplest level however close it is, and
+	-- the costly sky (clouds, environment lighting) and shoreline animation off: the Lowest preset.
+	forceLod = false,
+	graphicsPreset = "High", -- Lowest | Low | Medium | High | Ultra | Custom
 	tooltips = true,
 	notifications = true,
 	uiTransparency = 0, -- extra see-through on every glass panel (slider 0..0.5); off by default
@@ -253,15 +256,20 @@ table.freeze(REQUIRED_OF)
 -- Quality presets. Roblox's own SavedQualityLevel is read-only to scripts, so a
 -- preset drives the effects this game owns, nothing more.
 local PRESETS: { [string]: { [string]: any } } = table.freeze({
+	-- Lowest (user, 2026-10-08: "removes all of the graphics and makes all of the objects always
+	-- be on LOD"): Low, plus every object on its simplest level at any distance, the shortest
+	-- draw distance the slider allows, no weather particles.
+	Lowest = table.freeze({ shadowQuality = "Off", bloom = false, sunRays = false, depthOfField = false, haze = false, waterReflections = 0, frostedGlass = false, waterWaves = false, renderDistance = 0.4,
+		streetNames = false, windowLights = false, yardDecor = false, weatherFx = 0, fullCitySim = false, forceLod = true }),
 	-- Low is for weak devices and must FEEL it: no decoration, no plates, short LOD distance.
 	Low = table.freeze({ shadowQuality = "Off", bloom = false, sunRays = false, depthOfField = false, haze = false, waterReflections = 0, frostedGlass = false, waterWaves = false, renderDistance = 0.45,
-		streetNames = false, windowLights = false, yardDecor = false, weatherFx = 0.3, fullCitySim = false }),
+		streetNames = false, windowLights = false, yardDecor = false, weatherFx = 0.3, fullCitySim = false, forceLod = false }),
 	Medium = table.freeze({ shadowQuality = "Hard", bloom = true, sunRays = false, depthOfField = false, haze = true, waterReflections = 0.25, frostedGlass = false, waterWaves = true, renderDistance = 0.75,
-		streetNames = true, windowLights = true, yardDecor = false, weatherFx = 0.6, fullCitySim = true }),
+		streetNames = true, windowLights = true, yardDecor = false, weatherFx = 0.6, fullCitySim = true, forceLod = false }),
 	High = table.freeze({ shadowQuality = "Soft", bloom = true, sunRays = true, depthOfField = false, haze = true, waterReflections = 0.45, frostedGlass = true, waterWaves = true, renderDistance = 1,
-		streetNames = true, windowLights = true, yardDecor = true, weatherFx = 1, fullCitySim = true }),
+		streetNames = true, windowLights = true, yardDecor = true, weatherFx = 1, fullCitySim = true, forceLod = false }),
 	Ultra = table.freeze({ shadowQuality = "Soft", bloom = true, sunRays = true, depthOfField = true, haze = true, waterReflections = 1, frostedGlass = true, waterWaves = true, renderDistance = 1.5,
-		streetNames = true, windowLights = true, yardDecor = true, weatherFx = 1, fullCitySim = true }),
+		streetNames = true, windowLights = true, yardDecor = true, weatherFx = 1, fullCitySim = true, forceLod = false }),
 })
 
 local _values: { [string]: any } = table.clone(DEFAULT_VALUES)
@@ -322,7 +330,7 @@ function Settings.presetKeys(): { [string]: boolean }
 end
 
 function Settings.presetNames(): { string }
-	return { "Low", "Medium", "High", "Ultra" }
+	return { "Lowest", "Low", "Medium", "High", "Ultra" }
 end
 
 function Settings.applyPreset(name: string)

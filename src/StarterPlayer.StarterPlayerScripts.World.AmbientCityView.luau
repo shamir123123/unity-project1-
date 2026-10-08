@@ -257,7 +257,8 @@ local function refresh()
 		local mid = (seg.p0 + seg.p3) * 0.5
 		if (mid - focus).Magnitude <= SPAWN_RADIUS then table.insert(_near, seg) end
 	end
-	local want = if Settings.get("graphicsPreset") == "Low" then POOL_LOW else POOL
+	local preset = Settings.get("graphicsPreset")
+	local want = if preset == "Low" or preset == "Lowest" then POOL_LOW else POOL
 	local cars, people = 0, 0
 	for i = #_agents, 1, -1 do
 		local a = _agents[i]

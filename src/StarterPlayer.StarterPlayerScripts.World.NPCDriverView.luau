@@ -76,7 +76,7 @@ end
 -- to 1500 studs, where a car is a few pixels, instead of paying for thousands of pixel-sized
 -- ones), and Core.RenderPressure pulls it in further while frames run slow or memory is short
 -- -- which covers the players who never open the settings.
-local CULL_DIST_BY_PRESET: { [string]: number } = { Low = 1500, Medium = 2500 }
+local CULL_DIST_BY_PRESET: { [string]: number } = { Lowest = 1000, Low = 1500, Medium = 2500 }
 local CULL_DIST = 4000
 local RENDER_DIST_SQ = CULL_DIST * CULL_DIST
 -- Hysteresis, same idea as the +/-8 forward band below: come back 50 studs inside before
@@ -92,6 +92,7 @@ local STRIDE2_DIST_SQ = STRIDE2_DIST * STRIDE2_DIST
 local STRIDE3_DIST_SQ = STRIDE3_DIST * STRIDE3_DIST
 local BUDGET_REFRESH_FRAMES = 60
 local _preset: string = "High"
+local _forceLod = false -- Settings.forceLod: every car on its 120-tri body, however close
 local function refreshBudget()
 	local detail = RenderPressure.detail()
 	local d = (CULL_DIST_BY_PRESET[_preset] or CULL_DIST) * detail
@@ -465,7 +466,9 @@ local function evaluateVisibility(model: Model, root: BasePart, camera: Camera)
 	local rig = _rigs[model] or makeRig(model)
 	if rig and _pxPerStud > 0 then
 		local px = rig.err * _pxPerStud / math.max(off.Magnitude, 1)
-		if rig.isLod then
+		if _forceLod then
+			setLod(rig, true)
+		elseif rig.isLod then
 			if px > LOD_EXIT_PX then setLod(rig, false) end
 		elseif px < LOD_ENTER_PX then
 			setLod(rig, true)
@@ -789,6 +792,10 @@ function NPCDriverView.Start()
 			_preset = tostring(v)
 			refreshBudget()
 		end
+	end)
+	_forceLod = Settings.get("forceLod") == true
+	Settings.onChanged("forceLod", function(v)
+		_forceLod = v == true
 	end)
 	-- Lamps follow the clock on a slow sweep, touching SurfaceAppearances only when night
 	-- actually flips (and makeRig lights new cars itself).

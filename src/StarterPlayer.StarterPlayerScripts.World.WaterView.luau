@@ -18,6 +18,7 @@ local TerrainBrush = require(ReplicatedStorage.Terrain.TerrainBrush)
 local WaterField = require(ReplicatedStorage.Terrain.WaterField)
 local TerrainStreamCodec = require(ReplicatedStorage.Terrain.TerrainStreamCodec)
 local WaterImage = require(ReplicatedStorage.City.WaterImage)
+local Settings = require(script.Parent.Parent.Core.Settings)
 
 local WaterView = {}
 
@@ -48,6 +49,7 @@ local _conn: RBXScriptConnection? = nil
 local _animConn: RBXScriptConnection? = nil
 local _gen = 0 -- build generation; a new city cancels an in-flight tile loop
 local _time = 0 -- wave animation clock
+local _still = false -- Settings.forceLod: the foam holds its last frame
 local _oceanMask: buffer? = nil -- MASK_DIM^2, 1 = water cell connected to the open sea
 
 local function num(v: any, d: number): number
@@ -194,6 +196,7 @@ end
 -- repaint and upload, and every tile in range used to repaint on the SAME frame -- a spike 12
 -- times a second along any coast. Each tile now keeps its own clock, phased apart at build.
 local function animStep(dt: number)
+	if _still then return end
 	_time += dt
 	local cam = Workspace.CurrentCamera
 	local cp = cam and cam.CFrame.Position
@@ -344,6 +347,10 @@ function WaterView.Start()
 	end
 
 	_animConn = RunService.Heartbeat:Connect(animStep)
+	_still = Settings.get("forceLod") == true
+	Settings.onChanged("forceLod", function(v)
+		_still = v == true
+	end)
 end
 
 function WaterView.Stop()

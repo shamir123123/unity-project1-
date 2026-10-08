@@ -135,6 +135,7 @@ local STRINGS: { [string]: { [string]: string } } = {
 	["Soft"] = { zh = "柔和", hi = "सॉफ़्ट", es = "Suaves", fr = "Douces", ar = "ناعمة", bn = "সফট" },
 	["Simple"] = { zh = "简单", hi = "सरल", es = "Simple", fr = "Simple", ar = "بسيط", bn = "সরল" },
 	["Advanced"] = { zh = "高级", hi = "उन्नत", es = "Avanzado", fr = "Avancé", ar = "متقدم", bn = "উন্নত" },
+	["Lowest"] = { zh = "最低", hi = "न्यूनतम", es = "Mínimo", fr = "Minimal", ar = "الأدنى", bn = "সর্বনিম্ন" },
 	["Low"] = { zh = "低", hi = "कम", es = "Bajo", fr = "Faible", ar = "منخفض", bn = "নিম্ন" },
 	["Medium"] = { zh = "中", hi = "मध्यम", es = "Medio", fr = "Moyen", ar = "متوسط", bn = "মাঝারি" },
 	["High"] = { zh = "高", hi = "उच्च", es = "Alto", fr = "Élevé", ar = "عالٍ", bn = "উচ্চ" },
@@ -437,7 +438,7 @@ local GERMAN: { [string]: string } = {
 	["Edge scrolling"] = "Randscrollen", ["Reset to defaults"] = "Auf Standard zurücksetzen",
 	["PRESS KEY"] = "TASTE DRÜCKEN",
 	["On"] = "An", ["Off"] = "Aus", ["Hard"] = "Hart", ["Soft"] = "Weich",
-	["Simple"] = "Einfach", ["Advanced"] = "Erweitert", ["Low"] = "Niedrig",
+	["Simple"] = "Einfach", ["Advanced"] = "Erweitert", ["Lowest"] = "Minimal", ["Low"] = "Niedrig",
 	["Medium"] = "Mittel", ["High"] = "Hoch", ["Ultra"] = "Ultra",
 	["Custom"] = "Benutzerdefiniert", ["Before"] = "Vorher", ["After"] = "Nachher",
 

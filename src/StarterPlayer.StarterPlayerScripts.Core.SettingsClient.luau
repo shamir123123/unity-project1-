@@ -305,6 +305,18 @@ function SettingsClient.Start()
 	Settings.onChanged("waterWaves", function(v)
 		Workspace.Terrain.WaterWaveSize = if v == true then baseWaveSize else 0
 	end)
+	-- Simplest objects (the Lowest preset) also drops what the sky costs: the cloud layer and
+	-- the environment lighting every surface samples. Put back exactly as the place shipped them.
+	local baseDiffuse, baseSpecular = Lighting.EnvironmentDiffuseScale, Lighting.EnvironmentSpecularScale
+	local function applyForceLod(v: any)
+		local on = v == true
+		local clouds = Workspace.Terrain:FindFirstChildOfClass("Clouds")
+		if clouds then clouds.Enabled = not on end
+		Lighting.EnvironmentDiffuseScale = if on then 0 else baseDiffuse
+		Lighting.EnvironmentSpecularScale = if on then 0 else baseSpecular
+	end
+	Settings.onChanged("forceLod", applyForceLod)
+	applyForceLod(Settings.get("forceLod"))
 	-- Draw distance: scales the shipped fog wall. Roblox has no script-settable
 	-- render distance, so fog is the honest lever.
 	Settings.onChanged("renderDistance", function(v)

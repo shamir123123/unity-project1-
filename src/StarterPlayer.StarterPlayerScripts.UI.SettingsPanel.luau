@@ -1302,6 +1302,7 @@ local function buildGraphics(content: Frame)
 
 	group(p, "PERFORMANCE")
 	toggleRow(p, "Full city simulation", "Off: your device stops showing the real traffic and people and shows a few simple ones near you instead. The city keeps running. Turn off if the game lags.", "fullCitySim")
+	toggleRow(p, "Simplest objects", "Every building, tree, prop and car drawn as its simplest model, however close, with clouds and shoreline animation off. For the weakest devices.", "forceLod")
 
 	group(p, "DETAIL")
 	dropdownRow(p, "Shadow quality", "Resolution and softness of cast shadows.", "shadowQuality", {

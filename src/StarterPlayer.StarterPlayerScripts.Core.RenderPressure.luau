@@ -147,6 +147,7 @@ end
 -- coarse bake, flat. Keeping Low at MAX_LEVEL preserves that behaviour to the digit, and
 -- gives Medium the middle setting it never had.
 local PRESET_FLOOR: { [string]: number } = table.freeze({
+	Lowest = MAX_LEVEL,
 	Low = MAX_LEVEL,
 	Medium = 2,
 	High = 0,

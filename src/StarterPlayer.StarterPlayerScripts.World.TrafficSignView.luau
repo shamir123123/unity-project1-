@@ -31,7 +31,7 @@ local RenderPressure = require(script.Parent.Parent.Core.RenderPressure)
 
 local TrafficSignView = {}
 
-local DRAW_DIST_BY_PRESET: { [string]: number } = { Low = 220, Medium = 340 }
+local DRAW_DIST_BY_PRESET: { [string]: number } = { Lowest = 160, Low = 220, Medium = 340 }
 local DRAW_DIST = 480
 local TEXT_DIST = 170
 local MAX_ACTIVE = 320
@@ -367,7 +367,8 @@ local function sweep()
 	if not camera or not folder then return end
 	local detail = RenderPressure.detail()
 	local radius = (DRAW_DIST_BY_PRESET[_preset] or DRAW_DIST) * detail
-	local textDist = TEXT_DIST * detail
+	-- Lowest: plates only, no SurfaceGui text at any distance.
+	local textDist = if _preset == "Lowest" then 0 else TEXT_DIST * detail
 	local centre = focusPoint(camera)
 	local camPos = camera.CFrame.Position
 	local wanted: { [string]: TrafficSignPlanner.Sign } = {}

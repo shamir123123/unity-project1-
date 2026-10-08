@@ -217,9 +217,12 @@ function CitizenAvatarView.Start()
 	idle.AnimationId = IDLE_ANIM
 	_walkAnim, _idleAnim = walk, idle
 
-	setAnimate(Settings.get("graphicsPreset") ~= "Low")
+	local function animated(preset: any): boolean
+		return preset ~= "Low" and preset ~= "Lowest"
+	end
+	setAnimate(animated(Settings.get("graphicsPreset")))
 	Settings.onChanged("graphicsPreset", function(preset: any)
-		setAnimate(preset ~= "Low")
+		setAnimate(animated(preset))
 	end)
 	table.insert(_conns, RunService.Heartbeat:Connect(function(dt: number)
 		_accum += dt

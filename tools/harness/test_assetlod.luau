@@ -54,4 +54,41 @@ cam.CFrame = CF.new(2800, 120, 2800)
 settle("camera at a corner")
 cam.CFrame = CF.new(-1500, 400, 600)
 settle("camera elsewhere, high")
+
+if View.setForceLod then
+	-- Simplest objects: a tiered building and a tree right under the camera show their far levels.
+	local bld = I.new("Model"); bld.Name = "Bld"; bld:SetAttribute("LODTiers", true)
+	local full = {}
+	for k = 1, 3 do
+		local p = I.new("Part"); p.Name = "Wall" .. k; p.Size = V3.new(20, 20, 20); p.CFrame = CF.new(-1500, 10, 600 + k)
+		p.Parent = bld; table.insert(full, p)
+	end
+	local shell = I.new("Part"); shell.Name = "LOD_Shell"; shell:SetAttribute("LOD2", true); shell.Transparency = 1
+	shell.Size = V3.new(20, 20, 20); shell.CFrame = CF.new(-1500, 10, 600); shell.Parent = bld
+	bld.PrimaryPart = shell
+	bld.Parent = props
+	local tree = I.new("Model"); tree.Name = "Tree"
+	local lv = {}
+	for l = 0, 2 do
+		local p = I.new("Part"); p.Name = "L" .. l; p:SetAttribute("LOD", l); p.Size = V3.new(4, 12, 4)
+		p.Transparency = if l == 0 then 0 else 1; p.CFrame = CF.new(-1490, 6, 600); p.Parent = tree; lv[l] = p
+	end
+	tree.PrimaryPart = lv[0]
+	tree.Parent = props
+	local function state()
+		local fh = 0
+		for _, p in full do if p.LocalTransparencyModifier == 1 then fh += 1 end end
+		return string.format("walls hidden %d/3, shell T=%s, tree L0 hidden=%s L2 T=%s", fh, tostring(shell.Transparency),
+			tostring(lv[0].LocalTransparencyModifier == 1), tostring(lv[2].Transparency))
+	end
+	local function wait2() for _ = 1, 30 do H.task.wait(0.2) end end
+	wait2()
+	print("near, normal:        " .. state())
+	View.setForceLod(true)
+	wait2()
+	print("near, forceLod:      " .. state())
+	View.setForceLod(false)
+	wait2()
+	print("near, forceLod off:  " .. state())
+end
 process.exit(0)

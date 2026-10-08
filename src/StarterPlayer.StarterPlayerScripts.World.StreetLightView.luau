@@ -33,7 +33,7 @@ local LAMP_PARTS: { [string]: boolean } = table.freeze({
 -- earlier (WindowLightsView); street lights come on as the sky goes.
 local ON_HOUR = 17.75
 local OFF_HOUR = 6.5
-local MAX_LIT_BY_PRESET: { [string]: number } = { Low = 0, Medium = 32, High = 96, Ultra = 192 }
+local MAX_LIT_BY_PRESET: { [string]: number } = { Lowest = 0, Low = 0, Medium = 32, High = 96, Ultra = 192 }
 local MAX_LIT_DEFAULT = 96
 local SWEEP_SECONDS = 0.5
 -- Past this from the focus a lamp's pool is a few pixels: not lit whatever the budget.

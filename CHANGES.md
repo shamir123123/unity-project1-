@@ -32,6 +32,28 @@ Vector3 is ~20–50× slower than Roblox's native vectors. See "Verify in Studio
   (`run_all.sh`), and the ones that must not change behaviour are compared against the
   original code (same digests). A/B toggles and a Studio checklist are below.
 
+## Second pass — 2026-10-08 (graphics controls, night look, street furniture)
+
+### Lowest graphics preset
+
+A sixth choice, **Lowest**, left of Low in Settings → Graphics → Quality preset (labels in
+every language the panel speaks). It is Low plus a new switch, **Simplest objects**
+(`forceLod`, also its own row so any preset can use it):
+
+- every building with LOD tiers shows only its `LOD_*` model, every tree its picture cards,
+  however close the camera (`AssetLODView`: the model level is taken as if from 1024 studs;
+  the small-part trim still uses the real distance, so nothing near you vanishes);
+- every mesh-kit car, parked or driving, stays on its 120-tri body (`AssetLODView`,
+  `NPCDriverView`); traffic is drawn out to 1000 studs (Low 1500);
+- clouds off, environment diffuse/specular lighting 0 (restored when switched off);
+- shoreline foam holds still (`WaterView`), weather particles 0, street lamps cast no
+  light, traffic-sign text off and signs drawn to 160 studs, walkers not animated,
+  the small ambient pool, render-pressure floor at its maximum.
+
+Offline check: `tools/harness/test_assetlod.luau` (a tiered building and a tree under the
+camera: walls hidden 0/3 → 3/3 → 0/3, shell and picture card shown → hidden as the switch
+goes on and off). Not run in Studio: check the six-segment preset row fits on a phone.
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as

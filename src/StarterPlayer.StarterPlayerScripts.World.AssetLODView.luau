@@ -135,6 +135,7 @@ local _list: { Model } = {}
 -- Parts whose LocalTransparencyModifier this view has written.
 local _ours: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 local _dirtySweeps = 0 -- scans still owed even if the camera rests
+local _forceLod = false -- Settings.forceLod (the Lowest preset)
 local _lastEye = Vector3.zero
 local _lastScale = 0
 local _speedEye = Vector3.zero
@@ -228,7 +229,7 @@ local function register(child: Instance)
 		settle = SETTLE_SWEEPS,
 		bucket = 0,
 		target = 0,
-		dirty = false,
+		dirty = _forceLod, -- bucket 0 is drawn as it came, unless every model is forced to its simplest
 		cache = nil,
 		conns = {},
 		hidden = {},
@@ -245,7 +246,7 @@ local function register(child: Instance)
 			end)
 		end
 		e.cache = nil
-		if e.bucket > 0 then
+		if e.bucket > 0 or _forceLod then
 			e.dirty = true
 			_dirtySweeps = math.max(_dirtySweeps, 1)
 		end
@@ -365,13 +366,15 @@ local function apply(model: Model, e: Entry, bucket: number)
 	local function free(p: BasePart): boolean
 		return wasHidden[p] ~= nil or _ours[p] == true or p.LocalTransparencyModifier == 0
 	end
-	if bucket > 0 then
+	-- Simplest objects picks the model levels as if from 1024 studs; the trim stays on the real distance.
+	local level = if _forceLod then math.max(bucket, LOD2_BUCKET) else bucket
+	if level > 0 then
 		local c = e.cache
 		if not c then
 			c = buildCache(model)
 			e.cache = c
 		end
-		local treeLevel = if bucket >= TREE_LOD2_BUCKET then 2 elseif bucket >= TREE_LOD1_BUCKET then 1 else 0
+		local treeLevel = if level >= TREE_LOD2_BUCKET then 2 elseif level >= TREE_LOD1_BUCKET then 1 else 0
 		if treeLevel > 0 then
 			for _, p in c.tree[treeLevel + 1] do
 				shown[p] = 0
@@ -383,8 +386,8 @@ local function apply(model: Model, e: Entry, bucket: number)
 			end
 		end
 		local tier = if not model:GetAttribute("LODTiers") then 0
-			elseif bucket >= LOD2_BUCKET then 2
-			elseif bucket >= LOD1_BUCKET then 1
+			elseif level >= LOD2_BUCKET then 2
+			elseif level >= LOD1_BUCKET then 1
 			else 0
 		if tier == 2 then
 			-- Only the LOD_* model, plus the plain lot parts the dressing laid.
@@ -407,7 +410,7 @@ local function apply(model: Model, e: Entry, bucket: number)
 			end
 			-- Judged at the bucket's near edge, where parts look biggest: anything under the
 			-- budget there is under it everywhere the bucket reaches.
-			local minStuds = LOD.PIXEL_BUDGET / LOD.pixelsPerStud(nearEdge(bucket))
+			local minStuds = if bucket > 0 then LOD.PIXEL_BUDGET / LOD.pixelsPerStud(nearEdge(bucket)) else 0
 			local keepLights = bucket <= LIGHT_BUCKET
 			local sizes, lights = c.trimSize, c.trimLight
 			for i, p in c.trim do
@@ -570,7 +573,7 @@ local function checkDynamic(model: Model, d: Dyn, eye: Vector3, scale: number, p
 			d.kitLod = nil -- NPCDriverView's while it drives; re-applied once it parks
 		else
 			local px = d.kitErr * pxPerStud / dist
-			local lod = if d.kitLod then px < KIT_LOD_EXIT_PX else px < KIT_LOD_ENTER_PX
+			local lod = _forceLod or if d.kitLod then px < KIT_LOD_EXIT_PX else px < KIT_LOD_ENTER_PX
 			if lod ~= d.kitLod then
 				setKitLod(d, lod)
 			end
@@ -771,6 +774,7 @@ local function releaseWorld()
 	for _, e in _entries do
 		restore(e)
 		e.bucket = 0
+		e.dirty = _forceLod
 	end
 	for _, d in _dyn do
 		restoreDynamic(d)
@@ -781,6 +785,20 @@ end
 function AssetLODView.setHoldPredicate(fn: ((Model) -> boolean)?)
 	_holdPredicate = fn
 	_dirtySweeps = math.max(_dirtySweeps, 1) -- held models are re-applied once it lifts
+end
+
+function AssetLODView.setForceLod(on: boolean)
+	if _forceLod == on then
+		return
+	end
+	_forceLod = on
+	for _, e in _entries do
+		e.dirty = true
+	end
+	for _, d in _dyn do
+		d.kitLod = nil
+	end
+	_dirtySweeps = math.max(_dirtySweeps, 1)
 end
 
 function AssetLODView.setSuspended(on: boolean)
@@ -833,6 +851,10 @@ function AssetLODView.Start()
 	setDecor(Settings.get("yardDecor") ~= false)
 	Settings.onChanged("yardDecor", function(v)
 		setDecor(v ~= false)
+	end)
+	AssetLODView.setForceLod(Settings.get("forceLod") == true)
+	Settings.onChanged("forceLod", function(v)
+		AssetLODView.setForceLod(v == true)
 	end)
 end
 
