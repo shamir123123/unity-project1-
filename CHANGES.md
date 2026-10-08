@@ -49,6 +49,7 @@ Current list (run the script for the up-to-date one):
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficSignView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.WaterView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.WindTurbineView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
 
 After applying, regenerate `CODE_INDEX.md` (one new module: StreetLightView).
@@ -164,6 +165,10 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   in a single frame to find stopped queues — a 1 Hz hitch that grows with the fleet. The
   sweep is now spread over 30 frames. Offline, 3,000 cars: most cars read in one frame
   **3,000 → 100**; the same badges in the same places.
+- **Wind turbines** (`WindTurbineView`): every rotor in the city was re-posed every frame,
+  including the ones behind the camera. Those are skipped now; a rotor's angle comes from a
+  shared clock, so it is exactly where it should be the frame it comes back into view (rotors
+  within 250 studs are always posed — a big one can reach into view with its hub behind).
 - **Shoreline foam** (`WaterView`): every shoreline water tile within ~2,000 studs (up to
   four 256×256 images) was repainted and re-uploaded **on the same frame**, 12 times a
   second — a regular spike anywhere near a coast. Each tile now keeps its own clock, phased

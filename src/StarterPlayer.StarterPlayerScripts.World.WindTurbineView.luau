@@ -10,6 +10,11 @@ local RunService = game:GetService("RunService")
 
 local TAG = "WindTurbineRotor"
 local SPEED = 1.6 -- rad/s, ~15 rpm like a real rotor (2026-10-07, user: "spin faster"; was 0.9)
+-- A rotor whose hub is behind the camera is not posed: its angle comes from the shared clock, so
+-- it is exactly where it should be the frame it comes back into view. Not when close -- a big rotor
+-- next to the camera can reach into view with its hub behind it.
+local BEHIND_DOT = -0.35
+local ALWAYS_WITHIN = 250
 
 local WindTurbineView = {}
 
@@ -55,6 +60,9 @@ function WindTurbineView.Start()
 
 	_conn = RunService.Heartbeat:Connect(function(dt: number)
 		_angle += dt * SPEED
+		local cam = workspace.CurrentCamera
+		local camPos = if cam then cam.CFrame.Position else nil
+		local look = if cam then cam.CFrame.LookVector else nil
 		for model, e in _entries do
 			if not model.Parent or not e.root.Parent then
 				_entries[model] = nil
@@ -63,7 +71,13 @@ function WindTurbineView.Start()
 			if e.turbine:GetAttribute("Off") then
 				e.phase -= dt * SPEED -- hold still: the phase eats the shared angle's advance
 			end
-			model:PivotTo(e.root.CFrame * e.offset * CFrame.Angles(0, 0, _angle + e.phase))
+			local hub = e.root.CFrame * e.offset
+			if camPos and look then
+				local off = hub.Position - camPos
+				local d = off.Magnitude
+				if d > ALWAYS_WITHIN and off:Dot(look) < BEHIND_DOT * d then continue end
+			end
+			model:PivotTo(hub * CFrame.Angles(0, 0, _angle + e.phase))
 		end
 	end)
 end
