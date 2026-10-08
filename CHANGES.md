@@ -10,6 +10,28 @@ and the logic was run offline against the game's own modules (Lune harness in
 `tools/harness/`, engine APIs mocked). Timings from the harness are relative only — Lune's
 Vector3 is ~20–50× slower than Roblox's native vectors. See "Verify in Studio" below.
 
+## In short
+
+- **Placing / upgrading roads**: the real road is drawn live a frame or two after the
+  server's answer instead of after a queue of ~30 ms static bakes; only cells that actually
+  changed re-bake; no flat stand-ins on upgrade; the per-edit work that scaled with the
+  whole city (server: crossing resolution, lane-change gates, nav index; client: the
+  traffic-sign replan) now scales with the edit; dragging a road validates ~4× cheaper on
+  big maps.
+- **Lag spikes while moving around**: lamps light only at night and only near you; street
+  furniture joins the prop LOD; street names on straight roads are one plate, not one per
+  letter; traffic signs no longer re-place themselves after edits or scan every pole;
+  periodic whole-city walks (jam badges, windows, tree tints in rain/fog, foam on coasts,
+  server sims landing on the same frame) are spread out, or skipped when idle.
+- **Terrain LOD** follows the camera again without the old 20 fps stretches (cached
+  variants, throttled bakes), and Draw distance now reaches the ground (Low: half the
+  triangles).
+- **High frame rates**: per-frame LOD work shrinks with the frame time, walkers and solar
+  panels move in one batched call, rotors behind the camera are skipped.
+- Nothing was run in Studio. Every change has an offline check in `tools/harness/`
+  (`run_all.sh`), and the ones that must not change behaviour are compared against the
+  original code (same digests). A/B toggles and a Studio checklist are below.
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as
@@ -69,7 +91,7 @@ when convenient (line counts of the changed scripts moved).
 ### 1. Placing a road — instant
 
 The road you place is drawn by the client (RoadPieces → RoadMeshView) from the topology
-delta the server sends. Four things stood between the click and the real road:
+delta the server sends. These stood between the click and the real road:
 
 - **Server render in the same frame as the edit** (`RoadService`). After every edit the
   server re-rendered every touched segment and junction (street furniture + mesh blobs,
