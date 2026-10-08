@@ -40,6 +40,7 @@ Current list (run the script for the up-to-date one):
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |
 | M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
+| M | StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.HUD.BuildingInfoController | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.SeasonTintClient | LocalScript |
@@ -120,6 +121,13 @@ delta the server sends. Four things stood between the click and the real road:
   next frame, Lune-relative). Equivalence: 3 seeds × 60 random placements give the same
   network id for id; 24 steps of edits and lane-change rule changes give the same gates,
   per-lane index and spatial index as the baseline (`test_crossings_equiv`, `test_gates_equiv`).
+
+- **Drawing a road in a big city** (`RoadPlacementSnapper.validate`, run every frame the
+  dragged road changes): its overlap check re-culled every road in the city at each of its
+  31 samples, recomputing the candidate's bounds (and allocating) per road per sample. The
+  cull does not depend on the sample: it now runs once. Offline, 60 random candidates: same
+  verdict for every one; **242 → 60 ms** per call on 1,200 roads, 92 → 46 ms on 312
+  (Lune-relative) — what is left scales with the roads *near* the drag, not the city.
 
 ### 2. Upgrading a road — instant
 

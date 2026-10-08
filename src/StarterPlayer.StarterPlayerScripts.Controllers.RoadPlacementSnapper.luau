@@ -227,9 +227,10 @@ local function flatDistance(a: Vector3, b: Vector3): number
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
-local function segmentNearCandidate(seg: Seg, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, padding: number): boolean
-	local b = _segmentBounds[seg.id]
-	if not b then return true end
+type CandBounds = { cx: number, cz: number, r: number, minY: number, maxY: number }
+
+-- The candidate's own hull, worked out once per check instead of once per segment tested.
+local function candidateBounds(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3): CandBounds
 	local cx = (p0.X + p1.X + p2.X + p3.X) * 0.25
 	local cz = (p0.Z + p1.Z + p2.Z + p3.Z) * 0.25
 	local r = 0
@@ -241,12 +242,22 @@ local function segmentNearCandidate(seg: Seg, p0: Vector3, p1: Vector3, p2: Vect
 		minY = math.min(minY, p.Y)
 		maxY = math.max(maxY, p.Y)
 	end
-	local dx, dz = cx - b.cx, cz - b.cz
-	if math.sqrt(dx * dx + dz * dz) > r + b.r + padding then
+	return { cx = cx, cz = cz, r = r, minY = minY, maxY = maxY }
+end
+
+local function segmentNearBounds(seg: Seg, cand: CandBounds, padding: number): boolean
+	local b = _segmentBounds[seg.id]
+	if not b then return true end
+	local dx, dz = cand.cx - b.cx, cand.cz - b.cz
+	if math.sqrt(dx * dx + dz * dz) > cand.r + b.r + padding then
 		return false
 	end
 	local yPad = RoadConstants.VERTICAL_CONNECT_TOLERANCE
-	return maxY >= b.minY - yPad and minY <= b.maxY + yPad
+	return cand.maxY >= b.minY - yPad and cand.minY <= b.maxY + yPad
+end
+
+local function segmentNearCandidate(seg: Seg, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, padding: number): boolean
+	return segmentNearBounds(seg, candidateBounds(p0, p1, p2, p3), padding)
 end
 
 -- First interior XZ crossing of the (pre-sampled) candidate against an existing segment, mirroring
@@ -401,6 +412,8 @@ function RoadPlacementSnapper.validate(p0: Vector3, p1: Vector3, p2: Vector3, p3
 	do
 		local newSpec = RoadTypeCatalog.getOrDefault(SnapUtil.getActiveRoadType())
 		local newHw = newSpec.width * 0.5
+		-- The weld disc per road type, looked up once per check rather than once per road.
+		local weldOf: { [string]: number } = {}
 		for _, ep in {
 			{ pos = p0, away = Vector3.new(p1.X - p0.X, 0, p1.Z - p0.Z) },
 			{ pos = p3, away = Vector3.new(p2.X - p3.X, 0, p2.Z - p3.Z) },
@@ -413,10 +426,14 @@ function RoadPlacementSnapper.validate(p0: Vector3, p1: Vector3, p2: Vector3, p3
 				-- scales with the host's width: 20.5 studs on the widest highway against a flat
 				-- NODE_WELD_RADIUS of 12. With the narrow radius the ghost stayed green across
 				-- that band and the shallow bend was welded anyway.
-				local weld = math.max(
-					RoadConstants.NODE_WELD_RADIUS,
-					RoadTypeCatalog.getOrDefault(seg.roadType).width * 0.5 + RoadConstants.JUNCTION_MARGIN
-				)
+				local weld = weldOf[seg.roadType]
+				if not weld then
+					weld = math.max(
+						RoadConstants.NODE_WELD_RADIUS,
+						RoadTypeCatalog.getOrDefault(seg.roadType).width * 0.5 + RoadConstants.JUNCTION_MARGIN
+					)
+					weldOf[seg.roadType] = weld
+				end
 				local raw: Vector3? = nil
 				if sameElevationLayer(seg.p0, ep.pos) and flatDistance(seg.p0, ep.pos) <= weld then
 					raw = seg.p1 - seg.p0
@@ -495,6 +512,15 @@ function RoadPlacementSnapper.validate(p0: Vector3, p1: Vector3, p2: Vector3, p3
 		end
 		local near = 0
 		local overlapBySeg: { [number]: number } = {}
+		-- Which roads can overlap at all does not depend on the sample: decided once, in
+		-- _segments order, instead of re-culling the whole city at each of the 31 samples (the
+		-- bulk of a drag frame's validation on a big map).
+		local cb = candidateBounds(p0, p1, p2, p3)
+		local reach: { number } = {}
+		for segKey, seg in _segments do
+			if rampHosts[segKey] then continue end
+			if segmentNearBounds(seg, cb, cullPad) then table.insert(reach, segKey) end
+		end
 		for s = 1, SAMPLES - 1 do
 			local t = s / SAMPLES
 			local cp = BezierUtil.point(p0, p1, p2, p3, t)
@@ -502,9 +528,8 @@ function RoadPlacementSnapper.validate(p0: Vector3, p1: Vector3, p2: Vector3, p3
 			local cflat = Vector3.new(ctan.X, 0, ctan.Z)
 			if cflat.Magnitude < 1e-4 then continue end
 			cflat = cflat.Unit
-			for segKey, seg in _segments do
-				if rampHosts[segKey] then continue end
-				if not segmentNearCandidate(seg, p0, p1, p2, p3, cullPad) then continue end
+			for _, segKey in reach do
+				local seg = _segments[segKey]
 				local st = BezierUtil.closestParam(seg.p0, seg.p1, seg.p2, seg.p3, cp, 12)
 				local sp = BezierUtil.point(seg.p0, seg.p1, seg.p2, seg.p3, st)
 				if sameElevationLayer(sp, cp) then

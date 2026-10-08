@@ -226,7 +226,7 @@ local function makeEnv(isServer: boolean)
 	env.Random = Random
 	env.math = setmetatable({ noise = H.noise }, { __index = math })
 	-- enums newer than Lune's reflection database
-	local extraEnums = { CreateContentResult = { Success = "Success" } }
+	local extraEnums = { CreateContentResult = { Success = "Success" }, CompressionAlgorithm = { Zstd = "Zstd", Lz4 = "Lz4", Deflate = "Deflate" } }
 	env.Enum = setmetatable({}, { __index = function(_, k) return extraEnums[k] or (roblox.Enum :: any)[k] end })
 	env.typeof = rbx.typeof
 	env.task = task
