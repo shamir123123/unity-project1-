@@ -66,6 +66,14 @@ local SETTLE_SWEEPS = 24
 local TRANSITION_BUDGET_SECS = 0.003
 -- Per frame for the scan of every static model; the rest waits for the next frame.
 local SCAN_BUDGET_SECS = 0.001
+-- Both budgets are for a 60 fps frame. A faster frame gets a proportional share (240 fps: a
+-- quarter) and never more, so the work per SECOND -- and the wall time a scan or a band of
+-- swaps takes -- is unchanged, but a 4 ms frame no longer spends 3 of them here.
+local SIXTY_FPS_DT = 1 / 60
+local _frameDt = SIXTY_FPS_DT
+local function slice(atSixty: number): number
+	return atSixty * math.clamp(_frameDt / SIXTY_FPS_DT, 0.25, 1)
+end
 -- Moving models stop being drawn once the WHOLE model is under this many pixels.
 local CULL_MODEL_PX = 1
 -- Moving models checked per sweep (round robin): a 12k-car city is covered every ~3 s
@@ -679,15 +687,15 @@ local function sweepStatic(eye: Vector3, scale: number)
 	-- A model coming closer queues by the band it lands in, nearest band first; thinning a model
 	-- going away waits behind all of them.
 	local queue: { { Model } } = {}
-	local scanEnd = os.clock() + SCAN_BUDGET_SECS
+	local scanEnd = os.clock() + slice(SCAN_BUDGET_SECS)
 	local i = 1
 	while i <= #_list do
 		if i % 64 == 0 and os.clock() >= scanEnd then
-			task.wait()
+			_frameDt = task.wait()
 			if _suspended or not _cityLoaded then
 				return
 			end
-			scanEnd = os.clock() + SCAN_BUDGET_SECS
+			scanEnd = os.clock() + slice(SCAN_BUDGET_SECS)
 		end
 		local model = _list[i]
 		local e = _entries[model]
@@ -719,11 +727,11 @@ local function sweepStatic(eye: Vector3, scale: number)
 	end
 
 	-- The swaps get a frame of their own, and spread over the next ones if there are many.
-	task.wait()
+	_frameDt = task.wait()
 	if _suspended or not _cityLoaded then
 		return
 	end
-	local deadline = os.clock() + TRANSITION_BUDGET_SECS
+	local deadline = os.clock() + slice(TRANSITION_BUDGET_SECS)
 	for slot = 1, MAX_BUCKET + 2 do
 		for _, model in queue[slot] or {} do
 			local e = _entries[model]
@@ -731,11 +739,11 @@ local function sweepStatic(eye: Vector3, scale: number)
 				continue
 			end
 			if os.clock() >= deadline then
-				task.wait()
+				_frameDt = task.wait()
 				if _suspended or not _cityLoaded then
 					return
 				end
-				deadline = os.clock() + TRANSITION_BUDGET_SECS
+				deadline = os.clock() + slice(TRANSITION_BUDGET_SECS)
 			end
 			apply(model, e, e.target)
 		end

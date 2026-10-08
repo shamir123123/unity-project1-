@@ -146,6 +146,11 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   signs live *inside* road pieces under `_City.Roads`, which AssetLODView skipped
   wholesale — street trees never swapped to their thinned/card LODs. Each furniture model
   is now laddered like any other prop.
+- **Prop LOD at high frame rates** (`AssetLODView`): while the camera moves, the prop ladder
+  scans and swaps in fixed slices of 1 ms + 3 ms per frame — fine at 60 fps, but most of a
+  240 fps frame (4.2 ms). The slices now shrink with the frame time (a 240 fps frame gets a
+  quarter) and never grow past the old values, so the work per second and the time a re-tier
+  takes are unchanged. Offline: same hidden-part counts after three camera moves.
 - **Hover** (`BuildingInfoController`): a full-length pick ray ran on *every* mouse-move
   event (several per frame) and re-marshalled the ray filter each time. Now once per
   frame, filter written only when it changes.
