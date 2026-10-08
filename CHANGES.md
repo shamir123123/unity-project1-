@@ -30,6 +30,7 @@ Current list (run the script for the up-to-date one):
 | M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |
 | M | ServerScriptService.Services.City.WaterService | ModuleScript |
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |
+| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |
 | M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |
 | M | StarterPlayer.StarterPlayerScripts.Core.SettingsClient | ModuleScript |
@@ -46,6 +47,7 @@ Current list (run the script for the up-to-date one):
 | **A** | StarterPlayer.StarterPlayerScripts.World.**StreetLightView** | ModuleScript (new) |
 | M | StarterPlayer.StarterPlayerScripts.World.StreetNameView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.TrafficJamView | ModuleScript |
+| M | StarterPlayer.StarterPlayerScripts.World.TrafficSignView | ModuleScript |
 | M | StarterPlayer.StarterPlayerScripts.World.WindowLightsView | ModuleScript |
 
 After applying, regenerate `CODE_INDEX.md` (one new module: StreetLightView).
@@ -146,6 +148,16 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   signs live *inside* road pieces under `_City.Roads`, which AssetLODView skipped
   wholesale — street trees never swapped to their thinned/card LODs. Each furniture model
   is now laddered like any other prop.
+- **Traffic signs** (`TrafficSignView`, `TrafficSignPlanner`): signs are pooled models placed
+  near the camera. Placing one scanned **every signal pole in the city** to see if it should
+  go up on a pole; and 0.6 s after **every road edit** the whole city was re-planned and every
+  drawn sign handed back to the pool and placed again. Now: poles are looked up in a grid;
+  a replan re-solves only the junctions whose roads changed (the rest reuse last plan — the
+  client keeps an unchanged road's record across edits) and signs that did not change stay
+  where they are. Also fixed: a sign taken back from the pool kept the previous sign's
+  text and could keep its text GUI switched on far away. Offline (1,200 roads, 832 poles):
+  per road edit **195 → 14 ms**; sweep after a 500-stud pan **37 → 1.1 ms**; the drawn
+  signs are identical; cached and full plans identical across 8 kinds of edit.
 - **Prop LOD at high frame rates** (`AssetLODView`): while the camera moves, the prop ladder
   scans and swaps in fixed slices of 1 ms + 3 ms per frame — fine at 60 fps, but most of a
   240 fps frame (4.2 ms). The slices now shrink with the frame time (a 240 fps frame gets a

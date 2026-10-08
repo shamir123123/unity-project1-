@@ -219,8 +219,33 @@ function methods:Clone()
 	for _, k in self._kids do k:Clone().Parent = c end
 	return c
 end
+-- Axis-aligned box over the BaseParts inside (part rotation ignored -- good enough for tests).
+function methods:GetBoundingBox()
+	local lo, hi
+	local function add(p)
+		local cf, size = p._props.CFrame, p._props.Size
+		if not cf then return end
+		local half = (size or roblox.Vector3.one) * 0.5
+		local a, b = cf.Position - half, cf.Position + half
+		lo = if lo then roblox.Vector3.new(math.min(lo.X, a.X), math.min(lo.Y, a.Y), math.min(lo.Z, a.Z)) else a
+		hi = if hi then roblox.Vector3.new(math.max(hi.X, b.X), math.max(hi.Y, b.Y), math.max(hi.Z, b.Z)) else b
+	end
+	if self._props.CFrame and self._class ~= "Model" then add(self) end
+	for _, d in self:GetDescendants() do add(d) end
+	if not lo then return roblox.CFrame.new(), roblox.Vector3.zero end
+	return roblox.CFrame.new((lo + hi) * 0.5), hi - lo
+end
 function methods:GetPivot()
-	return self._props.Pivot or self._props.CFrame or roblox.CFrame.new()
+	local own = self._props.Pivot or self._props.CFrame
+	if own then return own end
+	if self._class == "Model" then
+		-- As the engine does: the primary part's pivot, else WorldPivot, else the box centre.
+		local pp = self._props.PrimaryPart
+		if pp and pp._props.CFrame then return pp._props.CFrame end
+		if self._props.WorldPivot then return self._props.WorldPivot end
+		return (self:GetBoundingBox())
+	end
+	return roblox.CFrame.new()
 end
 function methods:PivotTo(cf)
 	self._props.Pivot = cf

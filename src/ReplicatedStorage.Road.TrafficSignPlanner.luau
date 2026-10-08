@@ -1,7 +1,8 @@
 --!strict
 -- TrafficSignPlanner -- where every traffic sign in the city stands, worked out from the road
--- network alone. Pure library: no state, no instances. The client view (TrafficSignView) draws
--- the result; anything that wants to know "is there a stop sign here" can ask the same.
+-- network alone. Pure library: no state, no instances (a caller that replans often may hand
+-- in a Cache, which it owns). The client view (TrafficSignView) draws the result; anything
+-- that wants to know "is there a stop sign here" can ask the same.
 --
 -- The rules, in the order a driver meets them:
 --   stop / give way  -- on each MINOR approach of a junction without lights. Minor is the same
@@ -49,6 +50,26 @@ export type Options = {
 	laneSideSign: number,           -- RoadRules.getLaneSideSign()
 	isSignalised: (nodeId: number) -> boolean,
 }
+
+-- What a node's signs were worked out from last time, so a replan can hand them back when
+-- none of it changed: the same road record tables (the client's DataCache keeps an unchanged
+-- road's table across edits -- a delta replaces only what it sends), the same node position and
+-- signal state, the same options. A replan after an edit then re-solves the few nodes it
+-- touched instead of the whole city. Owned by the caller; see TrafficSignPlanner.newCache.
+type CachedNode = { segs: { Segment }, pos: Vector3, signalised: boolean, signs: { Sign } }
+export type Cache = { key: string?, nodes: { [number]: CachedNode } }
+
+function TrafficSignPlanner.newCache(): Cache
+	return { key = nil, nodes = {} }
+end
+
+local function sameSegs(a: { Segment }, b: { Segment }): boolean
+	if #a ~= #b then return false end
+	for _, s in b do
+		if not table.find(a, s) then return false end
+	end
+	return true
+end
 
 local SIGN_SETBACK = 6          -- studs past the junction mouth a sign stands
 local KERB_CLEARANCE = 1.2      -- studs outside the carriageway edge
@@ -100,8 +121,18 @@ local function kerbPoint(centre: Vector3, travel: Vector3, spec: any, laneSideSi
 	return centre + travel:Cross(UP) * laneSideSign * (spec.width * 0.5 + KERB_CLEARANCE)
 end
 
-function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vector3?, opts: Options): { Sign }
+function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vector3?, opts: Options, cache: Cache?): { Sign }
 	local out: { Sign } = {}
+	local cached: { [number]: CachedNode }? = nil
+	local seen: { [number]: boolean } = {}
+	if cache then
+		local key = `{opts.signSystem}|{opts.speedUnit}|{opts.laneSideSign}`
+		if cache.key ~= key then
+			cache.key = key
+			table.clear(cache.nodes)
+		end
+		cached = cache.nodes
+	end
 	local byNode: { [number]: { Segment } } = {}
 	for _, seg in segments do
 		for _, nid in { seg.startNode, seg.endNode } do
@@ -122,6 +153,16 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 		local roundabout = false
 		for _, s in segs do if s.isRoundabout then roundabout = true end end
 		if roundabout then continue end
+		local sig = opts.isSignalised(nodeId)
+		local first = #out + 1
+		if cached then
+			seen[nodeId] = true
+			local hit = cached[nodeId]
+			if hit and hit.pos == npos and hit.signalised == sig and sameSegs(hit.segs, segs) then
+				table.move(hit.signs, 1, #hit.signs, first, out)
+				continue
+			end
+		end
 
 		-- Arms and the widest road here (for where the mouth sits).
 		local arms: { { seg: Segment, spec: any, dir: Vector3 } } = {}
@@ -136,7 +177,7 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 		end
 		local junction = #arms >= 3
 		local mouth = if junction then widest * 0.5 * MOUTH_GUESS else 0
-		local signalised = junction and opts.isSignalised(nodeId)
+		local signalised = junction and sig
 
 		-- == stop / give way ================================================
 		if junction and not signalised then
@@ -262,6 +303,15 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 					text = speedText(kmh, opts.speedUnit), nodeId = nodeId,
 				})
 			end
+		end
+
+		if cached then
+			cached[nodeId] = { segs = segs, pos = npos, signalised = sig, signs = table.move(out, first, #out, 1, {}) }
+		end
+	end
+	if cached then
+		for nodeId in cached do
+			if not seen[nodeId] then cached[nodeId] = nil end
 		end
 	end
 	return out

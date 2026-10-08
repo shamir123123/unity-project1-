@@ -41,7 +41,7 @@ local CELL = 128
 local POLE_SNAP = 9         -- studs: a sign this close to a signal pole goes up on it
 local POST_HEIGHT = 5.2     -- studs (2.6 m) to the bottom of the sign plate
 
-type Active = { model: Model, kind: string, textOn: boolean }
+type Active = { model: Model, kind: string, textOn: boolean, sign: TrafficSignPlanner.Sign, at: CFrame, onPole: boolean }
 
 local _started = false
 local _signs: { TrafficSignPlanner.Sign } = {}
@@ -51,8 +51,12 @@ local _pool: { [string]: { Model } } = {}
 local _folder: Folder? = nil
 local _poles: { Vector3 } = {}
 local _poleTops: { number } = {}
+-- Pole indices by CELL, so finding the pole by a sign looks at a few cells, not every signal
+-- pole in the city once per sign placed.
+local _poleGrid: { [string]: { number } } = {}
 local _signalNodes: { [number]: boolean } = {}
 local _replanAt: number? = nil
+local _planCache = TrafficSignPlanner.newCache()
 local _nextSweep = 0
 local _preset = "High"
 local _conns: { RBXScriptConnection } = {}
@@ -219,6 +223,7 @@ end
 local function refreshPoles()
 	table.clear(_poles)
 	table.clear(_poleTops)
+	table.clear(_poleGrid)
 	table.clear(_signalNodes)
 	local city = Workspace:FindFirstChild("_City")
 	local lights = city and city:FindFirstChild("TrafficLights")
@@ -226,8 +231,16 @@ local function refreshPoles()
 	for _, m in lights:GetChildren() do
 		if m:IsA("Model") then
 			local cf, size = m:GetBoundingBox()
-			table.insert(_poles, m:GetPivot().Position)
+			local at = m:GetPivot().Position
+			table.insert(_poles, at)
 			table.insert(_poleTops, cf.Position.Y + size.Y * 0.5)
+			local k = cellKey(at.X, at.Z)
+			local cell = _poleGrid[k]
+			if not cell then
+				cell = {}
+				_poleGrid[k] = cell
+			end
+			table.insert(cell, #_poles)
 			-- TrafficLightPlacer names each pole TrafficLight_<nodeId>_<arm>.
 			local nodeId = tonumber(string.match(m.Name, "^TrafficLight_(%d+)_"))
 			if nodeId then _signalNodes[nodeId] = true end
@@ -238,15 +251,44 @@ end
 local function nearestPole(pos: Vector3, within: number): number?
 	local best: number? = nil
 	local bestSq = within * within
-	for i, p in _poles do
-		local dx, dz = p.X - pos.X, p.Z - pos.Z
-		local d2 = dx * dx + dz * dz
-		if d2 < bestSq then
-			bestSq = d2
-			best = i
+	for cx = math.floor((pos.X - within) / CELL), math.floor((pos.X + within) / CELL) do
+		for cz = math.floor((pos.Z - within) / CELL), math.floor((pos.Z + within) / CELL) do
+			local cell = _poleGrid[`{cx},{cz}`]
+			if not cell then continue end
+			for _, i in cell do
+				local p = _poles[i]
+				local dx, dz = p.X - pos.X, p.Z - pos.Z
+				local d2 = dx * dx + dz * dz
+				-- Ties go to the lower index, as the old walk over every pole did.
+				if d2 < bestSq or (d2 == bestSq and best ~= nil and i < best) then
+					bestSq = d2
+					best = i
+				end
+			end
 		end
 	end
 	return best
+end
+
+-- Where a sign stands, and whether it went up on a signal pole.
+local function placement(sign: TrafficSignPlanner.Sign): (CFrame, boolean)
+	local pos = sign.pos
+	local pole = nearestPole(pos, POLE_SNAP)
+	if pole then
+		-- Up on the signal pole, above the heads; the sign's own post is not drawn.
+		local base = _poles[pole]
+		local plateBottom = _poleTops[pole] + 0.3
+		pos = Vector3.new(base.X, plateBottom - POST_HEIGHT, base.Z)
+	end
+	local face = Vector3.new(sign.face.X, 0, sign.face.Z)
+	if face.Magnitude < 1e-3 then face = Vector3.zAxis end
+	return CFrame.lookAt(pos, pos + face.Unit), pole ~= nil
+end
+
+local function place(model: Model, at: CFrame, onPole: boolean)
+	local post = model:FindFirstChild("Post")
+	if post and post:IsA("BasePart") then post.LocalTransparencyModifier = if onPole then 1 else 0 end
+	model:PivotTo(at)
 end
 
 local function releaseAll()
@@ -262,13 +304,14 @@ local function replan()
 	local opts = TrafficSignPlanner.defaultOptions(function(nodeId: number): boolean
 		return _signalNodes[nodeId] == true
 	end)
-	local ok, result = pcall(TrafficSignPlanner.plan, DataCache.GetSegments() :: any, nodePos, opts)
+	local ok, result = pcall(TrafficSignPlanner.plan, DataCache.GetSegments() :: any, nodePos, opts, _planCache)
 	if not ok then
 		warn("[TrafficSignView] planning failed: " .. tostring(result))
 		return
 	end
 	_signs = result :: { TrafficSignPlanner.Sign }
 	table.clear(_grid)
+	local byKey: { [string]: TrafficSignPlanner.Sign } = {}
 	for _, s in _signs do
 		local k = cellKey(s.pos.X, s.pos.Z)
 		local bucket = _grid[k]
@@ -277,9 +320,29 @@ local function replan()
 			_grid[k] = bucket
 		end
 		table.insert(bucket, s)
+		byKey[s.key] = s
 	end
-	-- Signs keyed the same may have moved or changed: redraw from scratch.
-	releaseAll()
+	-- Every road edit replans the whole city, and almost every sign comes back the same. Those
+	-- stay up as they are: this used to hand every drawn sign back to the pool and place it
+	-- again on the next sweep. A sign that changed is redrawn where it stands; one of another
+	-- kind, or gone, goes back to the pool.
+	for key, a in _active do
+		local s = byKey[key]
+		if not s or s.kind ~= a.kind then
+			giveBack(a.kind, a.model)
+			_active[key] = nil
+			continue
+		end
+		local at, onPole = placement(s)
+		if at ~= a.at or onPole ~= a.onPole then
+			place(a.model, at, onPole)
+			a.at, a.onPole = at, onPole
+		end
+		if s.text ~= a.sign.text or s.arrowRight ~= a.sign.arrowRight then
+			setText(a.model, s, a.textOn)
+		end
+		a.sign = s
+	end
 	_nextSweep = 0
 end
 
@@ -287,25 +350,7 @@ local function scheduleReplan()
 	_replanAt = os.clock() + REPLAN_DELAY
 end
 
--- == Placement =================================================================
-local function place(model: Model, sign: TrafficSignPlanner.Sign)
-	local pos = sign.pos
-	local pole = nearestPole(pos, POLE_SNAP)
-	local post = model:FindFirstChild("Post")
-	if pole then
-		-- Up on the signal pole, above the heads; the sign's own post is not drawn.
-		local base = _poles[pole]
-		local plateBottom = _poleTops[pole] + 0.3
-		pos = Vector3.new(base.X, plateBottom - POST_HEIGHT, base.Z)
-		if post and post:IsA("BasePart") then post.LocalTransparencyModifier = 1 end
-	elseif post and post:IsA("BasePart") then
-		post.LocalTransparencyModifier = 0
-	end
-	local face = Vector3.new(sign.face.X, 0, sign.face.Z)
-	if face.Magnitude < 1e-3 then face = Vector3.zAxis end
-	model:PivotTo(CFrame.lookAt(pos, pos + face.Unit))
-end
-
+-- == Visibility ================================================================
 local function focusPoint(camera: Camera): Vector3
 	local cf = camera.CFrame
 	local look = cf.LookVector
@@ -349,14 +394,18 @@ local function sweep()
 	end
 	for key, s in wanted do
 		local a = _active[key]
+		local near = (s.pos - camPos).Magnitude < textDist
 		if not a then
 			local model = takeModel(s.kind)
-			place(model, s)
+			local at, onPole = placement(s)
+			place(model, at, onPole)
+			-- Set outright: a model back from the pool still has the last sign's text, and its
+			-- SurfaceGui on if that sign was close.
+			setText(model, s, near)
 			model.Parent = folder
-			a = { model = model, kind = s.kind, textOn = false }
+			a = { model = model, kind = s.kind, textOn = near, sign = s, at = at, onPole = onPole }
 			_active[key] = a
 		end
-		local near = (s.pos - camPos).Magnitude < textDist
 		if near ~= a.textOn then
 			a.textOn = near
 			setText(a.model, s, near)
