@@ -20,6 +20,9 @@ local TrafficJamView = {}
 
 local TAG = "NPCDriver"
 local SCAN_PERIOD = 1.0   -- s between sweeps; a jam is not a per-frame event
+-- A sweep reads every car in the city. All in one frame, a big city's fleet was a hitch once a
+-- second; it is spread over this many frames instead (each car is still sampled once a sweep).
+local SCAN_SLICES = 30
 local STALL_DIST = 3      -- studs moved between sweeps and under, the car is stopped
 local CELL = 45           -- studs; jam grouping grid (roughly one block face)
 local MIN_CARS = 6        -- stalled cars in one cell before the cell counts as jammed
@@ -166,27 +169,34 @@ local function placeBadges(spots: { Vector3 })
 	for _, b in free do b.part:Destroy() end
 end
 
--- One sweep: which grid cells hold enough stopped cars to be a jam, grouped into jams.
-local function scan()
-	local count: { [string]: number } = {}
-	local sum: { [string]: Vector3 } = {}
-	local live: { [Model]: boolean } = {}
+-- The sweep in progress: the cars to read, how far it has got, and what it has counted.
+local _sweep: { Instance }? = nil
+local _sweepAt = 1
+local _count: { [string]: number } = {}
+local _sum: { [string]: Vector3 } = {}
+local _live: { [Model]: boolean } = {}
 
-	for _, car in CollectionService:GetTagged(TAG) do
-		local root = rootOf(car)
-		if not root then continue end
-		local model = car :: Model
-		live[model] = true
-		local pos = root.Position
-		local prev = _lastPos[model]
-		_lastPos[model] = pos
-		if not prev or (pos - prev).Magnitude > STALL_DIST then continue end
-		local cx, cz = pos.X // CELL, pos.Z // CELL
-		local key = cellKey(cx, cz)
-		count[key] = (count[key] or 0) + 1
-		sum[key] = (sum[key] or Vector3.zero) + pos
-		if not _cells[key] then _cells[key] = { cx = cx, cz = cz, streak = 0, pos = pos, shown = false } end
-	end
+-- One car's part of a sweep: is it stopped, and in which cell.
+local function sample(car: Instance)
+	local root = rootOf(car)
+	if not root then return end
+	local model = car :: Model
+	_live[model] = true
+	local pos = root.Position
+	local prev = _lastPos[model]
+	_lastPos[model] = pos
+	if not prev or (pos - prev).Magnitude > STALL_DIST then return end
+	local cx, cz = pos.X // CELL, pos.Z // CELL
+	local key = cellKey(cx, cz)
+	_count[key] = (_count[key] or 0) + 1
+	_sum[key] = (_sum[key] or Vector3.zero) + pos
+	if not _cells[key] then _cells[key] = { cx = cx, cz = cz, streak = 0, pos = pos, shown = false } end
+end
+
+-- The end of a sweep: which grid cells hold enough stopped cars to be a jam, grouped into jams.
+local function finish()
+	local count, sum, live = _count, _sum, _live
+	_count, _sum, _live = {}, {}, {}
 	for model in _lastPos do
 		if not live[model] then _lastPos[model] = nil end
 	end
@@ -242,18 +252,38 @@ function TrafficJamView.Start()
 	_started = true
 	_conn = RunService.Heartbeat:Connect(function(dt)
 		_acc += dt
-		if _acc < SCAN_PERIOD then return end
-		_acc = 0
+		if not _sweep then
+			if _acc < SCAN_PERIOD then return end
+			_acc = 0
+			_sweep = CollectionService:GetTagged(TAG)
+			_sweepAt = 1
+		end
 		debug.profilebegin("TrafficJamView.scan")
-		local ok, err = pcall(scan)
+		local ok, err = pcall(function()
+			local cars = _sweep :: { Instance }
+			local last = math.min(_sweepAt + math.ceil(#cars / SCAN_SLICES) - 1, #cars)
+			for i = _sweepAt, last do sample(cars[i]) end
+			_sweepAt = last + 1
+			if _sweepAt > #cars then
+				_sweep = nil
+				finish()
+			end
+		end)
 		debug.profileend()
-		if not ok then warn("[TrafficJamView] scan failed: " .. tostring(err)) end
+		if not ok then
+			_sweep = nil
+			warn("[TrafficJamView] scan failed: " .. tostring(err))
+		end
 	end)
 end
 
 function TrafficJamView.Stop()
 	if _conn then _conn:Disconnect(); _conn = nil end
 	placeBadges({})
+	_sweep = nil
+	table.clear(_count)
+	table.clear(_sum)
+	table.clear(_live)
 	table.clear(_lastPos)
 	table.clear(_cells)
 	_started = false

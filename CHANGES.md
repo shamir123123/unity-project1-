@@ -144,7 +144,8 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   lamp has a SpotLight that was **always on — at noon, at any distance, unlimited**. Now
   lamps cast light only from dusk to dawn, and only the nearest N around the camera focus
   (Low 0 / Medium 32 / High 96 / Ultra 192). Neon lens parts still glow. Signal heads
-  (server-switched, under `_City.TrafficLights`) are never touched.
+  (server-switched, under `_City.TrafficLights`) are never touched. By day the sweep does
+  nothing (no lamp is lit to put out).
 - **Street furniture LOD** (`AssetLODView`): lamps, street trees, name blades and yield
   signs live *inside* road pieces under `_City.Roads`, which AssetLODView skipped
   wholesale — street trees never swapped to their thinned/card LODs. Each furniture model
@@ -159,6 +160,10 @@ fly back → **0 bakes** (all swaps). **Low preset: 191k ground triangles instea
   text and could keep its text GUI switched on far away. Offline (1,200 roads, 832 poles):
   per road edit **195 → 14 ms**; sweep after a 500-stud pan **37 → 1.1 ms**; the drawn
   signs are identical; cached and full plans identical across 8 kinds of edit.
+- **Traffic-jam badges** (`TrafficJamView`): once a second it read every car in the city
+  in a single frame to find stopped queues — a 1 Hz hitch that grows with the fleet. The
+  sweep is now spread over 30 frames. Offline, 3,000 cars: most cars read in one frame
+  **3,000 → 100**; the same badges in the same places.
 - **Shoreline foam** (`WaterView`): every shoreline water tile within ~2,000 studs (up to
   four 256×256 images) was repainted and re-uploaded **on the same frame**, 12 times a
   second — a regular spike anywhere near a coast. Each tile now keeps its own clock, phased

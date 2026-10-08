@@ -43,6 +43,7 @@ type Lamp = { light: Light, part: BasePart }
 
 local _lamps: { [Light]: Lamp } = {}
 local _lit: { [Light]: boolean? } = {}
+local _litCount = 0
 local _started = false
 local _city: Instance? = nil
 
@@ -58,6 +59,7 @@ end
 local function setLit(lamp: Lamp, on: boolean)
 	if (_lit[lamp.light] == true) == on then return end
 	_lit[lamp.light] = if on then true else nil
+	_litCount += if on then 1 else -1
 	lamp.light.Enabled = on
 end
 
@@ -76,6 +78,7 @@ end
 
 local function untrack(d: Instance)
 	if not d:IsA("Light") then return end
+	if _lit[d] then _litCount -= 1 end
 	_lamps[d] = nil
 	_lit[d] = nil
 end
@@ -97,7 +100,10 @@ local function sweep(): ()
 	local budget = if isNight() then maxLit() else 0
 	local at = focus()
 	if budget <= 0 or not at then
-		for _, lamp in _lamps do setLit(lamp, false) end
+		-- By day every lamp is already out (they arrive dark): nothing to walk.
+		if _litCount > 0 then
+			for _, lamp in _lamps do setLit(lamp, false) end
+		end
 		return
 	end
 	-- Nearest `budget` lamps within MAX_RANGE of the focus, flat distance.
@@ -105,6 +111,7 @@ local function sweep(): ()
 	local r2 = MAX_RANGE * MAX_RANGE
 	for light, lamp in _lamps do
 		if not light.Parent then
+			if _lit[light] then _litCount -= 1 end
 			_lamps[light] = nil
 			_lit[light] = nil
 			continue
