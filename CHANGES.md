@@ -27,6 +27,11 @@ Current list (run the script for the up-to-date one):
 | M | ServerScriptService.Services.City.Economy.CityEconomyService | ModuleScript |
 | M | ServerScriptService.Services.City.PowerService | ModuleScript |
 | M | ServerScriptService.Services.City.ProgressionService | ModuleScript |
+| M | ServerScriptService.Services.City.Economy.SupplyService | ModuleScript |
+| M | ServerScriptService.Services.City.Simulation.CitizenService | ModuleScript |
+| M | ServerScriptService.Services.NPC.NPCDriverService | ModuleScript |
+| M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |
+| M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |
 | M | ServerScriptService.Services.City.Simulation.FireService | ModuleScript |
 | M | ServerScriptService.Services.City.WaterService | ModuleScript |
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |
@@ -248,7 +253,9 @@ unchanged. Each tick now has a MicroProfiler label (`PowerService.rebuild`, `Fir
 MicroProfiler labels added: `RoadMeshView.lod`, `StreetNameView.poll`,
 `AmbienceController.sample`, `BuildingInfo.hover`, `TrafficJamView.scan`,
 `StreetLightView.sweep`; server: `<Sim>.tick` / `PowerService.rebuild` /
-`WaterService.rebuild` for each city sim.
+`WaterService.rebuild` for each city sim, and `NPCDriverService.tick`, `NPCWalkingService.tick`,
+`CitizenService.tick`, `TrafficSignalService.tick`, `SupplyService.tick` (server MicroProfiler:
+these had no labels at all, so a server spike could not be pinned on a system).
 
 1. Place roads (straight, crossing 5+ streets, T-junction, open ground) and upgrade a few:
    real road should appear within a couple of frames of the delta; no flat stand-ins on

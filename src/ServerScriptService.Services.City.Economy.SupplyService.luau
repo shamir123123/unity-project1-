@@ -26,6 +26,17 @@ local RunService          = game:GetService("RunService")
 local Workspace           = game:GetService("Workspace")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+-- A MicroProfiler label around a Heartbeat handler, for finding server frame spikes in Studio.
+-- An error still surfaces as it did, with its traceback.
+local function profiled(label: string, fn: (number) -> ()): (number) -> ()
+	return function(dt: number)
+		debug.profilebegin(label)
+		local ok, err = xpcall(fn :: any, debug.traceback, dt)
+		debug.profileend()
+		if not ok then error(err, 0) end
+	end
+end
+
 local PathFollower   = require(ServerScriptService.Services.Util.PathFollower)
 local VehicleFactory = require(ServerScriptService.Services.NPC.VehicleFactory)
 local Const          = require(ServerScriptService.Services.City.CitySimConstants)
@@ -1335,7 +1346,7 @@ function SupplyService.Bind() end
 function SupplyService.Start()
 	if _running then return end
 	_running = true
-	_heartbeat = RunService.Heartbeat:Connect(function(dt: number)
+	_heartbeat = RunService.Heartbeat:Connect(profiled("SupplyService.tick", function(dt: number)
 		local sdt = math.min(dt, 0.1) * gameSpeed()
 		if sdt <= 0 then return end
 		local ok, err = pcall(stepTrucks, sdt)
@@ -1352,7 +1363,7 @@ function SupplyService.Start()
 			local ok2, err2 = pcall(produceAndDispatch, passDt)
 			if not ok2 then warn("[SupplyService] produce/dispatch failed: " .. tostring(err2)) end
 		end
-	end)
+	end))
 end
 
 return SupplyService

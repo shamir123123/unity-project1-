@@ -15,6 +15,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local CollectionService = game:GetService("CollectionService")
 
+-- A MicroProfiler label around a Heartbeat handler, for finding server frame spikes in Studio.
+-- An error still surfaces as it did, with its traceback.
+local function profiled(label: string, fn: (number) -> ()): (number) -> ()
+	return function(dt: number)
+		debug.profilebegin(label)
+		local ok, err = xpcall(fn :: any, debug.traceback, dt)
+		debug.profileend()
+		if not ok then error(err, 0) end
+	end
+end
+
 local CitizenModel = require(ReplicatedStorage.City.CitizenModel)
 local Const = require(ServerScriptService.Services.City.CitySimConstants)
 
@@ -1383,7 +1394,7 @@ function NPCWalkingService.Start()
 	if _heartbeat then _heartbeat:Disconnect() end
 	local tickAccum = 0
 	local demoteAccum = 0
-	_heartbeat = RunService.Heartbeat:Connect(function(dt: number)
+	_heartbeat = RunService.Heartbeat:Connect(profiled("NPCWalkingService.tick", function(dt: number)
 		tickAccum += math.min(dt, 0.1)
 		demoteAccum += dt
 		if demoteAccum >= DEMOTE_CHECK then
@@ -1419,7 +1430,7 @@ function NPCWalkingService.Start()
 				w.lodAccum = 0
 			end
 		end
-	end)
+	end))
 end
 
 -- ── SidewalkService-compatible public surface (for anything that required it) ─

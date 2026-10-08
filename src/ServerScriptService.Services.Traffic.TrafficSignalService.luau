@@ -28,6 +28,17 @@ local GameSpeed = require(game:GetService("ReplicatedStorage").GameSpeed)
 
 local RunService = game:GetService("RunService")
 
+-- A MicroProfiler label around a Heartbeat handler, for finding server frame spikes in Studio.
+-- An error still surfaces as it did, with its traceback.
+local function profiled(label: string, fn: (number) -> ()): (number) -> ()
+	return function(dt: number)
+		debug.profilebegin(label)
+		local ok, err = xpcall(fn :: any, debug.traceback, dt)
+		debug.profileend()
+		if not ok then error(err, 0) end
+	end
+end
+
 local ReplicatedStorage    = game:GetService("ReplicatedStorage")
 
 local IntersectionDetector = require(script.Parent.IntersectionDetector)
@@ -1001,7 +1012,7 @@ function TrafficSignalService.Start()
 
 	local tickAccum = 0
 	local delayAccum = 0
-	_heartbeat = RunService.Heartbeat:Connect(function(dt: number)
+	_heartbeat = RunService.Heartbeat:Connect(profiled("TrafficSignalService.tick", function(dt: number)
 		if not _initialized then return end
 		tickAccum += math.min(dt, 0.25)
 
@@ -1031,7 +1042,7 @@ function TrafficSignalService.Start()
 		for _, group in pairs(_groups) do
 			tickGroup(group, now, scaledDt)
 		end
-	end)
+	end))
 end
 
 return TrafficSignalService

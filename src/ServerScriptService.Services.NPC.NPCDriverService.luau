@@ -14,6 +14,17 @@ local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+-- A MicroProfiler label around a Heartbeat handler, for finding server frame spikes in Studio.
+-- An error still surfaces as it did, with its traceback.
+local function profiled(label: string, fn: (number) -> ()): (number) -> ()
+	return function(dt: number)
+		debug.profilebegin(label)
+		local ok, err = xpcall(fn :: any, debug.traceback, dt)
+		debug.profileend()
+		if not ok then error(err, 0) end
+	end
+end
+
 local NetMiddleware     = require(ReplicatedStorage:WaitForChild("NetMiddleware"))
 local RoadConstants     = require(ReplicatedStorage.Road.RoadConstants)
 local RoadTypeCatalog   = require(ReplicatedStorage.Road.RoadTypeCatalog)
@@ -5350,7 +5361,7 @@ function NPCDriverService.Start()
 
 	local tickAccum = 0
 	local sweepIn = 0
-	_heartbeat = RunService.Heartbeat:Connect(function(dt: number)
+	_heartbeat = RunService.Heartbeat:Connect(profiled("NPCDriverService.tick", function(dt: number)
 		tickAccum += math.min(dt, Tuning.MAX_SIM_DT)
 		if tickAccum < Tuning.DRIVER_TICK then return end
 		local simDt = math.min(tickAccum, Tuning.MAX_SIM_DT)
@@ -5471,7 +5482,7 @@ function NPCDriverService.Start()
 				end
 			end
 		end
-	end)
+	end))
 end
 
 table.freeze(Tuning)
