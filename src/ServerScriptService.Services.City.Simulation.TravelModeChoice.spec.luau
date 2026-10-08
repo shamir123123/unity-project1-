@@ -71,12 +71,12 @@ return function()
 			expect(old < young).to.equal(true)
 		end)
 
-		it("about nine adults in ten own a car", function()
+		it("about nineteen adults in twenty own a car", function()
 			local owners = 0
 			for pid = 1, 2000 do
 				if TravelModeChoice.ownsCar(pid) then owners += 1 end
 			end
-			expect(owners > 1700 and owners < 1900).to.equal(true)
+			expect(owners > 1840 and owners < 1960).to.equal(true)
 		end)
 
 		it("a person's choice for the same trip is stable (a habit)", function()

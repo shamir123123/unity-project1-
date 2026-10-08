@@ -27,7 +27,8 @@ run 600 test_trafficjam.luau
 run 300 test_waterfoam.luau
 run 300 test_windturbines.luau
 run 300 test_solar.luau
-run 300 test_pedestrians.luau
+run 300 test_walker_stream.luau
+run 600 specs.luau ServerScriptService.Services.City.Simulation.TravelModeChoice.spec
 run 300 test_windowlights.luau
 run 900 test_seasontint.luau
 run 600 test_assetlod.luau

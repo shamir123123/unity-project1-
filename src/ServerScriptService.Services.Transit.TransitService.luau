@@ -1607,10 +1607,12 @@ end
 
 -- Best transit option for a home->job trip, or nil if none is viable. The result is the
 -- estimated door-to-door time + the fare so CitizenService can weigh it against driving.
+-- bus: the ride is on the roads, so it is as slow as the traffic on them (CitizenService).
 export type TripEstimate = {
 	usable: boolean, timeSeconds: number, fare: number,
 	routeId: number, boardStopId: number, alightStopId: number,
 	walkSeconds: number, waitSeconds: number, rideSeconds: number,
+	bus: boolean,
 }
 local function routeRideDistance(route: Route, boardId: number, alightId: number): number?
 	local key=tostring(boardId)..":"..tostring(alightId)
@@ -1669,6 +1671,7 @@ function TransitService.estimateTrip(homePos: Vector3, jobPos: Vector3): TripEst
 						walkSeconds = walkIn + walkOut,
 						waitSeconds = wait,
 						rideSeconds = ride,
+						bus = route.mode ~= "train",
 					}
 				end
 			end

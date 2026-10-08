@@ -1721,9 +1721,14 @@ function Cars.give(h: Household, a: Adult, parkedAt: CFrame?, away: boolean?)
 		if not park and away and a.outDestId then park = pickBuildingPark(h, a.outDestId) end
 	end
 	park = park or pickHomePark(h, a)
-	-- No space near home (a garage counts; the kerb-side pocket does not): no car for now.
-	-- doActivities asks again later, so a car park built nearby brings the cars back.
-	if not park or (park.pocket and not park.garage) then
+	-- No space near home: the car waits in the pocket at the home kerb (user, 2026-10-08: more
+	-- residents keep a car -- Cities: Skylines II has them give it up). The household still
+	-- counts as having nowhere to park (notePocket below), so parking still matters.
+	if not park then
+		local kerb = _buildingService.getKerb(h.homeId)
+		park = if kerb then Cars.roadStop(kerb) else nil
+	end
+	if not park then
 		Cars.notePocket(h.id)
 		return
 	end
@@ -2097,6 +2102,17 @@ local function chooseTravelMode(
 	local transitEstimate = if _transitService then _transitService.estimateTrip(fromDoor, toDoor) else nil
 	local parkWalk, parkPrice = nil, 0
 	if canDrive then parkWalk, parkPrice = Cars.parkWalk(h, a, destId, toDoor) end
+	local usable: any = if transitEstimate and transitEstimate.usable then transitEstimate else nil
+	-- A bus sits in the same traffic as the cars beside it. Rated at its free-flow speed while
+	-- the car was rated at the jammed one, a busy city put nearly everyone on the bus the day
+	-- a line opened (user, 2026-10-08). Trains run on their own track.
+	local congestion = if g and (canDrive or (usable and usable.bus)) then Cars.congestion(g, fromDoor, toDoor) else 1
+	if usable and usable.bus and congestion > 1 then
+		local slowed: any = table.clone(usable)
+		slowed.rideSeconds *= congestion
+		slowed.timeSeconds += usable.rideSeconds * (congestion - 1)
+		usable = slowed
+	end
 	local trip: TravelModeChoice.Trip = {
 		pid = a.pid,
 		age = a.age,
@@ -2105,8 +2121,8 @@ local function chooseTravelMode(
 		canDrive = canDrive,
 		parkWalk = parkWalk,
 		parkPrice = parkPrice,
-		congestion = if canDrive and g then Cars.congestion(g, fromDoor, toDoor) else 1,
-		transit = if transitEstimate and transitEstimate.usable then transitEstimate else nil,
+		congestion = if canDrive then congestion else 1,
+		transit = usable,
 		weather = Cars.weather(),
 		dark = _timeService ~= nil and _timeService.isDaylight ~= nil and not _timeService.isDaylight(),
 		carrying = a.tripTargetHome and a.outKind == "shop",
@@ -3260,6 +3276,12 @@ local function restoreCars(h: Household, row: any)
 			local a = h.adults[tonumber(i) or 0]
 			if a then a.ownsCar = true end
 		end
+	end
+	-- Ownership is rolled once per adult and saved; when the share was raised (0.9 -> 0.95,
+	-- 2026-10-08) the adults the new share takes in get their car on load too. The roll only
+	-- grows: nobody who owned one loses it.
+	for _, a in h.adults do
+		if not a.ownsCar and TravelModeChoice.ownsCar(a.pid) then a.ownsCar = true end
 	end
 	if typeof(row.w) == "table" then
 		for _, i in row.w do

@@ -72,17 +72,26 @@ do
 	end
 end
 
--- deterministic PRNG standing in for Roblox Random
+-- Deterministic PRNG standing in for Roblox Random (PCG there). mulberry32: well mixed from the
+-- first draw, so neighbouring seeds (pid * 16 + salt) are uncorrelated as they are in Roblox -- the
+-- Lehmer generator this replaced made Random.new(n):NextNumber() a linear function of n.
+local function mul32(a, b)
+	local aHi, aLo = bit32.rshift(a, 16), bit32.band(a, 0xFFFF)
+	local bHi, bLo = bit32.rshift(b, 16), bit32.band(b, 0xFFFF)
+	return ((aHi * bLo + aLo * bHi) % 65536 * 65536 + aLo * bLo) % 4294967296
+end
 local Random = {}
 Random.__index = Random
 function Random.new(seed)
-	seed = math.floor(tonumber(seed) or os.clock() * 1e6) % 2147483647
-	if seed <= 0 then seed += 2147483646 end
+	seed = math.floor(tonumber(seed) or os.clock() * 1e6) % 4294967296
 	return setmetatable({ s = seed }, Random)
 end
 function Random:_next()
-	self.s = (self.s * 16807) % 2147483647
-	return self.s / 2147483647
+	self.s = (self.s + 0x6D2B79F5) % 4294967296
+	local z = self.s
+	z = mul32(bit32.bxor(z, bit32.rshift(z, 15)), bit32.bor(z, 1))
+	z = bit32.bxor(z, (z + mul32(bit32.bxor(z, bit32.rshift(z, 7)), bit32.bor(z, 61))) % 4294967296)
+	return bit32.bxor(z, bit32.rshift(z, 14)) / 4294967296
 end
 function Random:NextNumber(a, b)
 	a = a or 0; b = b or 1
@@ -286,6 +295,19 @@ function H.require(target)
 	if not okRun then error(result, 0) end
 	_cache[target] = if result == nil then false else result
 	return result
+end
+
+-- Load a module by path, passing `...` to its chunk (specs.luau hands a spec its TestEZ globals).
+function H.requireWith(path: string, ...)
+	local inst = _byPath[path]
+	assert(inst, "no such script: " .. path)
+	local src = fs.readFile(ROOT .. _files[inst])
+	local patch = H.patches[path]
+	if patch then src = patch(src) end
+	local env = table.clone(_env)
+	env.script = inst
+	env.require = H.require
+	return luau.load(src, { debugName = path, environment = env, injectGlobals = true })(...)
 end
 
 -- Run a Script/LocalScript (or any source file) by path with its own env.

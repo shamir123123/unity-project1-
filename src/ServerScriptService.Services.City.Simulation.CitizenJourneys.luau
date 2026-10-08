@@ -191,12 +191,12 @@ local function journey(h: Household, a: Adult, trip: number, fromDoor: Vector3?,
 				onArrive()
 				return
 			end
-			-- No legal spot: they got out on the road. At home the family gives the car up
-			-- (no space near home, no car -- Cities: Skylines II); it is bought back once a
-			-- space frees up. Away it waits in the pocket for the trip home.
+			-- No legal spot: they got out on the road and the car waits in the pocket for the next
+			-- trip -- at home too (user, 2026-10-08: more residents keep a car; Cities: Skylines II
+			-- has the family give it up). The household counts as having nowhere to park.
 			if choice.pocket then
 				Cars.notePocket(h.id)
-				if a.tripTargetHome then Cars.drop(a) else Garage.stow(car) end
+				Garage.stow(car)
 			end
 			-- Leg 3: walk from the parked car to the destination door, then enter.
 			a.walkerId = context.getWalkingService().spawnCommuter(choice.cf.Position, toDoor, function()

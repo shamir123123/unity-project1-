@@ -243,7 +243,8 @@ CitySimConstants.TRAFFIC_SAFETY_MAX_CARS = 12000 -- emergency allocation guard, 
 -- player drives its real route unseen, a walker walks it as a bodiless Tier-2 plan.
 CitySimConstants.NPC_MAX_ACTIVE = 6000
 CitySimConstants.CAR_PARKING_RETRY_SECONDS = 5
-CitySimConstants.STROLL_CHANCE = 0.003
+-- 0.003 until 2026-10-08 (user: fewer people walking): ~0.8 strolls per idle adult per game day -> ~0.3.
+CitySimConstants.STROLL_CHANCE = 0.0012
 CitySimConstants.STROLL_MIN = 60
 CitySimConstants.STROLL_MAX = 180
 CitySimConstants.STROLL_FROM_HOUR = 9

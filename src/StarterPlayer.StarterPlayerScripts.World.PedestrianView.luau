@@ -2,12 +2,10 @@
 -- PedestrianView
 -- Client-side movement for server-simulated walkers, the pedestrian twin of
 -- NPCDriverView. The server simulates walkers (authoritative) but no longer
--- writes near walkers' instance CFrames -- poses arrive batched over
+-- writes walkers' instance CFrames after building them -- poses arrive batched over
 -- Net.SyncNpcPoses (unreliable buffer packets, see PathFollower); this view maps
--- entries to walkers via the NpcId attribute and renders each one interpolated
--- between the last two stream poses. Far walkers still arrive as slow property
--- keepalive writes; when a walker's stream goes quiet we adopt those replicated
--- CFrames again. Client-only, no client->server path. The figure's body parts
+-- entries to walkers via the NpcId attribute and plays each one back on the server's
+-- clock (below). Client-only, no client->server path. The figure's body parts
 -- are welded to the root, so moving the root locally moves the whole person.
 
 local CollectionService = game:GetService("CollectionService")
@@ -18,45 +16,55 @@ local PedestrianView = {}
 
 local TAG = "NPCWalker"
 
--- Render-behind interpolation between the two most recent server poses (see NPCDriverView
--- for the full rationale). Renders the walker one ~12 Hz interval back, lerping prev->target
--- for smooth constant-velocity motion that never overshoots and stays stable at any FPS.
-local INTERP_DELAY = 0.085
+-- PLAYBACK ON THE SERVER'S CLOCK (2026-10-08, user: walkers "move and freeze"). Every stream
+-- packet carries the server's os.clock() at the moment its poses were taken. Each walker keeps
+-- the last few poses with those stamps and is drawn at (server time now - its delay): the pose
+-- between the two stamps either side of that moment. The server sends a walker every 50-133 ms
+-- (its 20 Hz tick against a 1/12 s send step) and packets arrive with network jitter on top;
+-- timing the lerp by ARRIVAL turned both into jump-hold-jump, several times a second. On
+-- server time, uneven sends and jitter only change how far ahead the buffer runs.
+--
+-- Server time is estimated from the packets: (stamp - local clock at arrival) is the clock
+-- offset minus that packet's travel time, so the largest one seen is the best estimate (the
+-- fastest packet). It may only creep down, so a clock drifting the other way is followed
+-- without one slow packet dragging every walker back.
+local OFFSET_CREEP = 0.02 -- share of a lower reading taken per packet
+local _offset: number? = nil
+
+-- How far behind server time a walker plays: at least one send interval plus jitter, so the
+-- pose after the playback point has normally arrived. Grows at once when a walker runs out
+-- of poses (it would stand still), shrinks slowly while the buffer runs ahead, so a change
+-- reads as walking a touch faster or slower, never as a jump.
+local DELAY_MIN = 0.15
+local DELAY_MAX = 0.75
+local DELAY_MARGIN = 0.07
+local DELAY_SHRINK = 0.1 -- seconds of delay given back per second
+local BUFFER = 5 -- poses kept per walker
 local _clock = 0
--- A target farther than this from the rendered pose is a teleport (spawn, re-path,
--- pop-in), not walking -- snap instead of gliding across the map.
+-- A pose farther than this from the last one is a teleport (spawn, re-path, pop-in), not
+-- walking: the walker is put there instead of gliding across the map.
 local SNAP_DIST = 12
--- Which walkers this view actually moves. Measured HORIZONTALLY (XZ), to match the
--- server's PathFollower.REPLICATE_RANGE (200, also XZ) that decides which walkers are
--- stream-driven, and set ABOVE it so the two bands overlap. A 3D radius equal to the
--- server's left sqrt(200^2 - camY^2) of horizontal reach on this unclamped fly camera:
--- the server had stopped writing their CFrames while this view skipped the write, so
--- walkers in the difference stood still (the NPCDriverView freeze, same seam).
--- No distance cutoff, matching NPCDriverView. The server writes no property CFrames any
--- more (every walker rides the pose stream), so skipping the write out here would leave
--- distant walkers frozen at their spawn pose. 80 walkers max, behind-camera ones skipped.
--- View-direction cull: walkers IN FRONT stay drawn at ANY distance; walkers BEHIND the
--- camera are hidden + their ease skipped (still simulated on the server). Cosines of the
--- angle off the camera look vector; hysteresis between show/hide so turning never flickers.
+-- View-direction cull: walkers IN FRONT stay drawn at any distance; walkers BEHIND the
+-- camera are hidden and not moved (still simulated on the server). Cosines of the angle off
+-- the camera look vector; hysteresis between show and hide so turning never flickers.
 local FRONT_COS = 0.05
 local BEHIND_COS = -0.19
 local POS_EPS = 1e-3
-local ROT_DOT_EPS = 0.9999
--- Up to 3000 people can be walking within 500 m. Past NEAR_DIST each one is redrawn every
--- FAR_EVERY-th frame (staggered, so the cost is spread), and the server sends them at 4 Hz;
--- each walker renders one update interval behind (adaptive, up to MAX_DELAY) so the coarser
--- stream still moves smoothly.
+-- Past NEAR_DIST a walker is redrawn on every FAR_EVERY-th frame, staggered, but never less
+-- often than FAR_MIN_HZ: at 30 fps every frame, so far walkers do not drop to 10 Hz.
 local NEAR_DIST = 300
 local FAR_EVERY = 3
-local MAX_DELAY = 0.4
+local FAR_MIN_HZ = 20
 local _frame = 0
 local _slotSeq = 0
 
 type Tracked = {
-	root: BasePart, display: CFrame, lastWritten: CFrame?,
-	prevPose: CFrame, prevTime: number, targetPose: CFrame, targetTime: number,
-	hidden: boolean?,
-	streamStamp: number?, streamAt: number?,
+	root: BasePart, model: Model, display: CFrame,
+	poses: { CFrame }, stamps: { number }, -- oldest first, server time
+	delay: number,
+	farewellAt: number?, -- server stamp of the last pose before the walker left our stream
+	hidden: boolean?, -- behind the camera
+	gone: boolean?, -- past its farewell pose: out of our stream, so not drawn
 	slot: number,
 }
 
@@ -64,7 +72,7 @@ type Tracked = {
 -- entries of (id u32, x f32, y f32, z f32, yaw u16, pitch i8).
 local STREAM_HEADER = 8
 local STREAM_ENTRY = 19
-local STREAM_STALE = 0.6
+local FAREWELL_PITCH = -128
 
 -- Hide/show a whole walker model client-side via LocalTransparencyModifier (the server's
 -- authoritative Transparency is untouched). Only called on a hide<->show transition.
@@ -94,9 +102,10 @@ local function track(model: Model)
 		return
 	end
 	_slotSeq += 1
+	-- Until its first stream pose, a walker stands where the server built it.
 	_tracked[model] = {
-		root = root, display = root.CFrame, lastWritten = nil,
-		prevPose = root.CFrame, prevTime = _clock, targetPose = root.CFrame, targetTime = _clock,
+		root = root, model = model, display = root.CFrame,
+		poses = {}, stamps = {}, delay = DELAY_MIN,
 		slot = _slotSeq,
 	}
 	local id = model:GetAttribute("NpcId")
@@ -120,6 +129,28 @@ local function untrack(model: Model)
 	if p then p:Disconnect(); _pending[model] = nil end
 end
 
+-- The pose at server time `at`, and whether the buffer had run out (at is past its newest pose).
+local function poseAt(t: Tracked, at: number): (CFrame?, boolean)
+	local stamps, poses = t.stamps, t.poses
+	local n = #stamps
+	if n == 0 then return nil, false end
+	if at >= stamps[n] then return poses[n], at > stamps[n] end
+	if at <= stamps[1] then return poses[1], false end
+	for i = n - 1, 1, -1 do
+		local s0 = stamps[i]
+		if at >= s0 then
+			-- Drop what playback has passed, keeping the segment it is on.
+			for _ = 1, i - 1 do
+				table.remove(stamps, 1)
+				table.remove(poses, 1)
+			end
+			local s1 = stamps[2]
+			return poses[1]:Lerp(poses[2], (at - s0) / (s1 - s0)), false
+		end
+	end
+	return poses[1], false
+end
+
 -- One batched move per frame, as NPCDriverView does for cars: workspace:BulkMoveTo is the
 -- engine's cheap path for moving many parts, and a CFrame write per walker paid the full
 -- per-property cost for each. Reused so a frame allocates nothing.
@@ -131,7 +162,8 @@ local function step(dt: number)
 	_frame += 1
 	table.clear(_moveParts)
 	table.clear(_moveCFrames)
-	local renderTime = _clock - INTERP_DELAY
+	local serverNow = if _offset then _clock + _offset else nil
+	local farEvery = math.clamp(math.floor(1 / (FAR_MIN_HZ * math.max(dt, 1e-3))), 1, FAR_EVERY)
 	local camera = workspace.CurrentCamera
 	local camPos = if camera then camera.CFrame.Position else nil
 	local camLook = if camera then camera.CFrame.LookVector else nil
@@ -142,63 +174,49 @@ local function step(dt: number)
 			_tracked[model] = nil
 			continue
 		end
+		if not serverNow or #t.stamps == 0 then continue end
 
-		local current = root.CFrame
+		local at = serverNow - t.delay
+		local pose, starved = poseAt(t, at)
+		if not pose then continue end
+		if starved then
+			-- Out of poses: hold playback on the newest one by playing further behind from now on,
+			-- so the next pose continues from there instead of jumping. A walker standing still
+			-- (a kerb wait sends nothing) also lands here; it costs only some delay.
+			t.delay = math.min(DELAY_MAX, serverNow - t.stamps[#t.stamps])
+		else
+			local stamps = t.stamps
+			local gap = if #stamps >= 2 then stamps[#stamps] - stamps[#stamps - 1] else 0
+			local want = math.clamp(gap + DELAY_MARGIN, DELAY_MIN, DELAY_MAX)
+			if t.delay > want then t.delay = math.max(want, t.delay - DELAY_SHRINK * dt) end
+		end
+
+		local farewell = t.farewellAt
+		if farewell and at >= farewell then
+			if not t.gone then t.gone = true; setModelHidden(model, true) end
+			continue
+		end
 
 		if camPos and camLook then
-			local off = current.Position - camPos
+			local off = pose.Position - camPos
 			local mag = off.Magnitude
 			local dot = if mag > 1e-3 then off:Dot(camLook) / mag else 1
 			if dot < BEHIND_COS then
 				if not t.hidden then t.hidden = true; setModelHidden(model, true) end
-			elseif dot > FRONT_COS then
-				if t.hidden then t.hidden = false; setModelHidden(model, false) end
-			end
-			if t.hidden then
-				t.lastWritten = nil
 				continue
+			elseif dot > FRONT_COS and t.hidden then
+				t.hidden = false
+				setModelHidden(model, false)
 			end
-			if mag > NEAR_DIST and (t.slot + _frame) % FAR_EVERY ~= 0 then continue end
+			if t.hidden then continue end
+			if mag > NEAR_DIST and (t.slot + _frame) % farEvery ~= 0 then continue end
 		end
 
-		-- Adopt property-replicated CFrames only while the stream is quiet for this
-		-- walker (far keepalive / packet loss); stream poses are the live source.
-		if _clock - (t.streamAt or -math.huge) > STREAM_STALE then
-			local lw = t.lastWritten
-			if (not lw)
-				or (current.Position - lw.Position).Magnitude > POS_EPS
-				or current.LookVector:Dot(lw.LookVector) < ROT_DOT_EPS
-			then
-				if (not lw) or (current.Position - t.targetPose.Position).Magnitude > SNAP_DIST then
-					t.prevPose, t.targetPose = current, current
-					t.prevTime, t.targetTime = renderTime, _clock
-					t.display = current
-				else
-					t.prevPose, t.prevTime = t.targetPose, t.targetTime
-					t.targetPose, t.targetTime = current, _clock
-				end
-			end
-		end
-
-		local span = t.targetTime - t.prevTime
-		local pose: CFrame
-		if span <= 1e-4 then
-			pose = t.targetPose
-		else
-			local delay = math.clamp(span, INTERP_DELAY, MAX_DELAY)
-			local alpha = math.clamp((_clock - delay - t.prevTime) / span, 0, 1)
-			pose = t.prevPose:Lerp(t.targetPose, alpha)
-		end
-
-		if (t.targetPose.Position - t.prevPose.Position).Magnitude < POS_EPS
-			and (pose.Position - t.display.Position).Magnitude < POS_EPS
-		then
-			t.lastWritten = root.CFrame
+		if (pose.Position - t.display.Position).Magnitude < POS_EPS
+			and pose.LookVector:Dot(t.display.LookVector) > 0.9999 then
 			continue
 		end
-
 		t.display = pose
-		t.lastWritten = pose
 		table.insert(_moveParts, root)
 		table.insert(_moveCFrames, pose)
 	end
@@ -211,6 +229,13 @@ end
 local function onStreamPacket(buf: buffer)
 	if typeof(buf) ~= "buffer" or buffer.len(buf) < STREAM_HEADER + STREAM_ENTRY then return end
 	local stamp = buffer.readf64(buf, 0)
+	local reading = stamp - _clock
+	local offset = _offset
+	if not offset or reading > offset then
+		_offset = reading
+	else
+		_offset = offset + (reading - offset) * OFFSET_CREEP
+	end
 	local n = (buffer.len(buf) - STREAM_HEADER) // STREAM_ENTRY
 	for k = 0, n - 1 do
 		local off = STREAM_HEADER + k * STREAM_ENTRY
@@ -218,25 +243,41 @@ local function onStreamPacket(buf: buffer)
 		if not model then continue end
 		local t = _tracked[model]
 		if not t then continue end
-		if stamp <= (t.streamStamp or 0) then continue end
-		t.streamStamp = stamp
-		t.streamAt = _clock
+		local stamps, poses = t.stamps, t.poses
+		local last = #stamps
+		if last > 0 and stamp <= stamps[last] then continue end
 		local pos = Vector3.new(buffer.readf32(buf, off + 4), buffer.readf32(buf, off + 8), buffer.readf32(buf, off + 12))
 		local yaw = buffer.readu16(buf, off + 16) / 65535 * (2 * math.pi) - math.pi
-		-- -128 marks a walker's last pose before it leaves our stream (PathFollower); walkers
-		-- stand upright, so it simply reads as level.
+		-- FAREWELL_PITCH marks a walker's last pose before it leaves our stream (PathFollower):
+		-- it is drawn there, then hidden until the stream picks it up again.
 		local pitchRaw = buffer.readi8(buf, off + 18)
-		local pitch = if pitchRaw == -128 then 0 else math.rad(pitchRaw)
+		local farewell = pitchRaw == FAREWELL_PITCH
+		local pitch = if farewell then 0 else math.rad(pitchRaw)
 		local cosP = math.cos(pitch)
 		local look = Vector3.new(-math.sin(yaw) * cosP, math.sin(pitch), -math.cos(yaw) * cosP)
 		local pose = CFrame.lookAt(pos, pos + look, Vector3.yAxis)
-		if (pose.Position - t.targetPose.Position).Magnitude > SNAP_DIST then
-			t.prevPose, t.targetPose = pose, pose
-			t.prevTime, t.targetTime = _clock - INTERP_DELAY, _clock
+		local ref = if last > 0 then poses[last] else t.display
+		if (pose.Position - ref.Position).Magnitude > SNAP_DIST then
+			-- A teleport: start the buffer over there. Drawn at once by the next frame.
+			table.clear(stamps)
+			table.clear(poses)
 			t.display = pose
-		else
-			t.prevPose, t.prevTime = t.targetPose, t.targetTime
-			t.targetPose, t.targetTime = pose, _clock
+			t.root.CFrame = pose
+		end
+		table.insert(stamps, stamp)
+		table.insert(poses, pose)
+		if #stamps > BUFFER then
+			table.remove(stamps, 1)
+			table.remove(poses, 1)
+		end
+		if farewell then
+			t.farewellAt = stamp
+		elseif t.farewellAt then
+			t.farewellAt = nil
+			if t.gone then
+				t.gone = false
+				if not t.hidden then setModelHidden(model, false) end
+			end
 		end
 	end
 end

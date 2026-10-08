@@ -53,6 +53,7 @@ local CROSSWALK_SPEED   = 3.5 * WS  -- studs/s while crossing the road (slower, 
 local STEP_DIST         = 0.25 * WS -- waypoint arrival threshold (studs)
 local REPATH_INTERVAL   = 12      -- seconds before forcing a re-path
 local MAX_WALKERS       = Const.NPC_MAX_ACTIVE       -- shared with every car on the road AI (walkerCap)
+local MAX_BODIES        = Const.WALKER_MAX_BODIES    -- walkers with a body at once, all players together
 -- A citizen walking where no player can see them walks as a Tier-2 plan (CitizenAgentService):
 -- real route, real time, no body. Bodies go to walks within BODY_RANGE of a player and are
 -- handed back past DEMOTE_RANGE, so the capped pool is always spent where someone is looking
@@ -948,9 +949,13 @@ local function finishCommuter(walker: Walker)
 	end
 end
 
--- Bodies left once the road AI has taken its share of the one NPC budget.
+-- Bodies left once the road AI has taken its share of the one NPC budget, and never more than
+-- MAX_BODIES: every body is a model replicated to every player (the place does not stream), with
+-- poses streamed to each one nearby, and up to 6000 of them was what made a busy city stutter --
+-- in multiplayer most of all. Walks past the cap still happen, as Tier-2 plans (no body), and the
+-- bodies go to the walks nearest a player (yieldFarthestBody).
 local function walkerCap(): number
-	return MAX_WALKERS - NPCDriverService.ActiveCarCount()
+	return math.min(MAX_BODIES, MAX_WALKERS - NPCDriverService.ActiveCarCount())
 end
 
 local function stepWalker(walker: Walker, dt: number, sendDt: number?)

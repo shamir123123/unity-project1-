@@ -181,6 +181,68 @@ footway top 1.00 above the curve, asphalt top 0.50) — now every prop on a foot
 beside a kerbless road at 0.50, manholes 0.52; the previous code gives 0.50 for footway props
 and 0.00 for signs and poles.
 
+## Third pass — 2026-10-08 (sims, travel, supply chain)
+
+### Walking sims "move and freeze"
+
+The server sends each walker's pose every 50–133 ms (a 20 Hz walker tick against a 1/12 s
+send step) over an unreliable channel; `PedestrianView` timed its lerp by when packets
+*arrived* and kept only two poses, so uneven sends and network jitter came out as jump-hold-jump
+several times a second. It now plays each walker back on the **server's clock**: every packet
+already carries the server time its poses were taken; each walker keeps its last five poses with
+those stamps and is drawn at (server time now − a small per-walker delay, 0.15–0.75 s, grown
+exactly by any shortfall so playback never jumps, shrunk slowly). A walker's "farewell" pose
+(it left your stream) now hides it instead of leaving it frozen in place.
+
+`tools/harness/test_walker_stream.luau` simulates the real send cadence, latency, jitter and
+loss and measures the drawn walker (frames standing still while it should walk / spread of its
+per-frame steps / biggest step):
+
+| | old view | new view |
+|---|---|---|
+| steady network, 60 fps | 10.6% / 0.62 / 3.0× | 0.0% / 0.00 / 1.0× |
+| 40 ms jitter, 60 fps | 14.2% / 0.78 / 5.2× | 0.0% / 0.06 / 1.8× |
+| 60 ms jitter + 3% loss | 19.5% / 1.09 / 11.2× | 2.0% / 0.18 / 2.0× |
+| 40 ms jitter, 30 fps | 6.0% / 0.52 / 4.5× | 0.0% / 0.06 / 1.5× |
+| 2 Hz band (1500–4000 studs away) | 75.9% / 3.88 / 30× | 6.7% / 0.28 / 2.0× |
+
+### Fewer walkers on screen, less load
+
+- **Walker bodies capped at 400** (`Const.WALKER_MAX_BODIES`, defined but never used): the cap
+  was "6000 minus cars on the road". Every body is a model replicated to every player (the place
+  does not stream instances) with its poses streamed to each player nearby, so thousands of them
+  was the multiplayer lag. Walks past the cap still happen as bodiless Tier-2 plans with real
+  travel times; bodies go to the walks nearest a player (the existing farthest-swap).
+- **Strolls** 0.003 → 0.0012 per idle 2-s sim step (≈0.8 → 0.3 strolls per idle adult per game day).
+
+### More cars, and a bus line no longer empties the roads
+
+- **Buses sit in traffic.** Mode choice slowed the car by the road congestion on the trip (up to
+  3.4×) but rated the bus at free-flow speed, so a busy city put nearly everyone on a new line.
+  Bus ride time now gets the same congestion factor (trains do not). Shares from the real choice
+  model (adult commute, `TravelModeChoice`):
+
+  | trip, roads, buses | drive before → after | bus before → after |
+  |---|---|---|
+  | 2000 studs, clear, 10 buses | 84% → 84% | 15% → 15% |
+  | 2000 studs, 2× slow, 10 buses | 55% → 76% | 43% → 23% |
+  | 2000 studs, 3.4× slow, 10 buses | 28% → 69% | 71% → 28% |
+  | 4000 studs, 3.4× slow, 10 buses | 13% → 62% | 86% → 37% |
+
+- **Owners keep their car with no bay near home.** Before, an owner whose home had no free bay
+  within 350 studs (or car park within 1200) got *no car* and walked or rode — most owners in
+  dense blocks. The car now waits in the pocket at the home kerb (as cars away from home already
+  did) and the household still counts as "nowhere to park" for happiness.
+  *Your call:* this replaces a deliberate Cities: Skylines II rule (no parking at home → the
+  family gives the car up); one `if` in `Cars.give` and one line in `CitizenJourneys` restore it.
+- **Car ownership 90% → 95%** of adults (`TravelModeChoice.CAR_OWNERSHIP`); saved cities pick
+  it up on load (the roll is per pid and only grows).
+
+Checks: `specs.luau ServerScriptService.Services.City.Simulation.TravelModeChoice.spec` 18/18
+(its ownership test now expects 95%). The harness gained a TestEZ runner (`specs.luau`) and a
+well-mixed `Random` (the old stand-in made neighbouring seeds correlated, which had 9 of these
+18 specs failing offline only).
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as

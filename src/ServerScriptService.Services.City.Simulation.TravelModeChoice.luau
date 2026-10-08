@@ -19,7 +19,7 @@
 --     the search for a bay: seconds where bays are free, 3.5-14 min in a full downtown
 --     (Shoup 2006; Millard-Ball 2020). Here it is the real distance to the nearest free bay.
 --   * ~92% of US households own a car and there are ~1.9 per household (ACS 2022), so about
---     nine adults in ten have one of their own.
+--     nine adults in ten have one of their own -- 95% here, by the user's call (2026-10-08).
 --   * The average US walk trip is under a mile (NHTS 2017); long walks fall off fast.
 --   * Seniors weigh comfort ahead of time (the Cities: Skylines II agent model).
 --   * Rain cuts walking trips by roughly a fifth and snow by more; people walk less after
@@ -57,7 +57,7 @@ local CAR_COST_PER_1K   = 2       -- per 1000 studs driven
 local TASTE_SPREAD      = 0.35    -- personal taste: each mode's cost scaled by e^(+-0.35)
 local SENIOR_AGE        = 60
 local SENIOR_WALK_PER_YEAR = 0.04 -- extra weight on walking per year past SENIOR_AGE
-local CAR_OWNERSHIP     = 0.9     -- share of adults with a car of their own
+local CAR_OWNERSHIP     = 0.95    -- share of adults with a car of their own (0.9 until 2026-10-08, user: more vehicles)
 -- How much worse walking (and waiting at a stop) feels by the conditions of the trip.
 local RAIN_WALK         = 1.5
 local SNOW_WALK         = 2.0
