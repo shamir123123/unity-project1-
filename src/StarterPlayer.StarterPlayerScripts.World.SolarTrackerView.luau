@@ -74,8 +74,15 @@ local function tiltFor(axis: CFrame, sun: Vector3): number
 	return if elev < BACKTRACK then a * elev / BACKTRACK else a
 end
 
+-- The rows all follow one sun, so they cross MIN_TURN on the same step: their panels move in one
+-- workspace:BulkMoveTo rather than a CFrame write each. Reused so a step allocates nothing.
+local _moveParts: { BasePart } = {}
+local _moveCFrames: { CFrame } = {}
+
 local function step()
 	local sun = Lighting:GetSunDirection()
+	table.clear(_moveParts)
+	table.clear(_moveCFrames)
 	for row, r in _rows do
 		if not row.Parent or not r.root.Parent then
 			_rows[row] = nil
@@ -93,8 +100,14 @@ local function step()
 		r.angle = a
 		local turn = axis * CFrame.Angles(0, 0, a)
 		for i, p in r.parts do
-			if p.Parent then p.CFrame = turn * r.rest[i] end
+			if p.Parent then
+				table.insert(_moveParts, p)
+				table.insert(_moveCFrames, turn * r.rest[i])
+			end
 		end
+	end
+	if #_moveParts > 0 then
+		workspace:BulkMoveTo(_moveParts, _moveCFrames, Enum.BulkMoveMode.FireCFrameChanged)
 	end
 end
 
