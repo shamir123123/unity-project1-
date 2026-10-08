@@ -106,6 +106,45 @@ ServerStorage, unused. Offline check: `tools/harness/test_utilityboxes.luau` (4 
 1400 studs: facing the road 4/4, inside the footway 4/4, palette paint 4/4, decoy used 0,
 re-render identical).
 
+### Placing a road — faster again (the "81 ms")
+
+Measured through `RoadService.placeSegment` on the 544-road grid (`bench_server_place.luau 16`;
+Lune-relative, ±20% run to run):
+
+| | before this pass | now |
+|---|---|---|
+| long diagonal across the city: placement | 121.5 ms (crossings 109) | **45 ms** (crossings ~38) |
+| short link in a block: the frame after | 27 ms | **14.5 ms** |
+| 60 random placements on a 10×10 grid (`test_crossings_equiv`) | 1.7 s (original code) | **0.45 s** |
+
+- *Crossing resolution* (`RoadNetwork.resolveCrossings`): a piece that has never been
+  tested (or just changed) used to be tested against every road in the city, in order, on
+  every pass. Each call now files the roads in 128-stud cells by their control-point box
+  (long roads by their sample chords) and tests only roads filed along the piece's own path,
+  still in the city's order so the first crossing found is the same one. A piece already
+  found clean is tested only against roads changed since, and when more than one of those
+  crosses it the city order picks between them. After the first pass, "changed" is read
+  from the roads the network marked dirty instead of re-reading all of them; a
+  verification mode (`VERIFY=1 test_crossings_equiv`) re-reads every road on every pass and
+  fails if any change was not marked — 464 passes over 3 seeds, none. Each curve's sample
+  chord vectors are worked out once instead of once per pair of chords tested.
+- *Welding a road end* (`getOrCreateJunctionNode`, twice per piece placed) built a bounds
+  table for every road in the city per call; its broad phase is now allocation-free
+  (control-point box, which rejects nothing the exact test would accept): ~5.5 → ~1.6 ms.
+- *Lane-change broadcast* (`RoadReplicationService.broadcastLaneChanges`) copied every gate
+  in the city into a fresh payload after each edit just to find the new ones; it now diffs
+  gate ids (`RoadNavigationGraph.GetLaneChangeGateIds`) and builds data only for new gates
+  (`GetLaneChangeGateDataFor`). Same messages: `test_lanechange_broadcast.luau` records every
+  broadcast over a run of edits — identical digest against the previous commit and against
+  the original code.
+- *Lane-change index*: an unchanged road direction whose rules did not change hands its
+  previous per-lane index buckets on instead of rebuilding a record per connection in the
+  city. `test_gates_equiv`: all 24 per-step digests identical to the original, including the
+  rule edits; nav rebuild over those steps 1050 → 374 ms.
+
+Equivalence: `test_crossings_equiv` seeds 7, 11 and 23 give the original code's digests
+(558/554/552 roads, 0 errors).
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as

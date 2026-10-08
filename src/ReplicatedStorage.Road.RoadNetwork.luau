@@ -18,6 +18,10 @@ local RoadNetwork = {}
 RoadNetwork.__index = RoadNetwork
 
 local CROSS_SAMPLES = 24
+-- resolveCrossings files every segment in square cells this size to find what a piece can cross.
+local CROSS_CELL = 128
+local FILE_BOX_CELLS = 4
+local EMPTY_IDS: { SegmentId } = table.freeze({})
 
 -- How far apart two segments between the same pair of nodes may run and still be the SAME
 -- road stacked twice. A merge copies the path exactly (measured: 0.0000 over 275 stacked
@@ -87,7 +91,11 @@ local function boundsNear(a: SegBounds, b: SegBounds, pad: number): boolean
 end
 
 -- A curve sampled for the crossing test, with the XZ box of its samples.
-type Samples = { pts: { Vector3 }, minX: number, maxX: number, minZ: number, maxZ: number }
+-- d[i] = pts[i + 1] - pts[i]: each chord's vector, worked out once per curve instead of once
+-- per pair of chords tested.
+type Samples = { pts: { Vector3 }, d: { Vector3 }, minX: number, maxX: number, minZ: number, maxZ: number }
+-- A crossing found by resolveCrossings' scan: params on both curves and the point.
+type CrossHit = { tA: number, tB: number, at: Vector3? }
 
 local function samplesOf(S: Segment): Samples
 	local pts = table.create(CROSS_SAMPLES + 1)
@@ -100,14 +108,18 @@ local function samplesOf(S: Segment): Samples
 		if p.Z < minZ then minZ = p.Z end
 		if p.Z > maxZ then maxZ = p.Z end
 	end
-	return { pts = pts, minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ }
+	local d = table.create(CROSS_SAMPLES)
+	for i = 1, CROSS_SAMPLES do
+		d[i] = pts[i + 1] - pts[i]
+	end
+	return { pts = pts, d = d, minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ }
 end
 
 -- segHit on curves already sampled (resolveCrossings keeps each curve's samples while it is
 -- unchanged). Same layer test first, as segHit.
 local function samplesHit(A: Segment, B: Segment, a: Samples, b: Samples): (number?, number?, Vector3?)
 	if A.vMode ~= B.vMode then return nil end
-	local aPts, bPts = a.pts, b.pts
+	local aPts, bPts, aD, bD = a.pts, b.pts, a.d, b.d
 	-- B's footprint: a piece of A outside it cannot cross B, so its 24 tests are skipped.
 	-- Only a cull -- the tests that do run, and their order, are unchanged.
 	local bMinX, bMaxX, bMinZ, bMaxZ = b.minX, b.maxX, b.minZ, b.maxZ
@@ -118,11 +130,10 @@ local function samplesHit(A: Segment, B: Segment, a: Samples, b: Samples): (numb
 			or math.max(a1.Z, a2.Z) < bMinZ or math.min(a1.Z, a2.Z) > bMaxZ then
 			continue
 		end
-		local r = a2 - a1
+		local r = aD[i + 1]
 		for j = 0, CROSS_SAMPLES - 1 do
 			local b1 = bPts[j + 1]
-			local b2 = bPts[j + 2]
-			local s = b2 - b1
+			local s = bD[j + 1]
 			local rxs = r.X * s.Z - r.Z * s.X
 			if math.abs(rxs) > 1e-9 then
 				local qpx = b1.X - a1.X
@@ -421,20 +432,25 @@ function RoadNetwork.getOrCreateJunctionNode(self: RoadNetwork, pos: Vector3): N
 	local bestId: SegmentId? = nil
 	local bestT = 0
 	local bestDist = math.huge
+	local px, py, pz = pos.X, pos.Y, pos.Z
 	for id, seg in self._segments do
-		-- Broad-phase: skip segments whose control hull can't reach this endpoint.
-		local b = boundsOf(seg.p0, seg.p1, seg.p2, seg.p3)
-		local reach = b.r + RoadTypeCatalog.getOrDefault(seg.roadType).width * 0.5 + margin
-		local bdx, bdz = pos.X - b.cx, pos.Z - b.cz
-		if bdx * bdx + bdz * bdz > reach * reach then continue end
-		if pos.Y < b.minY - vtol or pos.Y > b.maxY + vtol then continue end
-		local t = BezierUtil.closestParam(seg.p0, seg.p1, seg.p2, seg.p3, pos, RoadConstants.SNAP_SEGMENT_SAMPLES)
-		local p = BezierUtil.point(seg.p0, seg.p1, seg.p2, seg.p3, t)
+		-- Broad-phase: skip segments whose control hull can't reach this endpoint. The curve lies
+		-- inside its control points' box, so an endpoint farther than `band` outside it (or off
+		-- its height range) fails the exact test below too. Allocation-free: this runs once per
+		-- segment in the city for every road end placed.
+		local band = RoadTypeCatalog.getOrDefault(seg.roadType).width * 0.5 + margin
+		local p0, p1, p2, p3 = seg.p0, seg.p1, seg.p2, seg.p3
+		if px < math.min(p0.X, p1.X, p2.X, p3.X) - band or px > math.max(p0.X, p1.X, p2.X, p3.X) + band
+			or pz < math.min(p0.Z, p1.Z, p2.Z, p3.Z) - band or pz > math.max(p0.Z, p1.Z, p2.Z, p3.Z) + band
+			or py < math.min(p0.Y, p1.Y, p2.Y, p3.Y) - vtol or py > math.max(p0.Y, p1.Y, p2.Y, p3.Y) + vtol then
+			continue
+		end
+		local t = BezierUtil.closestParam(p0, p1, p2, p3, pos, RoadConstants.SNAP_SEGMENT_SAMPLES)
+		local p = BezierUtil.point(p0, p1, p2, p3, t)
 		-- Elevation-aware: a road passing far above/below this endpoint is a flyover,
 		-- not a junction. Gate on height, then measure reach in the ground plane.
 		if math.abs(p.Y - pos.Y) > vtol then continue end
 		local d = flatDist(p, pos)
-		local band = RoadTypeCatalog.getOrDefault(seg.roadType).width * 0.5 + margin
 		if d <= band and d < bestDist then
 			bestDist = d
 			bestId = id
@@ -682,10 +698,16 @@ function RoadNetwork.resolveCrossings(self: RoadNetwork, seedIds: { SegmentId })
 	--   * a candidate that came up clean on a pass is, on later passes, tested only against the
 	--     segments that changed since: nothing else can have started crossing it.
 	-- "Changed" is read off each segment's own fields at the top of every pass (control points,
-	-- end nodes, layer -- all segHit and the scan look at), never trusted to dirty-marking.
+	-- end nodes, layer -- all segHit and the scan look at). The first pass reads every segment;
+	-- later ones read those this network has marked dirty (every edit here marks what it moves).
+	-- A FULL scan (a candidate never tested, or changed) visits only the segments filed in grid
+	-- cells its own sampled path passes through: anything it can cross is filed in the cell of
+	-- the crossing. Both scans collect every hit and take the one the scan over all segments
+	-- would have met first, in self._segments order.
 	local pass = 0
 	local seen: { [SegmentId]: { any } } = {}
 	local changedAt: { [SegmentId]: number } = {}
+	local changedIn: { { SegmentId } } = {} -- [pass] = the segments found changed at its top
 	local boundsBy: { [SegmentId]: SegBounds } = {}
 	local samplesBy: { [SegmentId]: Samples } = {}
 	local cleanAt: { [SegmentId]: number } = {}
@@ -705,11 +727,77 @@ function RoadNetwork.resolveCrossings(self: RoadNetwork, seedIds: { SegmentId })
 		end
 		return sm
 	end
+	local cells: { [number]: { SegmentId } } = {}
+	local filedIn: { [SegmentId]: { number } } = {}
+	local visited: { [SegmentId]: number } = {}
+	local stamp = 0
+	local function cellKey(ix: number, iz: number): number
+		return (ix + 32768) * 65536 + (iz + 32768)
+	end
+	local function unfile(id: SegmentId)
+		local keys = filedIn[id]
+		if not keys then return end
+		for _, k in keys do
+			local list = cells[k]
+			local i = table.find(list, id)
+			if i then
+				list[i] = list[#list]
+				list[#list] = nil
+			end
+		end
+		filedIn[id] = nil
+	end
+	-- Filed by its control points' box (the curve, and every chord between its samples, lies
+	-- inside their hull) -- or, when that box spans more than FILE_BOX_CELLS cells (a long or
+	-- diagonal road), by the boxes of its sample chords: a crossing lies on one of them.
+	local function addCell(id: SegmentId, keys: { number }, ix: number, iz: number)
+		local k = cellKey(ix, iz)
+		if table.find(keys, k) then return end
+		local list = cells[k]
+		if not list then
+			list = {}
+			cells[k] = list
+		end
+		table.insert(list, id)
+		table.insert(keys, k)
+	end
+	local function file(id: SegmentId, S: Segment)
+		local keys = {}
+		local p0, p1, p2, p3 = S.p0, S.p1, S.p2, S.p3
+		local ix0, ix1 = math.floor(math.min(p0.X, p1.X, p2.X, p3.X) / CROSS_CELL), math.floor(math.max(p0.X, p1.X, p2.X, p3.X) / CROSS_CELL)
+		local iz0, iz1 = math.floor(math.min(p0.Z, p1.Z, p2.Z, p3.Z) / CROSS_CELL), math.floor(math.max(p0.Z, p1.Z, p2.Z, p3.Z) / CROSS_CELL)
+		if (ix1 - ix0 + 1) * (iz1 - iz0 + 1) <= FILE_BOX_CELLS then
+			for ix = ix0, ix1 do
+				for iz = iz0, iz1 do
+					addCell(id, keys, ix, iz)
+				end
+			end
+		else
+			local pts = samplesFor(id, S).pts
+			for i = 1, CROSS_SAMPLES do
+				local a1, a2 = pts[i], pts[i + 1]
+				for ix = math.floor(math.min(a1.X, a2.X) / CROSS_CELL), math.floor(math.max(a1.X, a2.X) / CROSS_CELL) do
+					for iz = math.floor(math.min(a1.Z, a2.Z) / CROSS_CELL), math.floor(math.max(a1.Z, a2.Z) / CROSS_CELL) do
+						addCell(id, keys, ix, iz)
+					end
+				end
+			end
+		end
+		filedIn[id] = keys
+	end
 	local guard = 0
 	while guard < 500 do
 		guard += 1
 		pass += 1
-		for id, S in self._segments do
+		local changed: { SegmentId } = {}
+		local function check(id: SegmentId, S: Segment?)
+			if not S then
+				if seen[id] then
+					seen[id] = nil
+					unfile(id)
+				end
+				return
+			end
 			local o = seen[id]
 			if not o or o[1] ~= S.p0 or o[2] ~= S.p1 or o[3] ~= S.p2 or o[4] ~= S.p3
 				or o[5] ~= S.startNode or o[6] ~= S.endNode or o[7] ~= S.vMode then
@@ -717,8 +805,21 @@ function RoadNetwork.resolveCrossings(self: RoadNetwork, seedIds: { SegmentId })
 				changedAt[id] = pass
 				boundsBy[id] = nil
 				samplesBy[id] = nil
+				table.insert(changed, id)
+				unfile(id)
+				file(id, S)
 			end
 		end
+		if pass == 1 then
+			for id, S in self._segments do
+				check(id, S)
+			end
+		else
+			for id in self._dirtySeg do
+				check(id, self._segments[id])
+			end
+		end
+		changedIn[pass] = changed
 		local aId: SegmentId?, bId: SegmentId?, tA: number?, tB: number?, pt: Vector3?
 		for cId in cand do
 			local A = self._segments[cId]
@@ -726,19 +827,81 @@ function RoadNetwork.resolveCrossings(self: RoadNetwork, seedIds: { SegmentId })
 				local since: number? = cleanAt[cId]
 				if since and changedAt[cId] > since then since = nil end
 				local boundsA = boundsFor(cId, A)
-				for oId, B in self._segments do
-					if since and changedAt[oId] <= since then continue end
+				local function test(oId: SegmentId, B: Segment): (number?, number?, Vector3?)
 					if oId ~= cId
 						and A.startNode ~= B.startNode and A.startNode ~= B.endNode
 						and A.endNode ~= B.startNode and A.endNode ~= B.endNode
+						and A.vMode == B.vMode
 						and boundsNear(boundsA, boundsFor(oId, B), 0) then
-						local ha, hb, hp
-						if A.vMode == B.vMode then
-							ha, hb, hp = samplesHit(A, B, samplesFor(cId, A), samplesFor(oId, B))
+						return samplesHit(A, B, samplesFor(cId, A), samplesFor(oId, B))
+					end
+					return nil
+				end
+				local hits: { [SegmentId]: CrossHit }? = nil
+				local function consider(oId: SegmentId, B: Segment)
+					local ha, hb, hp = test(oId, B)
+					if ha and hb then
+						local h: { [SegmentId]: CrossHit } = hits or {}
+						h[oId] = { tA = ha, tB = hb, at = hp }
+						hits = h
+					end
+				end
+				if since then
+					-- Clean on pass `since`: only a segment changed after it can cross A now
+					-- (each tested under the pass of its latest change).
+					for p = since + 1, pass do
+						for _, oId in changedIn[p] do
+							local B = self._segments[oId]
+							if B and changedAt[oId] == p then
+								consider(oId, B)
+							end
 						end
-						if ha and hb then
-							aId, bId, tA, tB, pt = cId, oId, ha, hb, hp
-							break
+					end
+				else
+					-- Mark what lies along A's sampled path, then scan in segment order as
+					-- before, testing only the marked: the first hit is the full scan's.
+					stamp += 1
+					local pts = samplesFor(cId, A).pts
+					local near = 0
+					for i = 1, CROSS_SAMPLES do
+						local a1, a2 = pts[i], pts[i + 1]
+						for ix = math.floor(math.min(a1.X, a2.X) / CROSS_CELL), math.floor(math.max(a1.X, a2.X) / CROSS_CELL) do
+							for iz = math.floor(math.min(a1.Z, a2.Z) / CROSS_CELL), math.floor(math.max(a1.Z, a2.Z) / CROSS_CELL) do
+								for _, oId in cells[cellKey(ix, iz)] or EMPTY_IDS do
+									if visited[oId] ~= stamp and self._segments[oId] then
+										visited[oId] = stamp
+										near += 1
+									end
+								end
+							end
+						end
+					end
+					if near > 0 then
+						for oId, B in self._segments do
+							if visited[oId] == stamp then
+								local ha, hb, hp = test(oId, B)
+								if ha and hb then
+									aId, bId, tA, tB, pt = cId, oId, ha, hb, hp
+									break
+								end
+								near -= 1
+								if near == 0 then break end
+							end
+						end
+					end
+				end
+				if hits then
+					local only: SegmentId? = next(hits)
+					if next(hits, only) == nil then
+						local h = hits[only :: SegmentId]
+						aId, bId, tA, tB, pt = cId, only, h.tA, h.tB, h.at
+					else
+						for oId in self._segments do
+							local h = hits[oId]
+							if h then
+								aId, bId, tA, tB, pt = cId, oId, h.tA, h.tB, h.at
+								break
+							end
 						end
 					end
 				end

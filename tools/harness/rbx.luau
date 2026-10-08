@@ -287,8 +287,15 @@ function methods:GetTags()
 end
 -- remotes / bindables
 function methods:FireServer() end
-function methods:FireClient() end
-function methods:FireAllClients() end
+-- A test can listen by assigning remote.FireAllClients / remote.FireClient = function(remote, ...).
+function methods:FireClient(...)
+	local f = self._props.FireClient
+	if f then return f(self, ...) end
+end
+function methods:FireAllClients(...)
+	local f = self._props.FireAllClients
+	if f then return f(self, ...) end
+end
 function methods:Fire(...)
 	sig(self, "Event"):Fire(...)
 end

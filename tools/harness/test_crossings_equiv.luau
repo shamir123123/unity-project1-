@@ -13,6 +13,23 @@ if orig then
 		return process.exec("git", { "show", "5858734:src/ReplicatedStorage.Road.RoadNetwork.luau" }).stdout
 	end
 end
+-- VERIFY=1: every pass after the first also re-reads every segment and fails if one changed
+-- without being marked dirty (what the dirty-only change scan relies on).
+if process.env.VERIFY then
+	H.patches["ReplicatedStorage.Road.RoadNetwork"] = function(src)
+		local anchor = "\t\telse\n\t\t\tfor id in self._dirtySeg do\n"
+		local i = string.find(src, anchor, 1, true)
+		assert(i, "VERIFY: anchor not found")
+		local check = "\t\telse\n\t\t\tfor id, S in self._segments do\n"
+			.. "\t\t\t\tlocal o = seen[id]\n"
+			.. "\t\t\t\tif (not o or o[1] ~= S.p0 or o[2] ~= S.p1 or o[3] ~= S.p2 or o[4] ~= S.p3 or o[5] ~= S.startNode or o[6] ~= S.endNode or o[7] ~= S.vMode) and not self._dirtySeg[id] then\n"
+			.. "\t\t\t\t\terror(\"VERIFY: segment \" .. id .. \" changed without a dirty mark\")\n"
+			.. "\t\t\t\tend\n\t\t\tend\n"
+			.. "\t\t\tshared.verified = (shared.verified or 0) + 1\n"
+			.. "\t\t\tfor id in self._dirtySeg do\n"
+		return string.sub(src, 1, i - 1) .. check .. string.sub(src, i + #anchor)
+	end
+end
 H.boot({ server = true })
 H.quietWarn = true
 local City = require("./city")
@@ -66,4 +83,7 @@ for _ in net:getSegments() do segs += 1 end
 for _ in net:getNodes() do nodes += 1 end
 print(string.format("seed %d: %d placements (%d errors) -> %d segments, %d nodes; digest %d; adding took %.0f ms",
 	seed, count, fails, segs, nodes, h, spent * 1000))
+if process.env.VERIFY then
+	print(string.format("VERIFY: %d later passes re-read every segment; every change was dirty-marked unless errors > 0 above", H.envShared().verified or 0))
+end
 process.exit(0)

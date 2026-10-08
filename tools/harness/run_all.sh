@@ -10,6 +10,7 @@ run() {
 }
 run 600 test_pieces_equiv.luau
 run 1500 test_crossings_equiv.luau new 7 60
+VERIFY=1 run 1500 test_crossings_equiv.luau new 11 60
 run 1800 test_gates_equiv.luau
 run 3000 bench_server_place.luau 8
 run 1800 bench_validate.luau new 12
@@ -31,3 +32,6 @@ run 300 test_windowlights.luau
 run 900 test_seasontint.luau
 run 600 test_assetlod.luau
 run 300 test_utilityboxes.luau
+run 1200 test_lanechange_broadcast.luau
+run 1200 test_lanechange_broadcast.luau 5858734
+run 900 bench_crossings.luau 16

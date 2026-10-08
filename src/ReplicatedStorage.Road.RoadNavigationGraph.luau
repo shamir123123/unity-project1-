@@ -1675,7 +1675,10 @@ end
 
 -- What one road direction's gates were built from (see _rebuildLaneChangeGates).
 type GateEdge = { edge: LaneEdge, points: { Vector3 }, length: number, ordinal: number, ok: boolean?, fromNode: number, toNode: number }
-type GateGroup = { edges: { GateEdge }, gates: { LaneChangeGate }, clearStart: number, clearEnd: number }
+-- index: the _laneChangesByEdge buckets of this direction's lanes as indexed last time (a lane's
+-- bucket only ever holds its own direction's gates), handed on while no connection's rule changed.
+type GateGroup = { edges: { GateEdge }, gates: { LaneChangeGate }, clearStart: number, clearEnd: number,
+	index: { [string]: { any } }? }
 
 function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules: { [string]: boolean }, network: any?)
 	local INTERSECTION_CLEAR = 20
@@ -1741,15 +1744,30 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 			end
 		end
 		if reuse and hit then
+			local sameRules = true
 			for _, gate in hit.gates do
 				for _, conn in gate.connections do
 					local override = laneChangeRules[laneChangeRuleKey(gate.id, conn.fromEdgeId, conn.toEdgeId)]
-					conn.allowed = if override == nil then true else override
-					if conn.allowed then
-						self:_indexLaneChange(conn.fromEdgeId, gate, conn)
-					end
+					local allowed = if override == nil then true else override
+					if allowed ~= conn.allowed then sameRules = false end
+					conn.allowed = allowed
 				end
 				table.insert(self._laneChangeGates, gate)
+			end
+			local index = hit.index
+			if sameRules and index then
+				for edgeId, bucket in index do
+					self._laneChangesByEdge[edgeId] = bucket
+				end
+			else
+				for _, gate in hit.gates do
+					for _, conn in gate.connections do
+						if conn.allowed then
+							self:_indexLaneChange(conn.fromEdgeId, gate, conn)
+						end
+					end
+				end
+				hit.index = self:_laneChangeBuckets(edges)
 			end
 			nextCache[key] = hit
 			continue
@@ -1760,7 +1778,8 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 			seen[i] = { edge = e, points = e.points, length = e.length, ordinal = e.laneOrdinal, ok = e.laneChangeOk,
 				fromNode = e.fromNode, toNode = e.toNode }
 		end
-		nextCache[key] = { edges = seen, gates = made, clearStart = clearStart, clearEnd = clearEnd }
+		local group: GateGroup = { edges = seen, gates = made, clearStart = clearStart, clearEnd = clearEnd }
+		nextCache[key] = group
 
 		for pairIndex = 1, #edges - 1 do
 			local a = edges[pairIndex]
@@ -1815,34 +1834,72 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 			table.insert(self._laneChangeGates, gate)
 			table.insert(made, gate)
 		end
+		group.index = self:_laneChangeBuckets(edges)
 	end
 	self._gateGroups = nextCache
 end
 
-function RoadNavigationGraph.GetLaneChangeGateData(self: any): { any }
+-- The _laneChangesByEdge buckets of these lanes, as they stand.
+function RoadNavigationGraph._laneChangeBuckets(self: any, edges: { LaneEdge }): { [string]: { any } }
+	local index: { [string]: { any } } = {}
+	for _, e in edges do
+		local bucket = self._laneChangesByEdge[e.id]
+		if bucket then
+			index[e.id] = bucket
+		end
+	end
+	return index
+end
 
+-- A gate as it is sent to clients: no ribbon points.
+local function liteGate(gate: LaneChangeGate): any
+	local liteConns: { any } = {}
+	for _, conn in gate.connections do
+		table.insert(liteConns, {
+			fromEdgeId = conn.fromEdgeId,
+			toEdgeId   = conn.toEdgeId,
+			allowed    = conn.allowed,
+
+		})
+	end
+	return {
+		id            = gate.id,
+		segmentId     = gate.segmentId,
+		direction     = gate.direction,
+		gateIndex     = gate.gateIndex,
+		pairIndex     = gate.pairIndex,
+		startDistance = gate.startDistance,
+		endDistance   = gate.endDistance,
+		dots          = gate.dots,
+		connections   = liteConns,
+	}
+end
+
+function RoadNavigationGraph.GetLaneChangeGateData(self: any): { any }
 	local out: { any } = {}
 	for _, gate in self._laneChangeGates do
-		local liteConns: { any } = {}
-		for _, conn in gate.connections do
-			table.insert(liteConns, {
-				fromEdgeId = conn.fromEdgeId,
-				toEdgeId   = conn.toEdgeId,
-				allowed    = conn.allowed,
+		table.insert(out, liteGate(gate))
+	end
+	return out
+end
 
-			})
+-- Every gate's id, in GetLaneChangeGateData's order: what the per-edit broadcast diffs on, so it
+-- builds the gate data only for the gates that are new.
+function RoadNavigationGraph.GetLaneChangeGateIds(self: any): { string }
+	local out: { string } = table.create(#self._laneChangeGates)
+	for i, gate in self._laneChangeGates do
+		out[i] = gate.id
+	end
+	return out
+end
+
+-- GetLaneChangeGateData for just the gates whose ids are in `ids`, in the same order.
+function RoadNavigationGraph.GetLaneChangeGateDataFor(self: any, ids: { [string]: boolean }): { any }
+	local out: { any } = {}
+	for _, gate in self._laneChangeGates do
+		if ids[gate.id] then
+			table.insert(out, liteGate(gate))
 		end
-		table.insert(out, {
-			id            = gate.id,
-			segmentId     = gate.segmentId,
-			direction     = gate.direction,
-			gateIndex     = gate.gateIndex,
-			pairIndex     = gate.pairIndex,
-			startDistance = gate.startDistance,
-			endDistance   = gate.endDistance,
-			dots          = gate.dots,
-			connections   = liteConns,
-		})
 	end
 	return out
 end

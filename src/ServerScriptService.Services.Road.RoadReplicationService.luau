@@ -60,7 +60,7 @@ local _roadTrafficRemote: RemoteFunction
 local _lastPlaceAt: { [Player]: number } = {}
 local _lastConnEditAt: { [Player]: number } = {}
 local _lastGateCount = 0
-local _lastGateSnapshot: { [string]: any } = {}
+local _lastGateSnapshot: { [string]: boolean } = {}
 local _pendingNodeDelta: { changed: { any }, removed: { number } } = { changed = {}, removed = {} }
 local _pendingSegDelta: { changed: { any }, removed: { number } } = { changed = {}, removed = {} }
 local _pendingBroadcastNodes: { [Types.NodeId]: boolean } = {}
@@ -408,18 +408,20 @@ function RoadReplicationService.broadcastPlacementCharged(pos: Vector3, amount: 
 end
 
 function RoadReplicationService.broadcastLaneChanges(target: Player?)
-	local payload = if _navGraph then _navGraph:GetLaneChangeGateData() else {}
-	local currentCount = #payload
-
 	if target then
+		local payload = if _navGraph then _navGraph:GetLaneChangeGateData() else {}
 		_syncLaneChangeRemote:FireClient(target, { full = true, gates = payload })
 		return
 	end
 
+	-- Diffed on ids alone (a gate is "changed" when its id is new); the gate data is built only
+	-- for those, not copied for every gate in the city on every edit.
+	local ids: { string } = if _navGraph then _navGraph:GetLaneChangeGateIds() else {}
+	local currentCount = #ids
 	if currentCount == _lastGateCount then
 		local anyChange = false
-		for _, gate in payload do
-			if not _lastGateSnapshot[gate.id] then
+		for _, id in ids do
+			if not _lastGateSnapshot[id] then
 				anyChange = true
 				break
 			end
@@ -430,15 +432,14 @@ function RoadReplicationService.broadcastLaneChanges(target: Player?)
 	end
 	_lastGateCount = currentCount
 
-	local newSnapshot: { [string]: any } = {}
-	for _, gate in payload do
-		newSnapshot[gate.id] = gate
-	end
-
-	local changed: { any } = {}
-	for _, gate in payload do
-		if not _lastGateSnapshot[gate.id] then
-			table.insert(changed, gate)
+	local newSnapshot: { [string]: boolean } = {}
+	local added: { [string]: boolean } = {}
+	local anyAdded = false
+	for _, id in ids do
+		newSnapshot[id] = true
+		if not _lastGateSnapshot[id] then
+			added[id] = true
+			anyAdded = true
 		end
 	end
 
@@ -451,10 +452,11 @@ function RoadReplicationService.broadcastLaneChanges(target: Player?)
 
 	_lastGateSnapshot = newSnapshot
 
-	if #changed == 0 and #removed == 0 then
+	if not anyAdded and #removed == 0 then
 		return
 	end
 
+	local changed = if anyAdded and _navGraph then _navGraph:GetLaneChangeGateDataFor(added) else {}
 	_syncLaneChangeRemote:FireAllClients({ full = false, changed = changed, removed = removed })
 end
 
