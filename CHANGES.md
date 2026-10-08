@@ -20,6 +20,8 @@ Current list (run the script for the up-to-date one):
 
 | | Studio path | Class |
 |---|---|---|
+| M | ReplicatedStorage.Road.RoadNavigationGraph | ModuleScript |
+| M | ReplicatedStorage.Road.RoadNetwork | ModuleScript |
 | M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |
 | M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |
 | M | ServerScriptService.Services.City.CityStatsService | ModuleScript |
@@ -97,6 +99,27 @@ delta the server sends. Four things stood between the click and the real road:
   static in the background. City loads, lot ground and anything over budget stay static.
   Offline: load = all static; each edit = live, 0 static bakes; settle trims back under
   the watermark; a refused snapshot falls back to static.
+
+- **Server work per placement grew with the city** (`RoadNetwork`, `RoadNavigationGraph`;
+  shared modules, the client's copies benefit too). Benchmarked through
+  `RoadService.placeSegment` on grids of 144 and 544 roads (`tools/harness/bench_server_place.luau`):
+  - *Crossing resolution* re-scanned every candidate against every road in the city after
+    each crossing it found, re-sampling both curves of every pair whose hulls met — and a
+    long road's hull meets most of the city. It now keeps each road's samples while the road
+    is unchanged and, after the first clean scan, tests a piece only against roads that
+    changed since. Same crossings, same order. Diagonal across 544 roads: **681 → ~85 ms**
+    (Lune-relative).
+  - *Lane-change gates*: every edit rebuilt every gate in the city (ribbon geometry and
+    all) for the few roads it touched. A road direction whose lane edges are unchanged now
+    reuses its gates (rules are still re-read per connection, so a rule edit applies).
+  - *Spatial index*: removing a road's lanes walked every cell of the map once per lane.
+    Removal now visits only the cells the lane was filed in.
+  - `boundsOf` (called once per road in every whole-network sweep) no longer allocates.
+  Net, on 544 roads: the frame after a short link **108 → 23 ms**; a road across four
+  streets 44 + 203 → 20 + 59 ms; the long diagonal 689 + 464 → ~100 + ~260 ms (place +
+  next frame, Lune-relative). Equivalence: 3 seeds × 60 random placements give the same
+  network id for id; 24 steps of edits and lane-change rule changes give the same gates,
+  per-lane index and spatial index as the baseline (`test_crossings_equiv`, `test_gates_equiv`).
 
 ### 2. Upgrading a road — instant
 

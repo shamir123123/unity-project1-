@@ -61,15 +61,18 @@ type SegBounds = { cx: number, cz: number, r: number, minY: number, maxY: number
 local function boundsOf(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3): SegBounds
 	local cx = (p0.X + p1.X + p2.X + p3.X) * 0.25
 	local cz = (p0.Z + p1.Z + p2.Z + p3.Z) * 0.25
-	local r2 = 0
-	local minY, maxY = math.huge, -math.huge
-	for _, p in { p0, p1, p2, p3 } do
-		local dx, dz = p.X - cx, p.Z - cz
-		local d2 = dx * dx + dz * dz
-		if d2 > r2 then r2 = d2 end
-		if p.Y < minY then minY = p.Y end
-		if p.Y > maxY then maxY = p.Y end
-	end
+	-- Unrolled: whole-network sweeps call this once per segment, and the loop it replaces
+	-- allocated a four-point table on every call.
+	local dx, dz = p0.X - cx, p0.Z - cz
+	local r2 = dx * dx + dz * dz
+	dx, dz = p1.X - cx, p1.Z - cz
+	r2 = math.max(r2, dx * dx + dz * dz)
+	dx, dz = p2.X - cx, p2.Z - cz
+	r2 = math.max(r2, dx * dx + dz * dz)
+	dx, dz = p3.X - cx, p3.Z - cz
+	r2 = math.max(r2, dx * dx + dz * dz)
+	local minY = math.min(p0.Y, p1.Y, p2.Y, p3.Y)
+	local maxY = math.max(p0.Y, p1.Y, p2.Y, p3.Y)
 	return { cx = cx, cz = cz, r = math.sqrt(r2), minY = minY, maxY = maxY }
 end
 
@@ -83,32 +86,31 @@ local function boundsNear(a: SegBounds, b: SegBounds, pad: number): boolean
 	return a.maxY >= b.minY - vtol and a.minY <= b.maxY + vtol
 end
 
-local function segHit(A: Segment, B: Segment): (number?, number?, Vector3?)
-	-- Body crossings only weld within the same layer. Different layers never meet at-grade: an
-	-- elevated flyover (or a low Elevated ramp) passes OVER a street, a tunnel passes UNDER it.
-	if A.vMode ~= B.vMode then return nil end
-	-- Same layer: beziers may sit a few studs apart at the crossing (terrain-following),
-	-- covered by the vertical tolerance below. Ground pairs get NO blanket bypass any more:
-	-- a lifted run (constant slope / valley span) drawn across a low street welded into an
-	-- at-grade junction, kinking both roads to the midpoint Y and folding the junction.
-	-- Past the tolerance they pass over/under instead.
-	-- Sample both curves once up front; B's samples were recomputed inside the nested
-	-- loop (24x redundant bezier math per pair -- the placement-validation hot spot).
-	local aPts = table.create(CROSS_SAMPLES + 1)
-	local bPts = table.create(CROSS_SAMPLES + 1)
+-- A curve sampled for the crossing test, with the XZ box of its samples.
+type Samples = { pts: { Vector3 }, minX: number, maxX: number, minZ: number, maxZ: number }
+
+local function samplesOf(S: Segment): Samples
+	local pts = table.create(CROSS_SAMPLES + 1)
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
 	for i = 0, CROSS_SAMPLES do
-		aPts[i + 1] = BezierUtil.point(A.p0, A.p1, A.p2, A.p3, i / CROSS_SAMPLES)
-		bPts[i + 1] = BezierUtil.point(B.p0, B.p1, B.p2, B.p3, i / CROSS_SAMPLES)
+		local p = BezierUtil.point(S.p0, S.p1, S.p2, S.p3, i / CROSS_SAMPLES)
+		pts[i + 1] = p
+		if p.X < minX then minX = p.X end
+		if p.X > maxX then maxX = p.X end
+		if p.Z < minZ then minZ = p.Z end
+		if p.Z > maxZ then maxZ = p.Z end
 	end
+	return { pts = pts, minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ }
+end
+
+-- segHit on curves already sampled (resolveCrossings keeps each curve's samples while it is
+-- unchanged). Same layer test first, as segHit.
+local function samplesHit(A: Segment, B: Segment, a: Samples, b: Samples): (number?, number?, Vector3?)
+	if A.vMode ~= B.vMode then return nil end
+	local aPts, bPts = a.pts, b.pts
 	-- B's footprint: a piece of A outside it cannot cross B, so its 24 tests are skipped.
 	-- Only a cull -- the tests that do run, and their order, are unchanged.
-	local bMinX, bMaxX, bMinZ, bMaxZ = math.huge, -math.huge, math.huge, -math.huge
-	for _, p in bPts do
-		if p.X < bMinX then bMinX = p.X end
-		if p.X > bMaxX then bMaxX = p.X end
-		if p.Z < bMinZ then bMinZ = p.Z end
-		if p.Z > bMaxZ then bMaxZ = p.Z end
-	end
+	local bMinX, bMaxX, bMinZ, bMaxZ = b.minX, b.maxX, b.minZ, b.maxZ
 	for i = 0, CROSS_SAMPLES - 1 do
 		local a1 = aPts[i + 1]
 		local a2 = aPts[i + 2]
@@ -138,6 +140,20 @@ local function segHit(A: Segment, B: Segment): (number?, number?, Vector3?)
 		end
 	end
 	return nil
+end
+
+local function segHit(A: Segment, B: Segment): (number?, number?, Vector3?)
+	-- Body crossings only weld within the same layer. Different layers never meet at-grade: an
+	-- elevated flyover (or a low Elevated ramp) passes OVER a street, a tunnel passes UNDER it.
+	if A.vMode ~= B.vMode then return nil end
+	-- Same layer: beziers may sit a few studs apart at the crossing (terrain-following),
+	-- covered by the vertical tolerance below. Ground pairs get NO blanket bypass any more:
+	-- a lifted run (constant slope / valley span) drawn across a low street welded into an
+	-- at-grade junction, kinking both roads to the midpoint Y and folding the junction.
+	-- Past the tolerance they pass over/under instead.
+	-- Sample both curves once up front; B's samples were recomputed inside the nested
+	-- loop (24x redundant bezier math per pair -- the placement-validation hot spot).
+	return samplesHit(A, B, samplesOf(A), samplesOf(B))
 end
 
 export type RoundaboutInfo = {
@@ -658,26 +674,75 @@ function RoadNetwork.resolveCrossings(self: RoadNetwork, seedIds: { SegmentId })
 	-- second crossing unresolved -- two roads overlapping unconnected (the mangled
 	-- double-crossing junction with sidewalks poking through).
 	local EDGE = 0.02
+	-- INCREMENTAL (2026-10-08). Each pass below finds ONE crossing and resolves it, and used to
+	-- test every candidate against every segment from scratch, re-sampling both curves of every
+	-- pair whose hulls met -- and a long road's hull meets most of the city. A road crossing k
+	-- streets paid k full scans of that. Now, with the same results in the same order:
+	--   * every segment's bounds and samples are kept while it is unchanged, and
+	--   * a candidate that came up clean on a pass is, on later passes, tested only against the
+	--     segments that changed since: nothing else can have started crossing it.
+	-- "Changed" is read off each segment's own fields at the top of every pass (control points,
+	-- end nodes, layer -- all segHit and the scan look at), never trusted to dirty-marking.
+	local pass = 0
+	local seen: { [SegmentId]: { any } } = {}
+	local changedAt: { [SegmentId]: number } = {}
+	local boundsBy: { [SegmentId]: SegBounds } = {}
+	local samplesBy: { [SegmentId]: Samples } = {}
+	local cleanAt: { [SegmentId]: number } = {}
+	local function boundsFor(id: SegmentId, S: Segment): SegBounds
+		local b = boundsBy[id]
+		if not b then
+			b = boundsOf(S.p0, S.p1, S.p2, S.p3)
+			boundsBy[id] = b
+		end
+		return b
+	end
+	local function samplesFor(id: SegmentId, S: Segment): Samples
+		local sm = samplesBy[id]
+		if not sm then
+			sm = samplesOf(S)
+			samplesBy[id] = sm
+		end
+		return sm
+	end
 	local guard = 0
 	while guard < 500 do
 		guard += 1
+		pass += 1
+		for id, S in self._segments do
+			local o = seen[id]
+			if not o or o[1] ~= S.p0 or o[2] ~= S.p1 or o[3] ~= S.p2 or o[4] ~= S.p3
+				or o[5] ~= S.startNode or o[6] ~= S.endNode or o[7] ~= S.vMode then
+				seen[id] = { S.p0, S.p1, S.p2, S.p3, S.startNode, S.endNode, S.vMode }
+				changedAt[id] = pass
+				boundsBy[id] = nil
+				samplesBy[id] = nil
+			end
+		end
 		local aId: SegmentId?, bId: SegmentId?, tA: number?, tB: number?, pt: Vector3?
 		for cId in cand do
 			local A = self._segments[cId]
 			if A then
-				local boundsA = boundsOf(A.p0, A.p1, A.p2, A.p3)
+				local since: number? = cleanAt[cId]
+				if since and changedAt[cId] > since then since = nil end
+				local boundsA = boundsFor(cId, A)
 				for oId, B in self._segments do
+					if since and changedAt[oId] <= since then continue end
 					if oId ~= cId
 						and A.startNode ~= B.startNode and A.startNode ~= B.endNode
 						and A.endNode ~= B.startNode and A.endNode ~= B.endNode
-						and boundsNear(boundsA, boundsOf(B.p0, B.p1, B.p2, B.p3), 0) then
-						local ha, hb, hp = segHit(A, B)
+						and boundsNear(boundsA, boundsFor(oId, B), 0) then
+						local ha, hb, hp
+						if A.vMode == B.vMode then
+							ha, hb, hp = samplesHit(A, B, samplesFor(cId, A), samplesFor(oId, B))
+						end
 						if ha and hb then
 							aId, bId, tA, tB, pt = cId, oId, ha, hb, hp
 							break
 						end
 					end
 				end
+				if not aId then cleanAt[cId] = pass end
 			end
 			if aId then
 				break

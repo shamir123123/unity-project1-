@@ -6,7 +6,7 @@ local H = require("./loader")
 local process = require("@lune/process")
 if process.args[1] == "orig" then
 	H.patches["StarterPlayer.StarterPlayerScripts.World.AssetLODView"] = function()
-		return process.exec("git", { "show", "HEAD:src/StarterPlayer.StarterPlayerScripts.World.AssetLODView.luau" }).stdout
+		return process.exec("git", { "show", "5858734:src/StarterPlayer.StarterPlayerScripts.World.AssetLODView.luau" }).stdout
 	end
 end
 local settingsStub = { get = function(k) if k == "renderDistance" then return 1 end return nil end, onChanged = function() end }

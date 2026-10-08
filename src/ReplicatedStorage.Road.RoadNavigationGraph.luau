@@ -632,6 +632,8 @@ function RoadNavigationGraph.new(segmentFilter: ((seg: any) -> boolean)?)
 		_edgesByFromNode = {} :: { [number]: { LaneEdge } },
 		_edgesByToNode = {} :: { [number]: { LaneEdge } },
 		_spatial = {} :: { [string]: { { edgeId: string, index: number } } },
+		-- edgeId -> the _spatial cells _indexEdge put it in, so removal visits only those
+		_edgeCells = {} :: { [string]: { string } },
 		_customConnectionHandles = {} :: { [string]: { Vector3 } },
 		_laneChangeGates = {} :: { LaneChangeGate },
 		_laneChangesByEdge = {} :: { [string]: { any } },
@@ -932,6 +934,11 @@ end
 
 function RoadNavigationGraph._indexEdge(self: any, edge: LaneEdge)
 	local lastKey = ""
+	local cells = self._edgeCells[edge.id]
+	if not cells then
+		cells = {}
+		self._edgeCells[edge.id] = cells
+	end
 	for index, point in edge.points do
 		local key = cellKey(point)
 		if key ~= lastKey then
@@ -941,6 +948,7 @@ function RoadNavigationGraph._indexEdge(self: any, edge: LaneEdge)
 				self._spatial[key] = bucket
 			end
 			table.insert(bucket, { edgeId = edge.id, index = index })
+			table.insert(cells, key)
 			lastKey = key
 		end
 	end
@@ -1127,8 +1135,11 @@ function RoadNavigationGraph._removeSegmentEdges(self: any, segmentId: number)
 		end
 		removeFromNodeMap("_edgesByFromNode", edge.fromNode)
 		removeFromNodeMap("_edgesByToNode", edge.toNode)
-		-- Remove from spatial index
-		for key, bucket in self._spatial do
+		-- Remove from spatial index: only the cells _indexEdge filed it in (it used to walk every
+		-- cell of the map once per lane removed -- most of an edit's nav time on a big city).
+		for _, key in self._edgeCells[edgeId] or {} do
+			local bucket = self._spatial[key]
+			if not bucket then continue end
 			for i = #bucket, 1, -1 do
 				if bucket[i].edgeId == edgeId then
 					table.remove(bucket, i)
@@ -1136,6 +1147,7 @@ function RoadNavigationGraph._removeSegmentEdges(self: any, segmentId: number)
 			end
 			if #bucket == 0 then self._spatial[key] = nil end
 		end
+		self._edgeCells[edgeId] = nil
 		self._edges[edgeId] = nil
 	end
 end
@@ -1175,6 +1187,7 @@ function RoadNavigationGraph.Rebuild(self: any, network: any, turnPermissions: {
 	self._edgesByFromNode = {}
 	self._edgesByToNode = {}
 	self._spatial = {}
+	self._edgeCells = {}
 	self._customConnectionHandles = {}
 	self._laneChangeGates = {}
 	self._laneChangesByEdge = {}
@@ -1660,6 +1673,10 @@ function RoadNavigationGraph._indexLaneChange(self: any, edgeId: string, gate: L
 	})
 end
 
+-- What one road direction's gates were built from (see _rebuildLaneChangeGates).
+type GateEdge = { edge: LaneEdge, points: { Vector3 }, length: number, ordinal: number, ok: boolean?, fromNode: number, toNode: number }
+type GateGroup = { edges: { GateEdge }, gates: { LaneChangeGate }, clearStart: number, clearEnd: number }
+
 function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules: { [string]: boolean }, network: any?)
 	local INTERSECTION_CLEAR = 20
 	self._laneChangeTargets = {}
@@ -1688,7 +1705,16 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 	local ribbonLength = RoadConstants.NAV_LANE_CHANGE_LENGTH or 18
 	local halfRibbon = ribbonLength * 0.5
 
-	for _, edges in grouped do
+	-- A road direction's gates depend on its own lane edges and on whether its ends are junctions
+	-- (and on the rules, read below per connection every time). Every edit used to rebuild every
+	-- gate in the city -- ribbon geometry and all -- for the few roads it touched: the bulk of an
+	-- edit's nav rebuild on a big map. A direction whose lanes are the same edge tables as last
+	-- time (an edit re-samples a road as new tables) and whose ends kept their kind reuses its
+	-- gates. Same gates, same order, same index as a full rebuild.
+	local cache: { [string]: GateGroup } = self._gateGroups or {}
+	local nextCache: { [string]: GateGroup } = {}
+
+	for key, edges in grouped do
 		table.sort(edges, function(a, b)
 			return a.laneOrdinal < b.laneOrdinal
 		end)
@@ -1700,6 +1726,41 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 		local toNode = refEdge.toNode
 		local clearStart = (network and isIntersection[fromNode]) and INTERSECTION_CLEAR or 0
 		local clearEnd   = (network and isIntersection[toNode])   and INTERSECTION_CLEAR or 0
+
+		local hit = cache[key]
+		local reuse = hit ~= nil and hit.clearStart == clearStart and hit.clearEnd == clearEnd
+			and #hit.edges == #edges
+		if reuse and hit then
+			for i, e in edges do
+				local c = hit.edges[i]
+				if c.edge ~= e or c.points ~= e.points or c.length ~= e.length or c.ordinal ~= e.laneOrdinal
+					or c.ok ~= e.laneChangeOk or c.fromNode ~= e.fromNode or c.toNode ~= e.toNode then
+					reuse = false
+					break
+				end
+			end
+		end
+		if reuse and hit then
+			for _, gate in hit.gates do
+				for _, conn in gate.connections do
+					local override = laneChangeRules[laneChangeRuleKey(gate.id, conn.fromEdgeId, conn.toEdgeId)]
+					conn.allowed = if override == nil then true else override
+					if conn.allowed then
+						self:_indexLaneChange(conn.fromEdgeId, gate, conn)
+					end
+				end
+				table.insert(self._laneChangeGates, gate)
+			end
+			nextCache[key] = hit
+			continue
+		end
+		local made: { LaneChangeGate } = {}
+		local seen: { GateEdge } = {}
+		for i, e in edges do
+			seen[i] = { edge = e, points = e.points, length = e.length, ordinal = e.laneOrdinal, ok = e.laneChangeOk,
+				fromNode = e.fromNode, toNode = e.toNode }
+		end
+		nextCache[key] = { edges = seen, gates = made, clearStart = clearStart, clearEnd = clearEnd }
 
 		for pairIndex = 1, #edges - 1 do
 			local a = edges[pairIndex]
@@ -1752,8 +1813,10 @@ function RoadNavigationGraph._rebuildLaneChangeGates(self: any, laneChangeRules:
 				end
 			end
 			table.insert(self._laneChangeGates, gate)
+			table.insert(made, gate)
 		end
 	end
+	self._gateGroups = nextCache
 end
 
 function RoadNavigationGraph.GetLaneChangeGateData(self: any): { any }
