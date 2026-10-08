@@ -366,7 +366,8 @@ local function toggleControl(mount: Frame, key: string): Control
 	}
 end
 
-local function segmentControl(mount: Frame, options: { Option }, get: () -> any, set: (any) -> ()): Control
+-- padX: each cell's side padding (15 unless a long row of cells needs the room).
+local function segmentControl(mount: Frame, options: { Option }, get: () -> any, set: (any) -> (), padX: number?): Control
 	local root = Instance.new("Frame")
 	root.Name = "Segment"
 	root.BackgroundTransparency = 1
@@ -398,7 +399,7 @@ local function segmentControl(mount: Frame, options: { Option }, get: () -> any,
 		b.Size = UDim2.fromOffset(0, 30)
 		b.LayoutOrder = i
 		b.Parent = root
-		pad(b, 0, 15, 0, 15)
+		pad(b, 0, padX or 15, 0, padX or 15)
 		corner(b, 8)
 		cells[i] = b
 	end
@@ -1292,11 +1293,12 @@ local function buildGraphics(content: Frame)
 	table.insert(presetOptions, { label = "Custom", value = "Custom", readOnly = true })
 
 	local holder, mount = row(p, "Quality preset", "Applies a matched set of detail and effect values.")
+	-- Six cells since Lowest: narrower padding keeps the row near the control column's width.
 	local preset = segmentControl(mount, presetOptions, function()
 		return Settings.get("graphicsPreset")
 	end, function(value)
 		Settings.applyPreset(tostring(value))
-	end)
+	end, 10)
 	Settings.onChanged("graphicsPreset", preset.render)
 	attachFocus(holder, preset)
 

@@ -52,7 +52,8 @@ every language the panel speaks). It is Low plus a new switch, **Simplest object
 
 Offline check: `tools/harness/test_assetlod.luau` (a tiered building and a tree under the
 camera: walls hidden 0/3 → 3/3 → 0/3, shell and picture card shown → hidden as the switch
-goes on and off). Not run in Studio: check the six-segment preset row fits on a phone.
+goes on and off). The preset buttons' side padding went 15 → 10 px so six fit about where
+five did (~430 px; the control column is 384). Not run in Studio: check that row on a phone.
 
 ### Windows glow at night — houses, mid-rises and shops too
 
