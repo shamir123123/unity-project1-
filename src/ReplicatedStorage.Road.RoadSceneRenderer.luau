@@ -1450,6 +1450,18 @@ local function propCFrame(position: Vector3, inward: Vector3): CFrame
 	return CFrame.fromMatrix(position, x, z:Cross(x).Unit, z)
 end
 
+-- Which of the segment's own sides are paved (+1 = the segment's right).
+local function hasFootway(spec: any, sideSign: number): boolean
+	local mode = spec.sidewalkMode or (if spec.noSidewalk then "none" else "both")
+	if mode == "none" then return false end
+	if mode == "left" then return sideSign < 0 end
+	if mode == "right" then return sideSign > 0 end
+	return true
+end
+
+-- A raised roadside -- footway, planted verge, kerbed median -- tops out this far above the curve.
+local FOOTWAY_TOP = RoadConstants.ROAD_THICKNESS * 0.5 + RoadConstants.SIDEWALK_HEIGHT
+
 -- Walk the curve ONCE and call `place` at `count` evenly spaced stations between arc
 -- lengths s0 and s1, handing it the station's position and the road's right vector there.
 -- Shared by the lamps and the street trees so kerbside furniture lines up on one pass.
@@ -1501,10 +1513,12 @@ local function addStreetLamps(model: Model, spec: any, vMode: string?, setbackS:
 	local lateral = spec.width * 0.5 + (if spec.noSidewalk then 1.5 else RoadConstants.SIDEWALK_WIDTH * 0.2)
 	local count = math.max(math.floor((s1 - s0) / LAMP_SPACING + 0.5), 1)
 
+	local liftL, liftR = RoadProfile.roadsideLift(spec, -1), RoadProfile.roadsideLift(spec, 1)
 	local function place(idx: number, pos: Vector3, offset: Vector3, inward: Vector3, tag: string)
 		local clone = template:Clone()
 		clone.Name = `StreetLamp_{idx}{tag}`
-		clone:PivotTo(propCFrame(pos + offset + Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0), inward))
+		local lift = if tag == "L" then liftL else liftR
+		clone:PivotTo(propCFrame(pos + offset + Vector3.new(0, lift, 0), inward))
 		clone.Parent = model
 	end
 
@@ -1533,9 +1547,11 @@ local MULCH_COLOR = Color3.fromRGB(78, 58, 40)
 -- grass. The player picks the rows (tp=: "sides", "median", "both"; nil = the median when the road
 -- has a raised one, else the sides). Sides = the verge on a kerb that has one, else the footway.
 -- A road with neither (an alley) keeps them just off its edges.
-local function treeRows(spec: any): { { x: number, w: number, grass: boolean } }
+-- lift: the planting ground's height above the curve (verges, medians and footways are raised).
+type TreeRow = { x: number, w: number, grass: boolean, lift: number }
+local function treeRows(spec: any): { TreeRow }
 	local p = spec.profile
-	local rows: { { x: number, w: number, grass: boolean } } = {}
+	local rows: { TreeRow } = {}
 	local hasMedian = false
 	if p then
 		for _, s in p.strips do
@@ -1552,22 +1568,25 @@ local function treeRows(spec: any): { { x: number, w: number, grass: boolean } }
 			local c = x + s.w * 0.5
 			if s.k == "verge" then
 				verge[if c < 0 then -1 else 1] = true
-				if wantSides then table.insert(rows, { x = c, w = s.w, grass = s.surf ~= "concrete" }) end
+				if wantSides then table.insert(rows, { x = c, w = s.w, grass = s.surf ~= "concrete", lift = FOOTWAY_TOP }) end
 			elseif s.k == "median" and s.surf ~= "paint" and s.w > 0 and wantMedian then
-				table.insert(rows, { x = c, w = s.w, grass = s.surf ~= "concrete" })
+				table.insert(rows, { x = c, w = s.w, grass = s.surf ~= "concrete", lift = FOOTWAY_TOP })
 			end
 			x += s.w
 		end
 		if wantSides and walkR > 0 and not verge[1] then
-			table.insert(rows, { x = roadW * 0.5 + walkR * 0.7, w = walkR * 0.6, grass = false })
+			table.insert(rows, { x = roadW * 0.5 + walkR * 0.7, w = walkR * 0.6, grass = false, lift = FOOTWAY_TOP })
 		end
 		if wantSides and walkL > 0 and not verge[-1] then
-			table.insert(rows, { x = -roadW * 0.5 - walkL * 0.7, w = walkL * 0.6, grass = false })
+			table.insert(rows, { x = -roadW * 0.5 - walkL * 0.7, w = walkL * 0.6, grass = false, lift = FOOTWAY_TOP })
 		end
 	end
 	if #rows == 0 and wantSides and not hasMedian then
 		local edge = spec.width * 0.5 + 2
-		rows = { { x = edge, w = 0, grass = true }, { x = -edge, w = 0, grass = true } }
+		rows = {
+			{ x = edge, w = 0, grass = true, lift = RoadProfile.roadsideLift(spec, 1) },
+			{ x = -edge, w = 0, grass = true, lift = RoadProfile.roadsideLift(spec, -1) },
+		}
 	end
 	return rows
 end
@@ -1592,7 +1611,6 @@ local function addStreetTrees(model: Model, spec: any, vMode: string?, setbackS:
 	local count = math.max(math.floor((s1 - s0) / TREE_SPACING + 0.5), 1)
 	local baseScale = (template :: Model):GetScale()
 
-	local surfaceY = RoadConstants.ROAD_THICKNESS * 0.5 + RoadConstants.SIDEWALK_HEIGHT
 	local function pitPart(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?)
 		local part = Instance.new("Part")
 		part.Name = name
@@ -1610,7 +1628,7 @@ local function addStreetTrees(model: Model, spec: any, vMode: string?, setbackS:
 	end
 	-- A tree pit: in paving, bare earth sunk below a concrete edging; in grass, a round bed of mulch.
 	local function pit(idx: number, at: Vector3, right: Vector3, size: number, tag: string, grass: boolean)
-		local base = Vector3.new(at.X, at.Y + surfaceY, at.Z)
+		local base = Vector3.new(at.X, at.Y + FOOTWAY_TOP, at.Z)
 		local cf = CFrame.lookAt(base, base + Vector3.new(right.Z, 0, -right.X))
 		if grass then
 			pitPart(`TreePit_{idx}{tag}`, Vector3.new(0.05, size, size), cf * CFrame.new(0, 0.02, 0) * CFrame.Angles(0, 0, math.pi / 2),
@@ -1624,12 +1642,12 @@ local function addStreetTrees(model: Model, spec: any, vMode: string?, setbackS:
 				cf * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0.04, -size * 0.5), RoadConstants.KERB_COLOR, Enum.Material.Concrete)
 		end
 	end
-	local function plant(idx: number, pos: Vector3, offset: Vector3, tag: string)
+	local function plant(idx: number, pos: Vector3, offset: Vector3, lift: number, tag: string)
 		local clone = (template :: Model):Clone()
 		clone.Name = `StreetTree_{idx}{tag}`
 		-- Jitter from the index, not random: a re-render must not reshuffle the avenue.
 		clone:ScaleTo(baseScale * (0.9 + (idx % 3) * 0.1))
-		clone:PivotTo(CFrame.new(pos + offset + Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0))
+		clone:PivotTo(CFrame.new(pos + offset + Vector3.new(0, lift, 0))
 			* CFrame.Angles(0, idx * 2.4, 0))
 		clone.Parent = model
 	end
@@ -1637,7 +1655,7 @@ local function addStreetTrees(model: Model, spec: any, vMode: string?, setbackS:
 	forEachStation(p0, p1, p2, p3, length, s0, s1, count, function(idx, pos, right)
 		for k, row in rows do
 			local tag = tostring(k)
-			plant(idx, pos, right * row.x, tag)
+			plant(idx, pos, right * row.x, row.lift, tag)
 			local size = math.min(PIT_SIZE, row.w - 0.4)
 			if size > 0.5 then pit(idx, pos + right * row.x, right, size, tag, row.grass) end
 		end
@@ -1691,7 +1709,11 @@ local function addYieldSign(model: Model, seg: Types.Segment, nodeId: Types.Node
 	-- Kerb side flips with the driving side. The plate below is built symmetrically
 	-- about this axis, so the sign itself is unchanged either way.
 	right = right.Unit * RoadRules.getLaneSideSign()
+	-- That kerb as the segment sees it: the driver's right is the segment's right only when
+	-- they are heading for its end node.
+	local side = (if seg.endNode == nodeId then 1 else -1) * RoadRules.getLaneSideSign()
 	local base = pos + right * (spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH * 0.5)
+		+ Vector3.new(0, RoadProfile.roadsideLift(spec, side), 0)
 	local poleH = RoadConstants.YIELD_SIGN_POLE_HEIGHT
 	local plate = RoadConstants.YIELD_SIGN_PLATE_SIZE
 
@@ -1794,14 +1816,6 @@ local function dressable(spec: any, vMode: string?): boolean
 	return not (spec.isRail or spec.terrainPath or vMode == "Tunnel" or vMode == "Elevated")
 end
 
--- Which of the segment's own sides are paved (+1 = the segment's right).
-local function hasFootway(spec: any, sideSign: number): boolean
-	local mode = spec.sidewalkMode or (if spec.noSidewalk then "none" else "both")
-	if mode == "none" then return false end
-	if mode == "left" then return sideSign < 0 end
-	if mode == "right" then return sideSign > 0 end
-	return true
-end
 
 local function addManholes(model: Model, spec: any, vMode: string?, setbackS: number, setbackE: number, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3)
 	if not dressable(spec, vMode) then return end
@@ -1912,7 +1926,7 @@ local function addUtilityBoxes(model: Model, spec: any, vMode: string?, setbackS
 		local forward = Vector3.yAxis:Cross(right)
 		local slide = forward * (scatter(seed + 11) * BOX_JITTER_ALONG)
 		local lateral = math.min(footEdge - kit.depth * 0.5 - BOX_BACK_CLEAR, spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH * 0.88)
-		local base = pos + out * lateral + slide + Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0)
+		local base = pos + out * lateral + slide + Vector3.new(0, FOOTWAY_TOP, 0)
 		-- Kit props face -Z (Blender's front): look at the road, broad side along the kerb.
 		local toRoad = Vector3.new(-out.X, 0, -out.Z)
 		clone:PivotTo(CFrame.lookAt(base, base + toRoad))
@@ -1947,7 +1961,7 @@ local function addHydrants(model: Model, spec: any, vMode: string?, setbackS: nu
 		local seed = pos.X * 1.1 + pos.Z * 2.3
 		local out = right * sideSign
 		local slide = Vector3.yAxis:Cross(right) * (scatter(seed) * HYDRANT_JITTER_ALONG)
-		clone:PivotTo(propCFrame(pos + out * lateral + slide + Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0), -out))
+		clone:PivotTo(propCFrame(pos + out * lateral + slide + Vector3.new(0, FOOTWAY_TOP, 0), -out))
 		clone.Parent = model
 	end)
 end
@@ -1991,7 +2005,7 @@ local function addStreetNameSign(model: Model, seg: Types.Segment, nodeId: Types
 	-- sees it face on. Template local +X runs the length of the plate.
 	clone:PivotTo(CFrame.fromMatrix(
 		pos + kerb * (spec.width * 0.5 + RoadConstants.SIDEWALK_WIDTH * 0.5)
-			+ Vector3.new(0, RoadConstants.SIDEWALK_HEIGHT, 0),
+			+ Vector3.new(0, FOOTWAY_TOP, 0),
 		along, Vector3.yAxis))
 	clone.Parent = model
 end

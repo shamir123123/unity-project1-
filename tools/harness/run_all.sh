@@ -35,3 +35,4 @@ run 300 test_utilityboxes.luau
 run 1200 test_lanechange_broadcast.luau
 run 1200 test_lanechange_broadcast.luau 5858734
 run 900 bench_crossings.luau 16
+run 600 test_roadside_heights.luau

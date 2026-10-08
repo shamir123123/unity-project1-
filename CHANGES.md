@@ -158,6 +158,29 @@ Lune-relative, ±20% run to run):
 Equivalence: `test_crossings_equiv` seeds 7, 11 and 23 give the original code's digests
 (558/554/552 roads, 0 errors).
 
+### Street furniture stood inside the pavement
+
+Every roadside prop pivots at its base, but its height was measured from the road's curve —
+the asphalt slab's *centre* — plus only the kerb height (or nothing). The road mesh puts the
+footway top at curve + half the slab + the kerb (`RoadGeometry`: `TOP + SIDEWALK_HEIGHT`), so
+lamps, cabinets, hydrants, street trees (above their own pits), name blades and yield signs
+stood half a slab down in the paving, and traffic signs and signal poles a whole kerb-plus-
+half-slab down. They now stand on the ground beside the road, per side: the footway (or
+verge, or kerbed median) top where that side is paved, the asphalt top beside a kerbless
+road — one helper for all of them, `RoadProfile.roadsideLift(spec, side)`. Only heights moved:
+the planner's 1,200 traffic signs on test grids (both driving sides, one-sided footways) keep
+identical positions across and facings.
+
+Scripts in this fix: `RoadProfile`, `RoadSceneRenderer` (lamps, trees, cabinets, hydrants, name
+blades, yield signs), `TrafficSignPlanner` (traffic signs), `IntersectionDetector` (signal poles).
+Existing roads pick it up when they are next rendered (a reload re-renders every road; signal
+poles re-place on the next signal pass, traffic signs on the next client replan).
+
+Offline check: `tools/harness/test_roadside_heights.luau` (in-game units, world scale 0.5:
+footway top 1.00 above the curve, asphalt top 0.50) — now every prop on a footway at 1.00,
+beside a kerbless road at 0.50, manholes 0.52; the previous code gives 0.50 for footway props
+and 0.00 for signs and poles.
+
 ## How to apply
 
 `tools/changed_scripts.sh` prints every changed (M) or new (A) script as
@@ -171,8 +194,9 @@ re-apply the rows marked in the last column:
 |---|---|---|---|
 | M | ReplicatedStorage.Road.RoadNavigationGraph | ModuleScript | yes |
 | M | ReplicatedStorage.Road.RoadNetwork | ModuleScript | yes |
+| M | ReplicatedStorage.Road.RoadProfile | ModuleScript | yes |
 | M | ReplicatedStorage.Road.RoadSceneRenderer | ModuleScript | yes |
-| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript |  |
+| M | ReplicatedStorage.Road.TrafficSignPlanner | ModuleScript | yes |
 | M | ReplicatedStorage.Terrain.TerrainMeshView | ModuleScript |  |
 | M | ServerScriptService.Services.City.CityStatsService | ModuleScript |  |
 | M | ServerScriptService.Services.City.Civic.CrimeService | ModuleScript |  |
@@ -189,6 +213,7 @@ re-apply the rows marked in the last column:
 | M | ServerScriptService.Services.NPC.NPCWalkingService | ModuleScript |  |
 | M | ServerScriptService.Services.Road.RoadReplicationService | ModuleScript | yes |
 | M | ServerScriptService.Services.Road.RoadService | ModuleScript |  |
+| M | ServerScriptService.Services.Traffic.IntersectionDetector | ModuleScript | yes |
 | M | ServerScriptService.Services.Traffic.TrafficSignalService | ModuleScript |  |
 | M | StarterPlayer.StarterPlayerScripts.Bootstrap.Bootstrap | LocalScript |  |
 | M | StarterPlayer.StarterPlayerScripts.Controllers.RoadPlacementSnapper | ModuleScript |  |

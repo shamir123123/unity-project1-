@@ -13,6 +13,8 @@ local RoadTypeCatalog = require(ReplicatedStorage.Road.RoadTypeCatalog)
 local RoadJunctionSolver = require(ReplicatedStorage.Road.RoadJunctionSolver)
 local JunctionGroups  = require(ReplicatedStorage.Road.JunctionGroups)
 local BezierUtil      = require(ReplicatedStorage.Road.BezierUtil)
+local RoadProfile     = require(ReplicatedStorage.Road.RoadProfile)
+local RoadConstants   = require(ReplicatedStorage.Road.RoadConstants)
 local TrafficConfig   = require(script.Parent.TrafficConfig)
 
 local IntersectionDetector = {}
@@ -147,6 +149,11 @@ local function buildArm(roadService: any, network: any, graph: any, nodeId: numb
 	-- side, so read the sign per call and never cache it (see RoadRules header).
 	local kerb = localRight * RoadRules.getLaneSideSign()
 	local polePos = centre + kerb * (halfWidth + TrafficConfig.POLE_CURB_MARGIN)
+	-- The pole stands on the ground beside the road, not on its curve (the slab's centre): the
+	-- footway top, or the asphalt top beside a kerbless road. The approach heads into the node,
+	-- so its right is the segment's right only when the node is the segment's end.
+	local lift = RoadProfile.roadsideLift(RoadTypeCatalog.getOrDefault(seg.roadType),
+		(if nodeIsStart then -1 else 1) * RoadRules.getLaneSideSign())
 	-- Where the road mesh draws this junction (RoadJunctionSolver, as RoadPieces does): the pole
 	-- stands just behind the arm's stop line on its kerb -- the built-out kerb over parking -- so
 	-- it keeps its place, and its aim, when the road is upgraded.
@@ -162,7 +169,10 @@ local function buildArm(roadService: any, network: any, graph: any, nodeId: numb
 		local edgeX = if side < 0 then arm.sec.roadL else arm.sec.roadR
 		kerb = r * side
 		polePos = p + r * (edgeX + side * TrafficConfig.POLE_CURB_MARGIN)
+		local walk = if side < 0 then arm.sec.walkL else arm.sec.walkR
+		lift = RoadConstants.ROAD_THICKNESS * 0.5 + (if walk > 0 then RoadConstants.SIDEWALK_HEIGHT else 0)
 	end
+	polePos += Vector3.new(0, lift, 0)
 
 	local edgeIds: { string } = {}
 	local throughEdges: { string } = {}

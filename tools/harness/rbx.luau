@@ -235,6 +235,12 @@ function methods:GetBoundingBox()
 	if not lo then return roblox.CFrame.new(), roblox.Vector3.zero end
 	return roblox.CFrame.new((lo + hi) * 0.5), hi - lo
 end
+function methods:GetScale()
+	return self._props.Scale or 1
+end
+function methods:ScaleTo(k)
+	self._props.Scale = k
+end
 function methods:GetExtentsSize()
 	local _, size = self:GetBoundingBox()
 	return size

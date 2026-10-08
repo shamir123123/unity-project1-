@@ -107,6 +107,16 @@ function RoadProfile.footways(spec: any): (number, number)
 	return (if l > 0 then math.max(side - parkL, l) else 0), (if r > 0 then math.max(side - parkR, r) else 0)
 end
 
+-- Height above a road's curve (the asphalt slab's CENTRE) of the ground beside it on `side`
+-- (-1 left, +1 right of the curve's direction): the footway top where that kerb is paved, the
+-- asphalt top where it is not. Roadside props pivot at their base and stand on this; adding only
+-- SIDEWALK_HEIGHT left every lamp, sign and cabinet a stud down inside the pavement.
+function RoadProfile.roadsideLift(spec: any, side: number): number
+	local l, r = RoadProfile.footways(spec)
+	local paved = (if side < 0 then l else r) > 0
+	return RoadConstants.ROAD_THICKNESS * 0.5 + (if paved then RoadConstants.SIDEWALK_HEIGHT else 0)
+end
+
 -- == From the catalog ===========================================================
 -- The old fields describe the same road in pieces: a carriageway (width minus aprons) split
 -- into equal lanes about an optional median, parking aprons and planted verges stacked

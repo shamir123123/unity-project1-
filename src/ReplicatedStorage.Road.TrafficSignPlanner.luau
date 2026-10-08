@@ -24,6 +24,7 @@ local WorldThemeCatalog = require(script.Parent.Parent:WaitForChild("World"):Wai
 local RoadTypeCatalog = require(script.Parent.RoadTypeCatalog)
 local RoadRules = require(script.Parent.RoadRules)
 local BezierUtil = require(script.Parent.BezierUtil)
+local RoadProfile = require(script.Parent.RoadProfile)
 
 local TrafficSignPlanner = {}
 
@@ -93,14 +94,15 @@ local function armDir(seg: Segment, nodeId: number): Vector3?
 end
 
 -- Point and flat travel direction `dist` studs along `seg` from its `nodeId` end.
-local function alongFrom(seg: Segment, nodeId: number, dist: number): (Vector3, Vector3)
+-- The point `dist` along the road from the node, the direction away from the node there, and
+-- the road's own direction there (what its left and right are measured against).
+local function alongFrom(seg: Segment, nodeId: number, dist: number): (Vector3, Vector3, Vector3)
 	local len = BezierUtil.length(seg.p0, seg.p1, seg.p2, seg.p3, 8)
 	local t = math.clamp(dist / math.max(len, 1e-3), 0, 1)
 	if seg.endNode == nodeId then t = 1 - t end
 	local p = BezierUtil.point(seg.p0, seg.p1, seg.p2, seg.p3, t)
-	local tan = BezierUtil.tangent(seg.p0, seg.p1, seg.p2, seg.p3, t)
-	if seg.endNode == nodeId then tan = -tan end
-	return p, flat(tan) or Vector3.zAxis
+	local fwd = flat(BezierUtil.tangent(seg.p0, seg.p1, seg.p2, seg.p3, t)) or Vector3.zAxis
+	return p, (if seg.endNode == nodeId then -fwd else fwd), fwd
 end
 
 local function speedText(kmh: number, unit: string): string
@@ -115,10 +117,19 @@ local function signable(spec: any, seg: Segment): boolean
 		and seg.vMode ~= "Tunnel"
 end
 
+-- A post just outside the carriageway on the road's `side` (-1 left, +1 right of `fwd`, the
+-- road's own direction), standing on the ground there: the footway, or the verge of a kerbless
+-- road. `centre` is on the curve, the slab's centre.
+local function roadsidePoint(centre: Vector3, fwd: Vector3, spec: any, side: number): Vector3
+	return centre + fwd:Cross(UP) * side * (spec.width * 0.5 + KERB_CLEARANCE)
+		+ UP * RoadProfile.roadsideLift(spec, side)
+end
+
 -- The kerb on the driving side of traffic travelling `travel`, just outside the carriageway.
 -- (A one-way's lanes fill the road, so the same kerb serves it.)
-local function kerbPoint(centre: Vector3, travel: Vector3, spec: any, laneSideSign: number): Vector3
-	return centre + travel:Cross(UP) * laneSideSign * (spec.width * 0.5 + KERB_CLEARANCE)
+local function kerbPoint(centre: Vector3, travel: Vector3, fwd: Vector3, spec: any, laneSideSign: number): Vector3
+	local side = (if travel:Dot(fwd) >= 0 then 1 else -1) * laneSideSign
+	return roadsidePoint(centre, fwd, spec, side)
 end
 
 function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vector3?, opts: Options, cache: Cache?): { Sign }
@@ -214,11 +225,11 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 					kind = "allway"
 				end
 				if kind then
-					local centre, travelOut = alongFrom(a.seg, nodeId, mouth + SIGN_SETBACK)
+					local centre, travelOut, fwd = alongFrom(a.seg, nodeId, mouth + SIGN_SETBACK)
 					local travelIn = -travelOut
 					table.insert(out, {
 						key = `{kind}:{nodeId}:{a.seg.id}`, kind = kind,
-						pos = kerbPoint(centre, travelIn, a.spec, side), face = travelOut,
+						pos = kerbPoint(centre, travelIn, fwd, a.spec, side), face = travelOut,
 						nodeId = nodeId,
 					})
 				end
@@ -236,22 +247,22 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 				if leaves and not spec.isHighway then
 					-- One on each corner, mounted along the street so the cross street reads the
 					-- arrow whichever way it comes from.
-					local centre, flow = alongFrom(seg, nodeId, mouth + SIGN_SETBACK * 0.5)
+					local centre, flow, fwd = alongFrom(seg, nodeId, mouth + SIGN_SETBACK * 0.5)
 					for i, sgn in { 1, -1 } do
 						local outward = flow:Cross(UP) * side * sgn
 						local viewerRight = (-outward):Cross(UP)
 						table.insert(out, {
 							key = `oneway:{nodeId}:{seg.id}:{i}`, kind = "oneway",
-							pos = centre + outward * (spec.width * 0.5 + KERB_CLEARANCE), face = outward,
+							pos = roadsidePoint(centre, fwd, spec, (if flow:Dot(fwd) >= 0 then 1 else -1) * side * sgn), face = outward,
 							arrowRight = flow:Dot(viewerRight) > 0, nodeId = nodeId,
 						})
 					end
 				elseif not leaves then
 					-- Its exit end: facing whoever would turn in against the flow.
-					local centre, awayFromNode = alongFrom(seg, nodeId, mouth + SIGN_SETBACK)
+					local centre, awayFromNode, fwd = alongFrom(seg, nodeId, mouth + SIGN_SETBACK)
 					table.insert(out, {
 						key = `noentry:{nodeId}:{seg.id}`, kind = "noentry",
-						pos = kerbPoint(centre, awayFromNode, spec, side), face = -awayFromNode,
+						pos = kerbPoint(centre, awayFromNode, fwd, spec, side), face = -awayFromNode,
 						nodeId = nodeId,
 					})
 				end
@@ -269,10 +280,10 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 					end
 				end
 				if fromStreet and (spec.oneWay or not otherHighway) then
-					local centre, flow = alongFrom(seg, nodeId, mouth + SIGN_SETBACK)
+					local centre, flow, fwd = alongFrom(seg, nodeId, mouth + SIGN_SETBACK)
 					table.insert(out, {
 						key = `highway:{nodeId}:{seg.id}`, kind = "highway",
-						pos = kerbPoint(centre, flow, spec, side), face = -flow, nodeId = nodeId,
+						pos = kerbPoint(centre, flow, fwd, spec, side), face = -flow, nodeId = nodeId,
 					})
 				end
 			end
@@ -296,10 +307,10 @@ function TrafficSignPlanner.plan(segments: { Segment }, nodePos: (number) -> Vec
 				end
 			end
 			if wanted then
-				local centre, flow = alongFrom(seg, nodeId, mouth + SIGN_SETBACK * 3)
+				local centre, flow, fwd = alongFrom(seg, nodeId, mouth + SIGN_SETBACK * 3)
 				table.insert(out, {
 					key = `speed:{nodeId}:{seg.id}`, kind = "speed",
-					pos = kerbPoint(centre, flow, spec, side), face = -flow,
+					pos = kerbPoint(centre, flow, fwd, spec, side), face = -flow,
 					text = speedText(kmh, opts.speedUnit), nodeId = nodeId,
 				})
 			end
